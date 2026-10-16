@@ -1,0 +1,10 @@
+📁 controller/
+📁 model/
+📁 repository/
+📁 service/
+
+Tarefas:
+    1: Sistema de login
+    2: Sistema de recuperação de senha
+        a) Api de envio de confirmação de recuperação de senha
+        b) Nova senha

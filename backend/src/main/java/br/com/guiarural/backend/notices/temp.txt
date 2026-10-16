@@ -1,0 +1,9 @@
+📁 controller/
+📁 model/
+📁 repository/
+📁 service/
+
+Tarefas:
+    1: CRUD Básico de avisos
+        a) Deletar aviso
+    
