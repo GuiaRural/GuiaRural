@@ -35,7 +35,7 @@ export type Dictionary = {
     recent: string;
     noResults: string;
   };
-  map: { placeholderTitle: string; placeholderText: string };
+  map: { title: string; loading: string; zoomIn: string; zoomOut: string };
   language: { label: string };
 };
 
@@ -75,8 +75,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       noResults: "Nenhum local encontrado",
     },
     map: {
-      placeholderTitle: "Mapa do campus",
-      placeholderText: "O mapa interativo (Leaflet + OpenStreetMap) será integrado aqui.",
+      title: "Mapa do campus",
+      loading: "Carregando o mapa…",
+      zoomIn: "Aumentar zoom",
+      zoomOut: "Diminuir zoom",
     },
     language: { label: "Idioma" },
   },
@@ -115,8 +117,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       noResults: "No places found",
     },
     map: {
-      placeholderTitle: "Campus map",
-      placeholderText: "The interactive map (Leaflet + OpenStreetMap) will be integrated here.",
+      title: "Campus map",
+      loading: "Loading the map…",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
     },
     language: { label: "Language" },
   },
@@ -155,8 +159,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       noResults: "No se encontraron lugares",
     },
     map: {
-      placeholderTitle: "Mapa del campus",
-      placeholderText: "El mapa interactivo (Leaflet + OpenStreetMap) se integrará aquí.",
+      title: "Mapa del campus",
+      loading: "Cargando el mapa…",
+      zoomIn: "Acercar",
+      zoomOut: "Alejar",
     },
     language: { label: "Idioma" },
   },
