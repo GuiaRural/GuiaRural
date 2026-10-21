@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Dictionary } from "../../i18n/dictionaries";
 
@@ -74,6 +75,7 @@ function SectionTitle({ children }: { children: string }) {
 
 export default function Sidebar({ id, open, onClose }: { id: string; open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
+  const pathname = usePathname();
 
   return (
     <>
@@ -100,12 +102,12 @@ export default function Sidebar({ id, open, onClose }: { id: string; open: boole
           </div>
           <p className="border-t border-white/10 px-3 pt-3 text-xs text-slate-400">{t.sidebar.cityLabel}</p>
           <div className="mt-2">
-            <NavGroup items={NAV} current="/" />
+            <NavGroup items={NAV} current={pathname} />
           </div>
           <SectionTitle>{t.sidebar.welcomeSection}</SectionTitle>
-          <NavGroup items={WELCOME} current="/" />
+          <NavGroup items={WELCOME} current={pathname} />
           <SectionTitle>{t.sidebar.supportSection}</SectionTitle>
-          <NavGroup items={SUPPORT} current="/" />
+          <NavGroup items={SUPPORT} current={pathname} />
         </nav>
       </aside>
     </>
