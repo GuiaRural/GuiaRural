@@ -2,3 +2,7 @@
 📁 model/
 📁 repository/
 📁 service/
+
+Tarefas:
+    1: CRUD Básico para cursos
+        a) Buscar informações do curso

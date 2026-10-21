@@ -1,0 +1,10 @@
+📁 controller/
+📁 model/
+📁 repository/
+📁 service/
+
+Tarefas:
+    1: CRUD Básico de serviços
+        a) Adicionar Serviço
+        b) Editar Serviço
+        c) Deletar serviço
