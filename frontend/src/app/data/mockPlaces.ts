@@ -2,9 +2,12 @@ export type Place = {
   id: string;
   name: string;
   category: "administrativo" | "departamento" | "alimentacao" | "biblioteca" | "saude";
+  // Ausente enquanto não houver coordenadas confirmadas: o local não aparece como marcador.
+  coords?: { lat: number; lng: number };
 };
 
 // Dados fictícios até a integração com a API (Spring Boot). Não representam o catálogo oficial.
+// Nenhum local tem coords de propósito: não há posições reais verificadas dos prédios.
 export const MOCK_PLACES: Place[] = [
   { id: "reitoria", name: "Prédio Central (Reitoria)", category: "administrativo" },
   { id: "ceagri-1", name: "CEAGRI I", category: "departamento" },
