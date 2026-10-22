@@ -49,7 +49,6 @@ export type Place = {
 };
 
 // Dados fictícios até a integração com a API (Spring Boot). Não representam o catálogo oficial.
-// Nenhum local tem coords de propósito: não há posições reais verificadas dos prédios.
 export const MOCK_PLACES: Place[] = [
   {
     id: "reitoria",

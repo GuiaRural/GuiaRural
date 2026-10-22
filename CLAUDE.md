@@ -114,3 +114,7 @@ Arquivos envolvidos: [caminhos, se souber]
 Critérios de pronto: [comportamento esperado]
 Restrições extras: [prazos, bibliotecas proibidas, etc.]
 ```
+
+## 14. Branchs e commits
+
+Sempre crie branchs das versões mais atualizadas. antes de qualquer código, rode git pull a a partir da dev.
