@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Dictionary } from "../../i18n/dictionaries";
 
@@ -31,16 +32,17 @@ const SUPPORT: Item[] = [
   { key: "admin", href: "/admin" },
 ];
 
-function NavGroup({ items, current }: { items: Item[]; current: string }) {
+function NavGroup({ items, current, onNavigate }: { items: Item[]; current: string; onNavigate: () => void }) {
   const { t } = useLanguage();
   return (
     <ul className="space-y-0.5">
       {items.map((item) => {
-        const active = item.href === current;
+        const active = item.href === "/" ? current === "/" : current === item.href || current.startsWith(`${item.href}/`);
         return (
           <li key={item.key}>
             <Link
               href={item.href}
+              onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-brand-yellow ${
                 item.sub ? "ml-4 text-slate-300" : "text-white"
@@ -74,6 +76,7 @@ function SectionTitle({ children }: { children: string }) {
 
 export default function Sidebar({ id, open, onClose }: { id: string; open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
+  const pathname = usePathname();
 
   return (
     <>
@@ -100,12 +103,12 @@ export default function Sidebar({ id, open, onClose }: { id: string; open: boole
           </div>
           <p className="border-t border-white/10 px-3 pt-3 text-xs text-slate-400">{t.sidebar.cityLabel}</p>
           <div className="mt-2">
-            <NavGroup items={NAV} current="/" />
+            <NavGroup items={NAV} current={pathname} onNavigate={onClose} />
           </div>
           <SectionTitle>{t.sidebar.welcomeSection}</SectionTitle>
-          <NavGroup items={WELCOME} current="/" />
+          <NavGroup items={WELCOME} current={pathname} onNavigate={onClose} />
           <SectionTitle>{t.sidebar.supportSection}</SectionTitle>
-          <NavGroup items={SUPPORT} current="/" />
+          <NavGroup items={SUPPORT} current={pathname} onNavigate={onClose} />
         </nav>
       </aside>
     </>
