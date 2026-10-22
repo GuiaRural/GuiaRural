@@ -1,4 +1,4 @@
-import type { Point } from "../lib/geo";
+import type { LatLng } from "../lib/geo";
 
 export const PLACE_CATEGORIES = [
   "departamento",
@@ -27,8 +27,8 @@ export type Place = {
   shortName: string;
   category: PlaceCategory;
   status: PlaceStatus;
-  // Posição no plano do mapa mock; null enquanto o local não for georreferenciado.
-  position: Point | null;
+  // Coordenadas no mapa; null enquanto o local não for georreferenciado.
+  position: LatLng | null;
   address: string;
   hours: string;
   accessibility: AccessibilityFeature[];
@@ -56,7 +56,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "Reitoria",
     category: "administrativo",
     status: "publicado",
-    position: { x: 470, y: 300 },
+    // OSM way 609985167 (edifício "Universidade Federal Rural de Pernambuco", colado no RU). Identificado como Prédio Central por proximidade com o RU e pelo porte; confirmar em campo.
+    position: { lat: -8.014509, lng: -34.950554 },
     address: "Rua Dom Manoel de Medeiros, s/n — Dois Irmãos",
     hours: "07:00-18:00",
     accessibility: ["rampa", "elevador"],
@@ -78,7 +79,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "Biblioteca",
     category: "biblioteca",
     status: "publicado",
-    position: { x: 360, y: 200 },
+    // OSM relation 8058581 (Biblioteca Central).
+    position: { lat: -8.013578, lng: -34.948759 },
     address: "Alameda da Biblioteca — próximo ao Prédio Central",
     hours: "08:00-20:00",
     accessibility: ["rampa", "piso_tatil", "banheiro"],
@@ -98,7 +100,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "CEAGRI I",
     category: "sala",
     status: "publicado",
-    position: { x: 610, y: 230 },
+    // OSM way 258990181 (Prof. Rildo Sartori, CEAGRI I).
+    position: { lat: -8.017816, lng: -34.944261 },
     address: "Alameda central do campus",
     hours: "07:00-22:00",
     accessibility: ["rampa"],
@@ -112,7 +115,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "DC",
     category: "departamento",
     status: "publicado",
-    position: { x: 720, y: 400 },
+    // APROXIMADA, NÃO VERIFICADA: o OSM não nomeia o prédio do DC; ponto num prédio do complexo CEAGRI (OSM way 551272692). Corrigir pelo painel admin.
+    position: { lat: -8.016980, lng: -34.944780 },
     address: "Campus Dois Irmãos — bloco do DC",
     hours: "07:00-22:00",
     accessibility: ["rampa", "banheiro"],
@@ -133,7 +137,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "DEPA",
     category: "departamento",
     status: "publicado",
-    position: { x: 230, y: 420 },
+    // PROVÁVEL: prédio "Fitossanidade" (OSM way 551272669); o docx de prédios cita laboratórios de solos e fitossanidade na Agronomia. Confirmar.
+    position: { lat: -8.016422, lng: -34.944698 },
     address: "Campus Dois Irmãos — área de Agronomia",
     hours: "07:00-18:00",
     accessibility: ["rampa"],
@@ -147,7 +152,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "DMV",
     category: "departamento",
     status: "publicado",
-    position: { x: 830, y: 220 },
+    // APROXIMADA, NÃO VERIFICADA: prédio sem nome ao lado do Hospital Veterinário (OSM way 249468908). Corrigir pelo painel admin.
+    position: { lat: -8.014978, lng: -34.948088 },
     address: "Campus Dois Irmãos — área de Veterinária",
     hours: "07:00-18:00",
     accessibility: ["rampa", "banheiro"],
@@ -161,7 +167,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "RU",
     category: "alimentacao",
     status: "publicado",
-    position: { x: 330, y: 500 },
+    // OSM way 681756785 (Restaurante Universitário).
+    position: { lat: -8.014052, lng: -34.951108 },
     address: "Próximo à quadra poliesportiva",
     hours: "11:00-14:00, 17:30-19:30",
     accessibility: ["rampa", "banheiro", "piso_tatil"],
@@ -175,7 +182,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "HOVET",
     category: "saude",
     status: "publicado",
-    position: { x: 840, y: 540 },
+    // OSM way 249468549 (Hospital Veterinário UFRPE).
+    position: { lat: -8.014845, lng: -34.948780 },
     address: "Campus Dois Irmãos — área de Veterinária",
     hours: "08:00-17:00",
     accessibility: ["rampa", "vaga"],
@@ -189,7 +197,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "DZO",
     category: "departamento",
     status: "publicado",
-    position: { x: 560, y: 560 },
+    // OSM way 542744089 (nomeado "Departamento de Zootecnologia da UFRPE").
+    position: { lat: -8.020248, lng: -34.953995 },
     address: "Campus Dois Irmãos",
     hours: "07:00-18:00",
     accessibility: [],
@@ -203,7 +212,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "Portaria 1",
     category: "portaria",
     status: "publicado",
-    position: { x: 90, y: 630 },
+    // OSM node 9172032456 (portão "Z-3", junto ao ponto de ônibus UFRPE na Rua Manuel de Medeiros).
+    position: { lat: -8.016542, lng: -34.950887 },
     address: "Rua Dom Manoel de Medeiros",
     hours: "00:00-23:59",
     accessibility: ["rampa", "piso_tatil"],
@@ -217,7 +227,8 @@ export const MOCK_PLACES: Place[] = [
     shortName: "Portaria 2",
     category: "portaria",
     status: "publicado",
-    position: { x: 940, y: 650 },
+    // PROVÁVEL: portão "Z-4" (OSM node 8942620279), lado leste, junto ao Parque Dois Irmãos. Confirmar.
+    position: { lat: -8.016355, lng: -34.945249 },
     address: "Lado do Parque Dois Irmãos",
     hours: "06:00-22:00",
     accessibility: ["rampa"],

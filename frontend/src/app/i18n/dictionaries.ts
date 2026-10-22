@@ -40,8 +40,8 @@ export type Dictionary = {
     minChars: string;
   };
   map: {
-    placeholderTitle: string;
-    placeholderText: string;
+    title: string;
+    loading: string;
     label: string;
     zoomIn: string;
     zoomOut: string;
@@ -157,8 +157,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       minChars: "Digite ao menos 3 caracteres para ver sugestões.",
     },
     map: {
-      placeholderTitle: "Mapa do campus",
-      placeholderText: "O mapa interativo (Leaflet + OpenStreetMap) será integrado aqui.",
+      title: "Mapa do campus",
+      loading: "Carregando o mapa…",
       label: "Mapa interativo do campus",
       zoomIn: "Aproximar",
       zoomOut: "Afastar",
@@ -295,8 +295,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       minChars: "Type at least 3 characters to see suggestions.",
     },
     map: {
-      placeholderTitle: "Campus map",
-      placeholderText: "The interactive map (Leaflet + OpenStreetMap) will be integrated here.",
+      title: "Campus map",
+      loading: "Loading the map…",
       label: "Interactive campus map",
       zoomIn: "Zoom in",
       zoomOut: "Zoom out",
@@ -433,8 +433,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       minChars: "Escribe al menos 3 caracteres para ver sugerencias.",
     },
     map: {
-      placeholderTitle: "Mapa del campus",
-      placeholderText: "El mapa interactivo (Leaflet + OpenStreetMap) se integrará aquí.",
+      title: "Mapa del campus",
+      loading: "Cargando el mapa…",
       label: "Mapa interactivo del campus",
       zoomIn: "Acercar",
       zoomOut: "Alejar",

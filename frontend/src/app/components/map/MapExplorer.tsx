@@ -1,23 +1,28 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
-import { toPoint, type Point } from "../../lib/geo";
+import type { LatLng } from "../../lib/geo";
 import { addRecentPlace, getPublicPlaces } from "../../services/placesService";
 import { computeRoute } from "../../services/routeService";
 import LanguageSwitcher from "../common/LanguageSwitcher";
+import MapLoading from "../common/MapLoading";
 import SearchBar from "../common/SearchBar";
 import PlaceCard from "../places/PlaceCard";
-import CampusMap, { type CampusMapHandle, type MapMarker } from "./CampusMap";
+import type { MapFocus, MapMarker } from "./CampusMap";
+
+// ssr: false só funciona em Client Component, por isso o carregamento fica aqui e não na page.
+const CampusMap = dynamic(() => import("./CampusMap"), { ssr: false, loading: () => <MapLoading /> });
 
 // Origem da rota vinda da URL: id de um local/portaria ou "gps:lat,lng".
-function parseOrigin(raw: string | undefined, places: Place[]): { label: string | null; point: Point } | null {
+function parseOrigin(raw: string | undefined, places: Place[]): { label: string | null; point: LatLng } | null {
   if (!raw) return null;
   if (raw.startsWith("gps:")) {
     const [lat, lng] = raw.slice(4).split(",").map(Number);
-    return Number.isFinite(lat) && Number.isFinite(lng) ? { label: null, point: toPoint({ lat, lng }) } : null;
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { label: null, point: { lat, lng } } : null;
   }
   const place = places.find((p) => p.id === raw);
   return place?.position ? { label: place.name, point: place.position } : null;
@@ -25,10 +30,10 @@ function parseOrigin(raw: string | undefined, places: Place[]): { label: string 
 
 export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?: string; routeTo?: string; routeFrom?: string }) {
   const { t } = useLanguage();
-  const mapRef = useRef<CampusMapHandle>(null);
   const [places, setPlaces] = useState<Place[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(routeTo ?? focusId ?? null);
   const [recentVersion, setRecentVersion] = useState(0);
+  const [focus, setFocus] = useState<MapFocus | null>(null);
 
   useEffect(() => {
     getPublicPlaces().then(setPlaces);
@@ -54,28 +59,27 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
     setSelectedId(place.id);
     addRecentPlace(place.id);
     setRecentVersion((v) => v + 1);
-    if (place.position) mapRef.current?.centerOn(place.position);
+    if (place.position) setFocus({ point: place.position });
   }
-
-  const initialCenter = route
-    ? { x: (route.points[0].x + route.points[route.points.length - 1].x) / 2, y: 380 }
-    : (selected?.position ?? undefined);
 
   return (
     <>
-      <CampusMap
-        ref={mapRef}
-        markers={markers}
-        selectedId={selectedId}
-        onSelectMarker={(id) => {
-          const place = places.find((p) => p.id === id);
-          if (place) select(place);
-        }}
-        onBackgroundClick={() => setSelectedId(null)}
-        route={route?.points}
-        initialCenter={initialCenter}
-        initialScale={selected && !route ? 1.3 : 1}
-      />
+      {/* isolate cria um contexto de empilhamento: os painéis do Leaflet usam z-index até 1000
+          e, sem isso, ficariam por cima da busca e do seletor de idioma. */}
+      <div className="absolute inset-0 isolate">
+        <CampusMap
+          markers={markers}
+          selectedId={selectedId}
+          onSelectMarker={(id) => {
+            const place = places.find((p) => p.id === id);
+            if (place) select(place);
+          }}
+          onBackgroundClick={() => setSelectedId(null)}
+          route={route?.points}
+          initialCenter={selected?.position ?? undefined}
+          focus={focus}
+        />
+      </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3 sm:p-4">
         <div className="pointer-events-auto w-full max-w-2xl">

@@ -10,7 +10,6 @@ import Modal from "../../components/ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
 import { isOpenNow } from "../../lib/hours";
-import { toLatLng } from "../../lib/geo";
 import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace } from "../../services/placesService";
 import { computeRoute, getCurrentCampusPosition } from "../../services/routeService";
 
@@ -61,7 +60,7 @@ function PlaceDetails({ place }: { place: Place }) {
   const origin = getDefaultOrigin();
   const fromGate = place.position && origin.position ? computeRoute(origin.position, place.position) : null;
   const open = isOpenNow(place.hours);
-  const coords = place.position ? toLatLng(place.position) : null;
+  const coords = place.position;
 
   // Passo 3 do UC10: tenta o GPS; sem ele (FE01) ou fora do campus, pede a origem manual.
   async function traceRoute() {
@@ -69,7 +68,7 @@ function PlaceDetails({ place }: { place: Place }) {
     const gps = await getCurrentCampusPosition();
     setLocating(false);
     if (gps.ok) {
-      const { lat, lng } = toLatLng(gps.point);
+      const { lat, lng } = gps.point;
       router.push(`/?rota=${place.id}&origem=gps:${lat.toFixed(6)},${lng.toFixed(6)}`);
     } else {
       setOriginIssue(gps.reason === "outside" ? "outside" : "denied");
