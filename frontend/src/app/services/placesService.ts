@@ -40,6 +40,11 @@ export async function getPlace(id: string): Promise<Place | null> {
   return places.find((p) => p.id === id && isPublic(p)) ?? null;
 }
 
+// Locais com coordenadas, prontos para virar marcador no mapa.
+export async function getMapPlaces(): Promise<Place[]> {
+  return MOCK_PLACES.filter((p) => p.coords !== undefined);
+}
+
 export async function getRecentPlaces(): Promise<Place[]> {
   const ids = readJson<string[]>(RECENT_KEY, MOCK_RECENT_IDS);
   return ids.map((id) => places.find((p) => p.id === id)).filter((p): p is Place => Boolean(p && isPublic(p)));
