@@ -1,18 +1,20 @@
 import AppShell from "./components/common/AppShell";
-import LanguageSwitcher from "./components/common/LanguageSwitcher";
-import MapView from "./components/common/MapView";
-import SearchBar from "./components/common/SearchBar";
+import MapExplorer from "./components/map/MapExplorer";
 
-export default function Home() {
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+// ?local=<id> abre o cartão de um local; ?rota=<id>&origem=<id|gps:lat,lng> desenha a rota (UC10).
+export default async function Home({ searchParams }: PageProps<"/">) {
+  const params = await searchParams;
+  const local = first(params.local);
+  const rota = first(params.rota);
+  const origem = first(params.origem);
+
   return (
     <AppShell>
-      <MapView />
-      <div className="absolute inset-x-0 top-0 z-10 flex justify-center p-3 sm:p-4">
-        <SearchBar />
-      </div>
-      <div className="absolute right-3 top-24 z-10 sm:right-5 sm:top-28">
-        <LanguageSwitcher />
-      </div>
+      <MapExplorer key={`${local}|${rota}|${origem}`} focusId={local} routeTo={rota} routeFrom={origem} />
     </AppShell>
   );
 }
