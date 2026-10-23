@@ -95,6 +95,27 @@ export type Dictionary = {
     buildings: string;
     confirm: string;
   };
+  guide: {
+    breadcrumbLabel: string;
+    breadcrumbHome: string;
+    breadcrumbCurrent: string;
+    defaultOrigin: string;
+    quickTips: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    tipsTitle: string;
+    tipsSubtitle: string;
+    partnerships: string;
+    footerBrand: string;
+    footerTagline: string;
+    footerInstitution: string;
+    scale: string;
+    errorTitle: string;
+    errorText: string;
+    retry: string;
+    saveSpot: string;
+    unsaveSpot: string;
+  };
   guides: {
     sections: Record<GuideSection, { title: string; intro: string }>;
     chooseTopic: string;
@@ -229,6 +250,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Portarias",
       buildings: "Prédios",
       confirm: "Traçar rota",
+    },
+    guide: {
+      breadcrumbLabel: "Trilha de navegação",
+      breadcrumbHome: "Início",
+      breadcrumbCurrent: "Guia de Recife & RMR",
+      defaultOrigin: "Origem Padrão: Campus Dois Irmãos (UFRPE)",
+      quickTips: "Dicas Rápidas de Mobilidade",
+      heroTitle: "Guia de Recife • Conheça a Cidade Além do Campus",
+      heroSubtitle:
+        "Selecionamos os pontos culturais, históricos e litorâneos mais emblemáticos da capital pernambucana e arredores.",
+      tipsTitle: "Dicas Essenciais para Estudantes na RMR",
+      tipsSubtitle: "Facilitando sua circulação autônoma por Recife, Olinda e Região Metropolitana.",
+      partnerships: "Convênios & parcerias UFRPE ativas",
+      footerBrand: "GuiaRural • UFRPE",
+      footerTagline: "— Plataforma Aberta de Mobilidade & Cidadania Universitária",
+      footerInstitution: "Universidade Federal Rural de Pernambuco • Pró-Reitoria de Assuntos Estudantis",
+      scale: "Escala 1:2500 • Recife-PE",
+      errorTitle: "Não foi possível carregar o guia",
+      errorText: "Verifique sua conexão e tente novamente.",
+      retry: "Tentar novamente",
+      saveSpot: "Salvar local",
+      unsaveSpot: "Remover local salvo",
     },
     guides: {
       sections: {
@@ -368,6 +411,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       buildings: "Buildings",
       confirm: "Show route",
     },
+    guide: {
+      breadcrumbLabel: "Breadcrumb",
+      breadcrumbHome: "Home",
+      breadcrumbCurrent: "Recife & RMR Guide",
+      defaultOrigin: "Default origin: Dois Irmãos Campus (UFRPE)",
+      quickTips: "Quick Mobility Tips",
+      heroTitle: "Recife Guide • Discover the City Beyond the Campus",
+      heroSubtitle:
+        "We selected the most emblematic cultural, historic and coastal spots of the capital of Pernambuco and its surroundings.",
+      tipsTitle: "Essential Tips for Students in the RMR",
+      tipsSubtitle: "Making it easier to get around Recife, Olinda and the Metropolitan Region on your own.",
+      partnerships: "Active UFRPE agreements & partnerships",
+      footerBrand: "GuiaRural • UFRPE",
+      footerTagline: "— Open Platform for Mobility & University Citizenship",
+      footerInstitution: "Federal Rural University of Pernambuco • Student Affairs Office",
+      scale: "Scale 1:2500 • Recife-PE",
+      errorTitle: "Could not load the guide",
+      errorText: "Check your connection and try again.",
+      retry: "Try again",
+      saveSpot: "Save place",
+      unsaveSpot: "Remove saved place",
+    },
     guides: {
       sections: {
         cultura: { title: "Cultural interaction", intro: "Guidelines for living together and aspects of Brazilian culture on campus." },
@@ -505,6 +570,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Porterías",
       buildings: "Edificios",
       confirm: "Trazar ruta",
+    },
+    guide: {
+      breadcrumbLabel: "Ruta de navegación",
+      breadcrumbHome: "Inicio",
+      breadcrumbCurrent: "Guía de Recife & RMR",
+      defaultOrigin: "Origen predeterminado: Campus Dois Irmãos (UFRPE)",
+      quickTips: "Consejos Rápidos de Movilidad",
+      heroTitle: "Guía de Recife • Conoce la Ciudad Más Allá del Campus",
+      heroSubtitle:
+        "Seleccionamos los puntos culturales, históricos y costeros más emblemáticos de la capital de Pernambuco y alrededores.",
+      tipsTitle: "Consejos Esenciales para Estudiantes en la RMR",
+      tipsSubtitle: "Facilitando tu circulación autónoma por Recife, Olinda y la Región Metropolitana.",
+      partnerships: "Convenios y alianzas UFRPE activos",
+      footerBrand: "GuiaRural • UFRPE",
+      footerTagline: "— Plataforma Abierta de Movilidad y Ciudadanía Universitaria",
+      footerInstitution: "Universidad Federal Rural de Pernambuco • Pro-Rectoría de Asuntos Estudiantiles",
+      scale: "Escala 1:2500 • Recife-PE",
+      errorTitle: "No se pudo cargar la guía",
+      errorText: "Revisa tu conexión e inténtalo de nuevo.",
+      retry: "Intentar de nuevo",
+      saveSpot: "Guardar lugar",
+      unsaveSpot: "Quitar lugar guardado",
     },
     guides: {
       sections: {
