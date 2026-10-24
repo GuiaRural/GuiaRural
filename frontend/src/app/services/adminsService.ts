@@ -43,7 +43,8 @@ export type NewAdmin = {
   sendCredentials: boolean;
 };
 
-export async function createAdmin(input: NewAdmin, author: string): Promise<Admin> {
+// authorSector é o setor de quem está cadastrando: ele define o status inicial (RN-UC13.01).
+export async function createAdmin(input: NewAdmin, author: string, authorSector: Sector): Promise<Admin> {
   await delay(400);
   const email = input.email.trim().toLowerCase();
   if (!isInstitutionalEmail(email)) {
@@ -58,8 +59,8 @@ export async function createAdmin(input: NewAdmin, author: string): Promise<Admi
     email,
     sector: input.sector,
     permission: input.permission,
-    // RN-UC13.01: cadastros fora da Coordenação de TI aguardam aprovação de um administrador geral.
-    status: input.sector === IT_SECTOR ? "ativo" : "aguardando",
+    // RN-UC13.01: cadastros feitos por um setor diferente da Coordenação de TI aguardam aprovação de um administrador geral.
+    status: authorSector === IT_SECTOR ? "ativo" : "aguardando",
   };
   admins = [...admins, admin];
   passwords[email] = input.password;

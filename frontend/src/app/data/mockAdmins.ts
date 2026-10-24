@@ -35,6 +35,7 @@ export const MOCK_ADMINS: Admin[] = [
   { id: "a2", name: "Equipe de Comunicação", email: "comunicacao@ufrpe.br", sector: "Comunicação", permission: "editor", status: "ativo" },
   { id: "a3", name: "Biblioteca Central", email: "biblioteca@ufrpe.br", sector: "Biblioteca", permission: "editor", status: "ativo" },
   { id: "a4", name: "Nutrição / RU", email: "ru@ufrpe.br", sector: "Nutrição / RU", permission: "editor", status: "ativo" },
+  { id: "a6", name: "PROAC", email: "proac@ufrpe.br", sector: "Pró-Reitoria de Assuntos Comunitários", permission: "geral", status: "ativo" },
   { id: "a5", name: "Secretaria do DC", email: "secretaria.dc@ufrpe.br", sector: "Departamento de Computação", permission: "editor", status: "aguardando" },
 ];
 
@@ -45,4 +46,5 @@ export const MOCK_PASSWORDS: Record<string, string> = {
   "biblioteca@ufrpe.br": "guiarural123",
   "ru@ufrpe.br": "guiarural123",
   "secretaria.dc@ufrpe.br": "guiarural123",
+  "proac@ufrpe.br": "guiarural123",
 };

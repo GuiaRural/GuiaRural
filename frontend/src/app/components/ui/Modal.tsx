@@ -8,6 +8,7 @@ export default function Modal({
   onClose,
   title,
   description,
+  icon,
   children,
   size = "md",
 }: {
@@ -15,6 +16,7 @@ export default function Modal({
   onClose: () => void;
   title: string;
   description?: string;
+  icon?: ReactNode;
   children: ReactNode;
   size?: "sm" | "md" | "lg";
 }) {
@@ -41,12 +43,19 @@ export default function Modal({
     >
       {open && (
         <>
-          <header className="flex items-start justify-between gap-3 bg-navy-900 px-5 py-4 text-white">
-            <div>
-              <h2 id="modal-title" className="font-bold">
-                {title}
-              </h2>
-              {description && <p className="mt-0.5 text-xs text-slate-300">{description}</p>}
+          <header className="flex items-start justify-between gap-3 bg-navy-900 px-5 py-4 text-white sm:px-6">
+            <div className="flex items-center gap-3">
+              {icon && (
+                <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-lg border border-blue-300/40 bg-blue-500/20 text-blue-200">
+                  {icon}
+                </span>
+              )}
+              <div>
+                <h2 id="modal-title" className="text-lg font-bold">
+                  {title}
+                </h2>
+                {description && <p className="mt-0.5 text-xs text-slate-300">{description}</p>}
+              </div>
             </div>
             <button
               type="button"
