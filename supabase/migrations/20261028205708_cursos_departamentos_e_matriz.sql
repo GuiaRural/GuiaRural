@@ -31,7 +31,9 @@ create table public.courses (
     modality            text,
     shift               text,
     duration_semesters  smallint check (duration_semesters > 0),
-    mec_grade           smallint check (mec_grade between 1 and 5),
+    -- carga horária de integralização: campo próprio, não é a soma da matriz (inclui estágio, optativas etc.).
+    total_workload_hours smallint check (total_workload_hours > 0),
+    mec_grade          smallint check (mec_grade between 1 and 5),
     capes_grade         smallint check (capes_grade between 1 and 7),
     description         text,
     -- RN-UC37-02: o total de programas conta só cursos ativos.
