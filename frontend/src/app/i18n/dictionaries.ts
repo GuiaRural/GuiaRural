@@ -1,5 +1,6 @@
 import type { GuideSection } from "../data/mockGuides";
 import type { AccessibilityFeature, PlaceCategory } from "../data/mockPlaces";
+import type { CourseType } from "../services/coursesService";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -138,6 +139,59 @@ export type Dictionary = {
     drink: string;
     empty: string;
     today: string;
+  };
+  courses: {
+    title: string;
+    subtitle: string;
+    departmentsEmpty: string;
+    loadErrorTitle: string;
+    loadErrorText: string;
+    retry: string;
+    notFoundTitle: string;
+    notFoundText: string;
+    backToList: string;
+    backToDepartment: string;
+    viewDepartment: string;
+    about: string;
+    foundedIn: string;
+    hours: string;
+    contact: string;
+    academicCenter: string;
+    linkedCourses: string;
+    programsOffered: string;
+    undergraduate: string;
+    postgraduate: string;
+    types: Record<CourseType, string>;
+    viewCurriculum: string;
+    coordinations: string;
+    extension: string;
+    duration: string;
+    semesters: string;
+    active: string;
+    courseCode: string;
+    coordination: string;
+    coordinator: string;
+    viceCoordinator: string;
+    office: string;
+    officeHours: string;
+    attendanceMode: string;
+    channels: string;
+    phone: string;
+    email: string;
+    curriculum: string;
+    totalWorkload: string;
+    period: string;
+    electives: string;
+    subjectCode: string;
+    subject: string;
+    workload: string;
+    credits: string;
+    nature: string;
+    prerequisites: string;
+    none: string;
+    obligatory: string;
+    optional: string;
+    noSubjects: string;
   };
 };
 
@@ -301,6 +355,59 @@ export const dictionaries: Record<Language, Dictionary> = {
       empty: "Nenhum cardápio publicado para esta semana.",
       today: "Hoje",
     },
+    courses: {
+      title: "Cursos e departamentos",
+      subtitle: "Escolha um departamento para ver seus cursos de graduação e pós-graduação.",
+      departmentsEmpty: "Nenhum departamento cadastrado ainda.",
+      loadErrorTitle: "Não foi possível carregar os dados",
+      loadErrorText: "Verifique sua conexão e tente novamente.",
+      retry: "Tentar novamente",
+      notFoundTitle: "Não encontramos esta página",
+      notFoundText: "O departamento ou curso não existe ou não está mais disponível.",
+      backToList: "Cursos e departamentos",
+      backToDepartment: "Voltar ao departamento",
+      viewDepartment: "Ver departamento",
+      about: "Sobre o departamento",
+      foundedIn: "Fundado em",
+      hours: "Horário de funcionamento",
+      contact: "Secretaria e telefone",
+      academicCenter: "Centro acadêmico",
+      linkedCourses: "Cursos vinculados",
+      programsOffered: "programas oferecidos",
+      undergraduate: "Graduação",
+      postgraduate: "Pós-graduação",
+      types: { BACHARELADO: "Bacharelado", LICENCIATURA: "Licenciatura", STRICTO_SENSU: "Stricto sensu" },
+      viewCurriculum: "Ver grade",
+      coordinations: "Coordenações de curso",
+      extension: "Ramal",
+      duration: "Duração",
+      semesters: "semestres",
+      active: "Ativo",
+      courseCode: "Código",
+      coordination: "Coordenação do curso",
+      coordinator: "Coordenação",
+      viceCoordinator: "Vice-coordenação",
+      office: "Gabinete e expediente",
+      officeHours: "Horário de atendimento",
+      attendanceMode: "Modalidade de atendimento",
+      channels: "Canais oficiais",
+      phone: "Telefone",
+      email: "E-mail",
+      curriculum: "Matriz curricular e cadeiras",
+      totalWorkload: "de carga horária total",
+      period: "Período",
+      electives: "Optativas / Eletivas",
+      subjectCode: "Código",
+      subject: "Disciplina",
+      workload: "Carga horária",
+      credits: "créditos",
+      nature: "Natureza",
+      prerequisites: "Pré-requisitos",
+      none: "Nenhum",
+      obligatory: "Obrigatória",
+      optional: "Optativa",
+      noSubjects: "Nenhuma disciplina cadastrada neste período.",
+    },
   },
   en: {
     header: { publicPlatform: "Public Platform • Free Access" },
@@ -461,6 +568,59 @@ export const dictionaries: Record<Language, Dictionary> = {
       empty: "No menu published for this week.",
       today: "Today",
     },
+    courses: {
+      title: "Courses and departments",
+      subtitle: "Choose a department to see its undergraduate and graduate courses.",
+      departmentsEmpty: "No departments registered yet.",
+      loadErrorTitle: "Could not load the data",
+      loadErrorText: "Check your connection and try again.",
+      retry: "Try again",
+      notFoundTitle: "We could not find this page",
+      notFoundText: "The department or course does not exist or is no longer available.",
+      backToList: "Courses and departments",
+      backToDepartment: "Back to the department",
+      viewDepartment: "View department",
+      about: "About the department",
+      foundedIn: "Founded in",
+      hours: "Opening hours",
+      contact: "Office and phone",
+      academicCenter: "Academic center",
+      linkedCourses: "Linked courses",
+      programsOffered: "programs offered",
+      undergraduate: "Undergraduate",
+      postgraduate: "Graduate",
+      types: { BACHARELADO: "Bachelor's", LICENCIATURA: "Teaching degree", STRICTO_SENSU: "Stricto sensu" },
+      viewCurriculum: "View curriculum",
+      coordinations: "Course coordination",
+      extension: "Ext.",
+      duration: "Duration",
+      semesters: "semesters",
+      active: "Active",
+      courseCode: "Code",
+      coordination: "Course coordination",
+      coordinator: "Coordinator",
+      viceCoordinator: "Vice-coordinator",
+      office: "Office and hours",
+      officeHours: "Service hours",
+      attendanceMode: "Service mode",
+      channels: "Official channels",
+      phone: "Phone",
+      email: "E-mail",
+      curriculum: "Curriculum and subjects",
+      totalWorkload: "total workload",
+      period: "Term",
+      electives: "Electives",
+      subjectCode: "Code",
+      subject: "Subject",
+      workload: "Workload",
+      credits: "credits",
+      nature: "Type",
+      prerequisites: "Prerequisites",
+      none: "None",
+      obligatory: "Required",
+      optional: "Elective",
+      noSubjects: "No subjects registered for this term.",
+    },
   },
   es: {
     header: { publicPlatform: "Plataforma Pública • Acceso Libre" },
@@ -620,6 +780,59 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Jugo",
       empty: "No hay menú publicado para esta semana.",
       today: "Hoy",
+    },
+    courses: {
+      title: "Cursos y departamentos",
+      subtitle: "Elige un departamento para ver sus cursos de grado y posgrado.",
+      departmentsEmpty: "Aún no hay departamentos registrados.",
+      loadErrorTitle: "No se pudieron cargar los datos",
+      loadErrorText: "Revisa tu conexión e inténtalo de nuevo.",
+      retry: "Intentar de nuevo",
+      notFoundTitle: "No encontramos esta página",
+      notFoundText: "El departamento o curso no existe o ya no está disponible.",
+      backToList: "Cursos y departamentos",
+      backToDepartment: "Volver al departamento",
+      viewDepartment: "Ver departamento",
+      about: "Sobre el departamento",
+      foundedIn: "Fundado en",
+      hours: "Horario de atención",
+      contact: "Secretaría y teléfono",
+      academicCenter: "Centro académico",
+      linkedCourses: "Cursos vinculados",
+      programsOffered: "programas ofrecidos",
+      undergraduate: "Grado",
+      postgraduate: "Posgrado",
+      types: { BACHARELADO: "Licenciatura (bachillerato)", LICENCIATURA: "Profesorado", STRICTO_SENSU: "Stricto sensu" },
+      viewCurriculum: "Ver malla",
+      coordinations: "Coordinaciones de curso",
+      extension: "Int.",
+      duration: "Duración",
+      semesters: "semestres",
+      active: "Activo",
+      courseCode: "Código",
+      coordination: "Coordinación del curso",
+      coordinator: "Coordinación",
+      viceCoordinator: "Vicecoordinación",
+      office: "Despacho y horario",
+      officeHours: "Horario de atención",
+      attendanceMode: "Modalidad de atención",
+      channels: "Canales oficiales",
+      phone: "Teléfono",
+      email: "Correo electrónico",
+      curriculum: "Malla curricular y asignaturas",
+      totalWorkload: "de carga horaria total",
+      period: "Período",
+      electives: "Optativas / Electivas",
+      subjectCode: "Código",
+      subject: "Asignatura",
+      workload: "Carga horaria",
+      credits: "créditos",
+      nature: "Naturaleza",
+      prerequisites: "Requisitos previos",
+      none: "Ninguno",
+      obligatory: "Obligatoria",
+      optional: "Optativa",
+      noSubjects: "No hay asignaturas registradas en este período.",
     },
   },
 };
