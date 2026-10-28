@@ -1,9 +1,0 @@
-📁 controller/
-📁 model/
-📁 repository/
-📁 service/
-
-Tarefas:
-    1: CRUD Básico para mensagens para adiministradores
-        a) Usuário manda mensagem
-    
