@@ -39,6 +39,8 @@ export type Dictionary = {
     recent: string;
     noResults: string;
     minChars: string;
+    department: string;
+    course: string;
   };
   map: {
     title: string;
@@ -228,8 +230,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       myLocation: "Usar minha localização",
       filters: "Filtros",
       recent: "Últimos acessos:",
-      noResults: "Nenhum local encontrado.",
+      noResults: "Nenhum resultado encontrado.",
       minChars: "Digite ao menos 3 caracteres para ver sugestões.",
+      department: "Departamento",
+      course: "Curso",
     },
     map: {
       title: "Mapa do campus",
@@ -441,8 +445,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       myLocation: "Use my location",
       filters: "Filters",
       recent: "Recently visited:",
-      noResults: "No places found.",
+      noResults: "No results found.",
       minChars: "Type at least 3 characters to see suggestions.",
+      department: "Department",
+      course: "Course",
     },
     map: {
       title: "Campus map",
@@ -654,8 +660,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       myLocation: "Usar mi ubicación",
       filters: "Filtros",
       recent: "Últimos accesos:",
-      noResults: "No se encontraron lugares.",
+      noResults: "No se encontraron resultados.",
       minChars: "Escribe al menos 3 caracteres para ver sugerencias.",
+      department: "Departamento",
+      course: "Curso",
     },
     map: {
       title: "Mapa del campus",
