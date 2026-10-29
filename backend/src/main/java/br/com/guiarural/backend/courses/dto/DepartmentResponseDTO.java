@@ -11,5 +11,7 @@ public record DepartmentResponseDTO (
     String hours,
     String phone,
     String email,
-    Short foundedYear
+    Short foundedYear,
+    // slug do local onde o departamento funciona; null se não houver local publicado vinculado.
+    String placeSlug
 ) {}
