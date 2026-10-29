@@ -58,6 +58,28 @@ export type Dictionary = {
     saveSpot: string;
     unsaveSpot: string;
   };
+  place: {
+    close: string;
+    save: string;
+    unsave: string;
+    hours: string;
+    until: string;
+    openNow: string;
+    closed: string;
+    viewDetails: string;
+    breadcrumbLabel: string;
+    home: string;
+    backToMap: string;
+    about: string;
+    howToGet: string;
+    servicesTitle: string;
+    noHours: string;
+    notFoundTitle: string;
+    notFoundText: string;
+    loadErrorTitle: string;
+    loadErrorText: string;
+    retry: string;
+  };
 };
 
 export const dictionaries: Record<Language, Dictionary> = {
@@ -124,6 +146,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       saveSpot: "Salvar local",
       unsaveSpot: "Remover local salvo",
     },
+    place: {
+      close: "Fechar",
+      save: "Salvar local",
+      unsave: "Remover local salvo",
+      hours: "Horário",
+      until: "às",
+      openNow: "Aberto agora",
+      closed: "Fechado",
+      viewDetails: "Ver Página Completa do Local",
+      breadcrumbLabel: "Trilha de navegação",
+      home: "Início",
+      backToMap: "Voltar ao mapa",
+      about: "Sobre o local",
+      howToGet: "Como chegar",
+      servicesTitle: "Serviços disponíveis",
+      noHours: "Horário não informado",
+      notFoundTitle: "Local não encontrado",
+      notFoundText: "O endereço pode estar incorreto ou o local não está mais cadastrado.",
+      loadErrorTitle: "Não foi possível carregar o local",
+      loadErrorText: "Verifique sua conexão e tente novamente.",
+      retry: "Tentar novamente",
+    },
   },
   en: {
     header: { publicPlatform: "Public Platform • Free Access" },
@@ -188,6 +232,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       saveSpot: "Save place",
       unsaveSpot: "Remove saved place",
     },
+    place: {
+      close: "Close",
+      save: "Save place",
+      unsave: "Remove saved place",
+      hours: "Hours",
+      until: "to",
+      openNow: "Open now",
+      closed: "Closed",
+      viewDetails: "View Full Place Page",
+      breadcrumbLabel: "Breadcrumb",
+      home: "Home",
+      backToMap: "Back to map",
+      about: "About this place",
+      howToGet: "How to get there",
+      servicesTitle: "Available services",
+      noHours: "Hours not provided",
+      notFoundTitle: "Place not found",
+      notFoundText: "The address may be wrong or the place is no longer listed.",
+      loadErrorTitle: "Couldn't load this place",
+      loadErrorText: "Check your connection and try again.",
+      retry: "Try again",
+    },
   },
   es: {
     header: { publicPlatform: "Plataforma Pública • Acceso Libre" },
@@ -251,6 +317,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Intentar de nuevo",
       saveSpot: "Guardar lugar",
       unsaveSpot: "Quitar lugar guardado",
+    },
+    place: {
+      close: "Cerrar",
+      save: "Guardar lugar",
+      unsave: "Quitar lugar guardado",
+      hours: "Horario",
+      until: "a",
+      openNow: "Abierto ahora",
+      closed: "Cerrado",
+      viewDetails: "Ver Página Completa del Lugar",
+      breadcrumbLabel: "Ruta de navegación",
+      home: "Inicio",
+      backToMap: "Volver al mapa",
+      about: "Sobre el lugar",
+      howToGet: "Cómo llegar",
+      servicesTitle: "Servicios disponibles",
+      noHours: "Horario no informado",
+      notFoundTitle: "Lugar no encontrado",
+      notFoundText: "La dirección puede ser incorrecta o el lugar ya no está registrado.",
+      loadErrorTitle: "No se pudo cargar el lugar",
+      loadErrorText: "Verifica tu conexión e inténtalo de nuevo.",
+      retry: "Intentar de nuevo",
     },
   },
 };

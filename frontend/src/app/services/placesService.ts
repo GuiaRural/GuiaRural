@@ -13,6 +13,11 @@ export async function getMapPlaces(): Promise<Place[]> {
   return MOCK_PLACES.filter((p) => p.coords !== undefined);
 }
 
+// Resolve com null quando o id não existe (página "não encontrado"); rejeita só em falha de carregamento.
+export async function getPlaceById(id: string): Promise<Place | null> {
+  return MOCK_PLACES.find((p) => p.id === id) ?? null;
+}
+
 export async function getRecentPlaces(): Promise<Place[]> {
   return MOCK_RECENT_IDS.map((id) => MOCK_PLACES.find((p) => p.id === id)).filter(
     (p): p is Place => Boolean(p),
