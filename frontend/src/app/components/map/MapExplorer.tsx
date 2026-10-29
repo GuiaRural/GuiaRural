@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
+import { useApi } from "../../hooks/useApi";
 import type { LatLng } from "../../lib/geo";
 import { addRecentPlace, getPublicPlaces } from "../../services/placesService";
 import { computeRoute } from "../../services/routeService";
+import ApiFailure from "../courses/ApiFailure";
 import LanguageSwitcher from "../common/LanguageSwitcher";
 import MapLoading from "../common/MapLoading";
 import SearchBar from "../common/SearchBar";
@@ -30,18 +32,22 @@ function parseOrigin(raw: string | undefined, places: Place[]): { label: string 
 
 export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?: string; routeTo?: string; routeFrom?: string }) {
   const { t } = useLanguage();
-  const [places, setPlaces] = useState<Place[] | null>(null);
+  const state = useApi(getPublicPlaces, null);
   const [selectedId, setSelectedId] = useState<string | null>(routeTo ?? focusId ?? null);
   const [recentVersion, setRecentVersion] = useState(0);
   const [focus, setFocus] = useState<MapFocus | null>(null);
 
-  useEffect(() => {
-    getPublicPlaces().then(setPlaces);
-  }, []);
-
-  if (!places) {
+  if (state.status === "loading") {
     return <div className="absolute inset-0 grid place-items-center bg-[#e6efdc] text-sm text-slate-600">{t.common.loading}</div>;
   }
+  if (state.status === "error") {
+    return (
+      <div className="absolute inset-0 grid place-items-center bg-[#e6efdc] p-4">
+        <ApiFailure error={state.error} onRetry={state.retry} />
+      </div>
+    );
+  }
+  const places = state.data;
 
   const selected = places.find((p) => p.id === selectedId) ?? null;
   const destination = routeTo ? places.find((p) => p.id === routeTo) : undefined;
