@@ -2,13 +2,12 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
 import { useApi } from "../../hooks/useApi";
+import { useSelectedPlaceId } from "../../hooks/useSelectedPlaceId";
 import type { LatLng } from "../../lib/geo";
-import { setSelectedPlaceInUrl } from "../../lib/selectedPlaceUrl";
 import { addRecentPlace, getPublicPlaces } from "../../services/placesService";
 import { computeRoute } from "../../services/routeService";
 import ApiFailure from "../courses/ApiFailure";
@@ -35,7 +34,7 @@ function parseOrigin(raw: string | undefined, places: Place[]): { label: string 
 export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?: string; routeTo?: string; routeFrom?: string }) {
   const { t } = useLanguage();
   const state = useApi(getPublicPlaces, null);
-  const urlLocal = useSearchParams().get("local");
+  const { selectedId: urlLocal, select: setSelectedPlaceInUrl } = useSelectedPlaceId();
   const [selectedId, setSelectedId] = useState<string | null>(routeTo ?? focusId ?? null);
   const [seenUrlLocal, setSeenUrlLocal] = useState(urlLocal);
   const [recentVersion, setRecentVersion] = useState(0);
