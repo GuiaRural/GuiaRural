@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import AppShell from "../../components/common/AppShell";
+import ApiFailure from "../../components/courses/ApiFailure";
+import { useApi } from "../../hooks/useApi";
 import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import PlacePhoto from "../../components/places/PlacePhoto";
 import Modal from "../../components/ui/Modal";
@@ -13,16 +15,10 @@ import { isOpenNow } from "../../lib/hours";
 import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace } from "../../services/placesService";
 import { computeRoute, getCurrentCampusPosition } from "../../services/routeService";
 
-type LoadState = { status: "loading" } | { status: "ready"; place: Place } | { status: "missing" };
-
 export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
   const { id } = use(params);
   const { t } = useLanguage();
-  const [state, setState] = useState<LoadState>({ status: "loading" });
-
-  useEffect(() => {
-    getPlace(id).then((place) => setState(place ? { status: "ready", place } : { status: "missing" }));
-  }, [id]);
+  const state = useApi(getPlace, id);
 
   return (
     <AppShell>
@@ -36,13 +32,14 @@ export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
             <LanguageSwitcher />
           </div>
           {state.status === "loading" && <p className="text-sm text-slate-600">{t.common.loading}</p>}
-          {state.status === "missing" && (
+          {state.status === "error" && <ApiFailure error={state.error} onRetry={state.retry} />}
+          {state.status === "ready" && state.data === null && (
             <div className="rounded-2xl bg-white p-8 text-center shadow">
               <h1 className="text-xl font-bold text-navy-900">{t.placePage.notFound}</h1>
               <p className="mt-2 text-sm text-slate-600">{t.placePage.notFoundText}</p>
             </div>
           )}
-          {state.status === "ready" && <PlaceDetails key={state.place.id} place={state.place} />}
+          {state.status === "ready" && state.data && <PlaceDetails key={state.data.id} place={state.data} />}
         </div>
       </div>
     </AppShell>
@@ -58,8 +55,9 @@ function PlaceDetails({ place }: { place: Place }) {
   const [originIssue, setOriginIssue] = useState<"denied" | "outside" | null>(null);
 
   const origin = getDefaultOrigin();
-  const fromGate = place.position && origin.position ? computeRoute(origin.position, place.position) : null;
-  const open = isOpenNow(place.hours);
+  const fromGate = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
+  const hasHours = place.hours !== "";
+  const open = hasHours && isOpenNow(place.hours);
   const coords = place.position;
 
   // Passo 3 do UC10: tenta o GPS; sem ele (FE01) ou fora do campus, pede a origem manual.
@@ -93,9 +91,11 @@ function PlaceDetails({ place }: { place: Place }) {
     <article className="space-y-4">
       <div className="relative overflow-hidden rounded-2xl shadow">
         <PlacePhoto place={place} className="h-48 sm:h-64" />
-        <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white ${open ? "bg-emerald-600" : "bg-slate-600"}`}>
-          {open ? t.placeCard.openNow : t.placeCard.closed}
-        </span>
+        {hasHours && (
+          <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white ${open ? "bg-emerald-600" : "bg-slate-600"}`}>
+            {open ? t.placeCard.openNow : t.placeCard.closed}
+          </span>
+        )}
       </div>
 
       <header className="flex flex-wrap items-end justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm">
@@ -149,16 +149,19 @@ function PlaceDetails({ place }: { place: Place }) {
         <div className="space-y-4 md:col-span-2">
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="font-bold text-navy-900">{t.placePage.about}</h2>
-            <p className="mt-2 text-sm text-slate-700">{place.description}</p>
-            <h3 className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">{t.accessibility.title}</h3>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {place.accessibility.length === 0 && <li className="text-sm text-slate-600">{t.accessibility.none}</li>}
-              {place.accessibility.map((a) => (
-                <li key={a} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                  {t.accessibility[a]}
-                </li>
-              ))}
-            </ul>
+            {place.description && <p className="mt-2 text-sm text-slate-700">{place.description}</p>}
+            {place.accessibility.length > 0 && (
+              <>
+                <h3 className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">{t.accessibility.title}</h3>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {place.accessibility.map((a) => (
+                    <li key={a} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                      {t.accessibility[a]}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
 
           <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -180,10 +183,12 @@ function PlaceDetails({ place }: { place: Place }) {
         </div>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.placePage.hours}</h2>
-            <p className="mt-1 text-xl font-bold text-navy-900">{place.hours.replaceAll("-", "–")}</p>
-          </section>
+          {hasHours && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.placePage.hours}</h2>
+              <p className="mt-1 text-xl font-bold text-navy-900">{place.hours.replaceAll("-", "–")}</p>
+            </section>
+          )}
           {(place.phone || place.email || place.officeHours) && (
             <section className="rounded-2xl bg-white p-5 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.placePage.contact}</h2>
@@ -207,7 +212,7 @@ function PlaceDetails({ place }: { place: Place }) {
           {coords && (
             <section className="rounded-2xl bg-white p-5 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.placePage.address}</h2>
-              <p className="mt-1 text-sm text-slate-800">{place.address}</p>
+              {place.address && <p className="mt-1 text-sm text-slate-800">{place.address}</p>}
               <p className="mt-1 font-mono text-xs text-slate-500">
                 {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
               </p>

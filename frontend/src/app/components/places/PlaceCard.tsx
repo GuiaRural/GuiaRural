@@ -14,8 +14,11 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
   const { t } = useLanguage();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
   const origin = getDefaultOrigin();
-  const route = place.position && origin.position ? computeRoute(origin.position, place.position) : null;
-  const open = isOpenNow(place.hours);
+  // A própria origem não mostra distância (seria "0 m").
+  const route = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
+  // Horário e acessibilidade podem não estar cadastrados: sem o dado, a tela não afirma "fechado" nem "sem recursos".
+  const hasHours = place.hours !== "";
+  const open = hasHours && isOpenNow(place.hours);
 
   return (
     <section
@@ -43,9 +46,11 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
               {route.minutes} {t.common.minutes} {t.placeCard.walk} • {route.meters} {t.common.meters}
             </span>
           )}
-          <span className={`rounded-full px-2 py-0.5 text-white ${open ? "bg-emerald-600" : "bg-slate-600"}`}>
-            {open ? t.placeCard.openNow : t.placeCard.closed}
-          </span>
+          {hasHours && (
+            <span className={`rounded-full px-2 py-0.5 text-white ${open ? "bg-emerald-600" : "bg-slate-600"}`}>
+              {open ? t.placeCard.openNow : t.placeCard.closed}
+            </span>
+          )}
         </div>
       </div>
 
@@ -70,22 +75,26 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
           </button>
         </div>
 
-        <dl className="grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-lg bg-slate-50 p-2">
-            <dt className="text-slate-500">{t.placeCard.hours}</dt>
-            <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
-          </div>
-          <div className="rounded-lg bg-slate-50 p-2">
-            <dt className="text-slate-500">{t.accessibility.title}</dt>
-            <dd className="font-semibold text-slate-900">
-              {place.accessibility.length
-                ? place.accessibility.map((a) => t.accessibility[a]).join(", ")
-                : t.accessibility.none}
-            </dd>
-          </div>
-        </dl>
+        {(hasHours || place.accessibility.length > 0) && (
+          <dl className="grid grid-cols-2 gap-2 text-xs">
+            {hasHours && (
+              <div className="rounded-lg bg-slate-50 p-2">
+                <dt className="text-slate-500">{t.placeCard.hours}</dt>
+                <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
+              </div>
+            )}
+            {place.accessibility.length > 0 && (
+              <div className="rounded-lg bg-slate-50 p-2">
+                <dt className="text-slate-500">{t.accessibility.title}</dt>
+                <dd className="font-semibold text-slate-900">
+                  {place.accessibility.map((a) => t.accessibility[a]).join(", ")}
+                </dd>
+              </div>
+            )}
+          </dl>
+        )}
 
-        <p className="line-clamp-3 text-xs text-slate-700">{place.description}</p>
+        {place.description && <p className="line-clamp-3 text-xs text-slate-700">{place.description}</p>}
 
         <Link
           href={`/locais/${place.id}`}

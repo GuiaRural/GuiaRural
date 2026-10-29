@@ -10,6 +10,8 @@ export const PLACE_CATEGORIES = [
   "saude",
   "auditorio",
   "esporte",
+  "moradia",
+  "apoio",
 ] as const;
 export type PlaceCategory = (typeof PLACE_CATEGORIES)[number];
 
@@ -255,4 +257,5 @@ export const MOCK_PLACES: Place[] = [
 export const MOCK_RECENT_IDS = ["reitoria", "ceagri-1", "biblioteca", "dc"];
 
 // Origem padrão para distância e tempo exibidos no cartão do local (RN-UC02.01).
-export const DEFAULT_ORIGIN_ID = "portaria-principal";
+// É o slug do Prédio Central (Reitoria) no banco; a portaria não consta nos documentos de coordenadas.
+export const DEFAULT_ORIGIN_ID = "reitoria";

@@ -26,7 +26,7 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
 
   // recentVersion muda a cada local consultado, para refletir a lista atualizada (RN-UC02.02).
   useEffect(() => {
-    getRecentPlaces().then(setRecent);
+    getRecentPlaces().then(setRecent, () => setRecent([]));
   }, [recentVersion]);
 
   useEffect(() => () => clearTimeout(debounce.current), []);
@@ -51,9 +51,14 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
     latestQuery.current = value;
     clearTimeout(debounce.current);
 
-    searchPlaces(value).then((found) => {
-      if (latestQuery.current === value) setPlaces(found);
-    });
+    searchPlaces(value).then(
+      (found) => {
+        if (latestQuery.current === value) setPlaces(found);
+      },
+      () => {
+        if (latestQuery.current === value) setPlaces([]);
+      },
+    );
 
     if (value.trim().length < MIN_SEARCH_CHARS) {
       setLinked([]);
