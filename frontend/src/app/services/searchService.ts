@@ -13,8 +13,8 @@ export type Suggestion = {
 // RN-UC38-01: a lista suspensa mostra só os resultados mais relevantes (mesmo limite do backend).
 export const MAX_SUGGESTIONS = 8;
 
-// Os locais do mapa ainda vêm do mock em placesService; por isso a busca só usa daqui departamentos e
-// cursos. Quando o mapa passar a ler /api/places, as sugestões de local daqui entram também.
+// Os locais já vêm de placesService (a mesma lista /api/places que o mapa usa, filtrada no navegador);
+// por isso daqui só entram departamentos e cursos, e o resultado do tipo PLACE é descartado.
 export async function searchDepartmentsAndCourses(query: string): Promise<Suggestion[]> {
   const found = await apiGet<Suggestion[]>(`/search?q=${encodeURIComponent(query.trim())}`);
   return found.filter((s) => s.type !== "PLACE");
