@@ -19,6 +19,8 @@ export type Department = {
   phone: string | null;
   email: string | null;
   foundedYear: number | null;
+  // Local onde o departamento funciona; null se não houver local publicado vinculado.
+  placeSlug: string | null;
 };
 
 export type CourseSummary = {
