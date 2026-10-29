@@ -20,6 +20,7 @@ public class DepartmentEntity {
     private String email;
     private Short foundedYear;
     private Boolean active;
+    private Long placeId;
 
     public DepartmentEntity() {
     }
@@ -118,5 +119,13 @@ public class DepartmentEntity {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Long getPlaceId() {
+        return placeId;
+    }
+
+    public void setPlaceId(Long placeId) {
+        this.placeId = placeId;
     }
 }
