@@ -17,7 +17,10 @@ export type IconName =
   | "arrow"
   | "compass"
   | "headset"
-  | "bus";
+  | "bus"
+  | "pencil"
+  | "trash"
+  | "plus";
 
 const PATHS: Record<IconName, string[]> = {
   home: ["m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"],
@@ -77,6 +80,9 @@ const PATHS: Record<IconName, string[]> = {
     "M7 21v-3",
     "M17 21v-3",
   ],
+  pencil: ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"],
+  trash: ["M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6", "M10 11v6", "M14 11v6"],
+  plus: ["M12 5v14", "M5 12h14"],
 };
 
 export default function Icon({ name, className = "size-4" }: { name: IconName; className?: string }) {
