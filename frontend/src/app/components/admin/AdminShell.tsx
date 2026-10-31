@@ -4,15 +4,38 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { PERMISSIONS } from "../../data/mockAdmins";
+import { setFlash } from "../../lib/flash";
 import { getSession, logout, subscribeSession, type Session } from "../../services/authService";
-import { ConfirmModal } from "../ui/Modal";
+import LogoutModal, { LogoutIcon } from "./LogoutModal";
 
-const NAV = [
-  { href: "/admin", label: "Painel" },
-  { href: "/admin/locais", label: "Locais e prédios" },
-  { href: "/admin/cardapio", label: "Cardápio do RU" },
-  { href: "/admin/administradores", label: "Administradores" },
-  { href: "/admin/historico", label: "Histórico de mudanças" },
+type NavItem = { href: string; label: string };
+
+// Grupos espelham a sidebar pública: cada área editável aparece onde o usuário a vê no site.
+const NAV: { title?: string; items: NavItem[] }[] = [
+  { items: [{ href: "/admin", label: "Painel" }] },
+  {
+    title: "Conteúdo do campus",
+    items: [
+      { href: "/admin/locais", label: "Locais e prédios" },
+      { href: "/admin/avisos", label: "Avisos do campus" },
+      { href: "/admin/cardapio", label: "Cardápio do RU" },
+    ],
+  },
+  {
+    title: "Acolhimento",
+    items: [
+      { href: "/admin/acolhimento/cultura", label: "Interação cultural" },
+      { href: "/admin/acolhimento/documentos", label: "Documentos e editais" },
+      { href: "/admin/acolhimento/calouro", label: "Guia do calouro" },
+    ],
+  },
+  {
+    title: "Gestão",
+    items: [
+      { href: "/admin/administradores", label: "Administradores" },
+      { href: "/admin/historico", label: "Histórico de mudanças" },
+    ],
+  },
 ];
 
 type AdminContextValue = { session: Session; setDirty: (dirty: boolean) => void };
@@ -33,6 +56,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const session = useSyncExternalStore(subscribeSession, getSession, getServerSession);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   // Alterações não salvas valem só para a tela em que foram feitas (FE01 do UC24).
   const [dirtyPath, setDirtyPath] = useState<string | null>(null);
   const dirty = dirtyPath === pathname;
@@ -42,11 +66,31 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     if (session === null) router.replace("/admin/login");
   }, [session, router]);
 
+  // FE01 do UC24 também ao fechar ou recarregar a aba com o formulário alterado.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   if (!session) return null;
 
-  function doLogout() {
-    logout();
-    setConfirmLogout(false);
+  function openLogout() {
+    setMenuOpen(false);
+    setConfirmLogout(true);
+  }
+
+  async function doLogout() {
+    setLoggingOut(true);
+    const { offline } = await logout();
+    setDirtyPath(null);
+    setFlash(
+      offline
+        ? "Sem conexão com o servidor: sua sessão foi encerrada neste dispositivo."
+        : "Sessão encerrada com segurança. Até logo!",
+    );
+    // replace: o painel não fica no histórico (RN-02).
     router.replace("/admin/login");
   }
 
@@ -75,6 +119,14 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <p className="font-semibold">{session.name}</p>
             <p className="text-slate-300">{PERMISSIONS[session.permission]}</p>
           </div>
+          <button
+            type="button"
+            onClick={openLogout}
+            className="ml-auto inline-flex h-9 items-center gap-2 rounded-lg border border-white/20 px-3 text-xs font-semibold hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-brand-yellow sm:ml-2"
+          >
+            <LogoutIcon className="size-4" />
+            <span>Sair</span>
+          </button>
         </header>
 
         <div className="flex min-h-0 flex-1">
@@ -94,26 +146,31 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 <span aria-hidden className="size-1.5 rounded-full bg-emerald-400" /> {session.email}
               </p>
             </div>
-            <nav aria-label="Área do administrador">
-              <ul className="space-y-0.5">
-                {NAV.map((item) => {
-                  const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setMenuOpen(false)}
-                        aria-current={active ? "page" : undefined}
-                        className={`block rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-brand-yellow ${
-                          active ? "bg-navy-700 font-semibold" : "hover:bg-white/10"
-                        }`}
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            <nav aria-label="Área do administrador" className="space-y-4">
+              {NAV.map((group, i) => (
+                <div key={group.title ?? i}>
+                  {group.title && <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{group.title}</p>}
+                  <ul className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setMenuOpen(false)}
+                            aria-current={active ? "page" : undefined}
+                            className={`block rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-brand-yellow ${
+                              active ? "bg-navy-700 font-semibold shadow-[inset_3px_0_0] shadow-brand-yellow" : "hover:bg-white/10"
+                            }`}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
             </nav>
             <div className="mt-auto space-y-1 border-t border-white/10 pt-3">
               <Link href="/" className="block rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/10">
@@ -121,9 +178,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               </Link>
               <button
                 type="button"
-                onClick={() => setConfirmLogout(true)}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-300 hover:bg-red-500/10"
+                onClick={openLogout}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-300 hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-brand-yellow"
               >
+                <LogoutIcon className="size-4" />
                 Sair / Logout
               </button>
             </div>
@@ -132,22 +190,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      {/* UC24 — Logout, com aviso de alterações não salvas (FE01) */}
-      <ConfirmModal
+      {/* UC24 — Logout */}
+      <LogoutModal
         open={confirmLogout}
-        title="Sair do painel"
-        danger={dirty}
-        confirmLabel={dirty ? "Sair e descartar" : "Sim, sair"}
-        cancelLabel={dirty ? "Voltar ao formulário" : "Não"}
-        message={
-          dirty ? (
-            <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">
-              Há alterações não salvas neste formulário. Se sair agora, as edições serão perdidas.
-            </p>
-          ) : (
-            "Deseja realmente encerrar sua sessão na área do administrador?"
-          )
-        }
+        session={session}
+        dirty={dirty}
+        busy={loggingOut}
         onCancel={() => setConfirmLogout(false)}
         onConfirm={doLogout}
       />
