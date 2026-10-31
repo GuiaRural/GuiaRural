@@ -1,10 +1,52 @@
 import { DEFAULT_ORIGIN_ID, MOCK_PLACES, MOCK_RECENT_IDS, type Place, type PlaceCategory, type PlaceStatus } from "../data/mockPlaces";
+import { apiGet } from "../lib/api";
 import { delay, readJson, writeJson } from "../lib/storage";
 import { recordChange, snapshot } from "./auditService";
 
-// Ponto único de acesso aos locais: hoje usa mock em memória, depois trocar por fetch("/api/...")
-// sem alterar os componentes.
+// Ponto único de acesso aos locais. A leitura pública (mapa, busca, página do local) vem do backend
+// (/api/places); a área do administrador abaixo ainda usa um mock em memória, então o que for editado
+// lá não aparece no mapa até o CRUD de locais ir para a API (UC14 a UC16, que exigem autenticação).
 let places: Place[] = structuredClone(MOCK_PLACES);
+
+// Espelha PlaceResponseDTO do backend. Campos que o banco ainda não tem (acessibilidade, serviços,
+// cursos vinculados, foto) saem vazios.
+type PlaceDto = {
+  slug: string;
+  name: string;
+  shortName: string | null;
+  category: string;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+  hours: string | null;
+  description: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+function toPlace(dto: PlaceDto): Place {
+  return {
+    id: dto.slug,
+    name: dto.name,
+    shortName: dto.shortName ?? dto.name,
+    category: dto.category as PlaceCategory,
+    status: "publicado",
+    position: dto.latitude !== null && dto.longitude !== null ? { lat: dto.latitude, lng: dto.longitude } : null,
+    address: dto.address ?? "",
+    hours: dto.hours ?? "",
+    accessibility: [],
+    description: dto.description ?? "",
+    courseIds: [],
+    phone: dto.phone ?? undefined,
+    email: dto.email ?? undefined,
+    services: [],
+  };
+}
+
+// A lista pública é pequena e muda pouco: uma busca por sessão. Em caso de falha o cache é descartado
+// para que "tentar novamente" refaça a requisição.
+let publicCache: Promise<Place[]> | null = null;
+let publicLoaded: Place[] | null = null;
 
 const RECENT_KEY = "guiarural.recentPlaces";
 const SAVED_KEY = "guiarural.savedPlaces";
@@ -22,34 +64,35 @@ function isPublic(p: Place): p is Place & { position: NonNullable<Place["positio
   return p.status === "publicado" && p.position !== null;
 }
 
-// RN-01.02: categoryLabels traz os nomes das categorias no idioma ativo, para que "library" ou "comedor"
-// também encontrem os locais.
-export async function searchPlaces(query: string, categoryLabels?: Record<PlaceCategory, string>): Promise<Place[]> {
+export async function searchPlaces(query: string): Promise<Place[]> {
   const q = normalize(query.trim());
   if (q.length < MIN_SEARCH_CHARS) return [];
-  return places
-    .filter(isPublic)
-    .filter(
-      (p) =>
-        normalize(p.name).includes(q) ||
-        normalize(p.shortName).includes(q) ||
-        (categoryLabels !== undefined && normalize(categoryLabels[p.category]).includes(q)),
-    )
+  return (await getPublicPlaces())
+    .filter((p) => normalize(p.name).includes(q) || normalize(p.shortName).includes(q))
     .slice(0, 5);
 }
 
-export async function getPublicPlaces(): Promise<Place[]> {
-  return places.filter(isPublic);
+export function getPublicPlaces(): Promise<Place[]> {
+  publicCache ??= apiGet<PlaceDto[]>("/places")
+    .then((list) => {
+      publicLoaded = list.map(toPlace).filter(isPublic);
+      return publicLoaded;
+    })
+    .catch((error) => {
+      publicCache = null;
+      throw error;
+    });
+  return publicCache;
 }
 
 export async function getPlace(id: string): Promise<Place | null> {
-  await delay(150);
-  return places.find((p) => p.id === id && isPublic(p)) ?? null;
+  return (await getPublicPlaces()).find((p) => p.id === id) ?? null;
 }
 
 export async function getRecentPlaces(): Promise<Place[]> {
+  const all = await getPublicPlaces();
   const ids = readJson<string[]>(RECENT_KEY, MOCK_RECENT_IDS);
-  return ids.map((id) => places.find((p) => p.id === id)).filter((p): p is Place => Boolean(p && isPublic(p)));
+  return ids.map((id) => all.find((p) => p.id === id)).filter((p): p is Place => Boolean(p));
 }
 
 // RN-UC02.02: a lista de últimos acessos é atualizada a cada local consultado.
@@ -161,7 +204,8 @@ export function restorePlace(id: string, previous: Record<string, unknown> | nul
   return current;
 }
 
-// RN-UC02.01: distância e tempo do cartão partem da origem padrão do campus.
-export function getDefaultOrigin(): Place {
-  return places.find((p) => p.id === DEFAULT_ORIGIN_ID)!;
+// RN-UC02.01: distância e tempo do cartão partem da origem padrão do campus (Prédio Central).
+// Lê do cache da lista pública, que as telas já carregaram antes de mostrar um local; null se ainda não houver.
+export function getDefaultOrigin(): Place | null {
+  return publicLoaded?.find((p) => p.id === DEFAULT_ORIGIN_ID) ?? null;
 }

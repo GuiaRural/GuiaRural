@@ -2,12 +2,15 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
+import { useApi } from "../../hooks/useApi";
+import { useSelectedPlaceId } from "../../hooks/useSelectedPlaceId";
 import type { LatLng } from "../../lib/geo";
 import { addRecentPlace, getPublicPlaces } from "../../services/placesService";
 import { computeRoute } from "../../services/routeService";
+import ApiFailure from "../courses/ApiFailure";
 import LanguageSwitcher from "../common/LanguageSwitcher";
 import MapLoading from "../common/MapLoading";
 import SearchBar from "../common/SearchBar";
@@ -30,18 +33,35 @@ function parseOrigin(raw: string | undefined, places: Place[]): { label: string 
 
 export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?: string; routeTo?: string; routeFrom?: string }) {
   const { t } = useLanguage();
-  const [places, setPlaces] = useState<Place[] | null>(null);
+  const state = useApi(getPublicPlaces, null);
+  const { selectedId: urlLocal, select: setSelectedPlaceInUrl } = useSelectedPlaceId();
   const [selectedId, setSelectedId] = useState<string | null>(routeTo ?? focusId ?? null);
+  const [seenUrlLocal, setSeenUrlLocal] = useState(urlLocal);
   const [recentVersion, setRecentVersion] = useState(0);
   const [focus, setFocus] = useState<MapFocus | null>(null);
 
-  useEffect(() => {
-    getPublicPlaces().then(setPlaces);
-  }, []);
+  // O ?local= da URL manda na seleção: "voltar"/"avançar" do navegador abrem e fecham o cartão.
+  if (seenUrlLocal !== urlLocal) {
+    setSeenUrlLocal(urlLocal);
+    setSelectedId(urlLocal);
+  }
 
-  if (!places) {
+  function deselect() {
+    setSelectedId(null);
+    setSelectedPlaceInUrl(null);
+  }
+
+  if (state.status === "loading") {
     return <div className="absolute inset-0 grid place-items-center bg-[#e6efdc] text-sm text-slate-600">{t.common.loading}</div>;
   }
+  if (state.status === "error") {
+    return (
+      <div className="absolute inset-0 grid place-items-center bg-[#e6efdc] p-4">
+        <ApiFailure error={state.error} onRetry={state.retry} />
+      </div>
+    );
+  }
+  const places = state.data;
 
   const selected = places.find((p) => p.id === selectedId) ?? null;
   const destination = routeTo ? places.find((p) => p.id === routeTo) : undefined;
@@ -57,6 +77,7 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
 
   function select(place: Place) {
     setSelectedId(place.id);
+    setSelectedPlaceInUrl(place.id);
     addRecentPlace(place.id);
     setRecentVersion((v) => v + 1);
     if (place.position) setFocus({ point: place.position });
@@ -74,7 +95,7 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
             const place = places.find((p) => p.id === id);
             if (place) select(place);
           }}
-          onBackgroundClick={() => setSelectedId(null)}
+          onBackgroundClick={deselect}
           route={route?.points}
           initialCenter={selected?.position ?? undefined}
           focus={focus}
@@ -126,7 +147,7 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
 
       {selected && !route && (
         <div className="absolute inset-x-3 bottom-3 z-10 sm:inset-x-auto sm:bottom-5 sm:left-5">
-          <PlaceCard key={selected.id} place={selected} onClose={() => setSelectedId(null)} />
+          <PlaceCard key={selected.id} place={selected} onClose={deselect} />
         </div>
       )}
     </>

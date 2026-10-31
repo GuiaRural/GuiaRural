@@ -20,16 +20,19 @@ Requisitos funcionais: RF01 mapa · RF02 rotas · RF03 catálogo de serviços ·
 | Camada | Tecnologia |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript (strict), Tailwind CSS 4, React Compiler ligado |
-| Backend | Java 21, Spring Boot 4.1 (webmvc, validation, actuator), Maven Wrapper |
-| Dados | PostgreSQL no Supabase |
+| Backend | Java 21, Spring Boot 4.1 (webmvc, validation, actuator, data-jpa), Maven Wrapper |
+| Dados | PostgreSQL no Supabase; schema versionado com o Supabase CLI em `supabase/migrations/` |
 | Mapas | Leaflet 1.9.4 + react-leaflet 5.0.0 + OpenStreetMap (integrado na Home; só cliente, via `dynamic`) |
-| Infra | Docker, GitHub Actions (CI/CD), 4 ambientes: dev, teste, homologação, produção |
+| Infra | Docker, GitHub Actions (CI/CD), 4 ambientes: dev, teste, homologação, produção — **planejado: ainda não há Dockerfile nem workflow no repositório** |
 
 **Atenção ao Next.js:** esta versão tem mudanças em relação ao que a IA conhece. Antes de gerar código de Next, consulte `frontend/node_modules/next/dist/docs/` (regra do `frontend/AGENTS.md`).
 
 ## 4. Arquitetura
 - Cliente-servidor em camadas. Backend monolítico, sem microsserviços.
-- Backend: **Controller → Service → Repository** (API REST, DTOs nas bordas). Pacotes em `br.com.guiarural.backend`: `contacts`, `core` (`config`, `security`), `courses`, `info`, `map`.
+- Backend: **Controller → Service → Repository** (API REST, DTOs nas bordas). Pacotes em `br.com.guiarural.backend`:
+  - com código: `core` (`exception`), `courses` (departamentos, cursos e matriz), `map` (locais e busca), `msg`, `notices` (avisos), `services`;
+  - ainda só placeholders (`temp.txt`): `contacts`, `info`, `login`, `core/config`, `core/security`.
+- Erros: lance `ResourceNotFoundException` (vira 404); o `GlobalExceptionHandler` devolve `ProblemDetail` (404, 400 de validação, JSON malformado e ID inválido). `services`, `notices` e `msg` ainda lançam `IllegalArgumentException`/`RuntimeException` e respondem 500 nesses casos.
 - Frontend: componentes React tipados, separação apresentação / regra / dados.
 - APIs externas (mapas, rotas) **sempre atrás de uma Facade**, expondo só os métodos usados, para permitir trocar de provedor (RNF08).
 - Padrões previstos: Facade, Flyweight (reduzir memória no cliente), MVC.
@@ -38,32 +41,32 @@ Requisitos funcionais: RF01 mapa · RF02 rotas · RF03 catálogo de serviços ·
 ## 5. Estrutura do repositório
 ```
 backend/    API Spring Boot
+supabase/   projeto do Supabase CLI: config.toml e migrations/ (única fonte do schema)
 frontend/src/app/
-  components/common/   componentes compartilhados (Header, Sidebar, SearchBar, ...)
-  components/admin/    componentes do painel admin
-  context/             contextos React (ex.: LanguageContext)
-  i18n/                dicionários de idioma
-  data/                mocks tipados (temporário, até existir API)
-  services/            acesso a dados (ponto único para trocar mock por fetch)
-  hooks/ routes/ pages/ admin/ public/ assets/   (estrutura reservada)
-docs/       planos e este documento
+  components/{common,admin,courses,map,places,ui}/   componentes por área
+  context/    contextos React (ex.: LanguageContext)
+  i18n/       dicionários de idioma
+  data/       mocks tipados (o que ainda não vem da API)
+  services/   acesso a dados (ponto único para trocar mock por fetch)
+  hooks/ lib/ routes/ pages/ admin/ public/ assets/
+docs/       planos, casos de uso (.docx) e protótipos de tela (docs/telas/)
 ```
-Mantenha os arquivos nessas pastas. Não crie estruturas paralelas.
+Mantenha os arquivos nessas pastas. Não crie estruturas paralelas (ex.: um segundo `PlaceCard` ou `MapCanvas` fora de `components/places` e `components/map`).
 
 ## 6. Convenções de código
-- **Frontend:** TypeScript estrito, sem `any`. Componentes de servidor por padrão; `"use client"` só quando precisar de estado/efeito. Acesso a dados somente via `services/`. Cores e tokens vêm de `globals.css` (`navy-900`, `navy-700`, `brand-yellow`), sem cores soltas em hex nos componentes.
+- **Frontend:** TypeScript estrito, sem `any`. Componentes de servidor por padrão; `"use client"` só quando precisar de estado/efeito. Acesso a dados somente via `services/` (chamadas à API com `apiGet` de `lib/api.ts` e o hook `useApi` para loading/erro/retry). Cores e tokens vêm de `globals.css` (`navy-900`, `navy-700`, `brand-yellow`), sem cores soltas em hex nos componentes.
 - **Backend:** validação com Bean Validation, regras no Service, nunca no Controller. Retornar DTOs, não entidades.
 - Comentários só onde o motivo não é óbvio. Código e nomes técnicos em inglês ou português, mas **consistente com o arquivo em edição**. Textos de interface em português ficam no dicionário, nunca fixos no componente.
 - Mudanças pequenas e focadas. Não refatorar código não relacionado ao pedido.
 
 ## 7. Multilíngue (RF04)
 - Idiomas hoje: **PT, EN, ES**. Francês aparece na Visão e na Arquitetura, mas não no Plano de Projeto: decisão pendente com o PO, não implementar sem confirmação.
-- Todo texto de interface vem de `t.<seção>.<chave>` (`useLanguage()`), com entrada nos três idiomas em `i18n/dictionaries.ts`.
-- Conteúdo vindo da API (locais, serviços) ainda não tem modelo de tradução definido. Não inventar; perguntar.
+- Todo texto de interface vem de `t.<seção>.<chave>` (`useLanguage()`), com entrada nos três idiomas em `i18n/dictionaries.ts`. EN e ES precisam de revisão humana.
+- Conteúdo vindo da API (locais, departamentos, cursos) ainda não tem modelo de tradução definido e hoje está só em português. Não inventar; perguntar.
 
 ## 8. Requisitos não funcionais que afetam o código
 - **Desempenho (RNF01):** usuários em 3G/4G e aparelhos modestos. Imagens leves (JPG/PNG até 5 MB), requisições de mapa limitadas, nada de dependências pesadas sem necessidade.
-- **Disponibilidade (RNF03):** cache local no navegador para pontos de interesse prioritários.
+- **Disponibilidade (RNF03):** cache local no navegador para pontos de interesse prioritários. Hoje só há cache em memória por sessão (`placesService`); o cache persistente ainda não existe.
 - **Segurança (RNF02):** chamadas externas por HTTPS; criar/alterar/excluir dados só pelo painel admin autenticado, com permissões validadas **no backend**.
 - **Privacidade (RNF04):** nada de rastreamento do usuário final. "Últimos acessos" e locais salvos ficam só no navegador (`localStorage`, sempre com `try/catch`).
 - **Usabilidade/Portabilidade (RNF05, RNF10):** responsivo, mobile primeiro, identidade visual da UFRPE, acessível por teclado, com `aria-label` e contraste adequado.
@@ -82,6 +85,12 @@ Toda tabela, view, função e tela nova deve seguir **antes do commit**:
 
 > O arquivo `claude/regras-seguranca-novas-entidades.md` citado pela organização ainda não está no repositório. Se ele existir, ele prevalece sobre este resumo.
 
+**Como isso é aplicado aqui** (o projeto não tem conceito de "empresa"; é conteúdo público de um campus):
+- Toda tabela nasce com `enable row level security` **sem policies** e com `revoke all ... from anon, authenticated`. O único caminho de acesso aos dados é o backend, que conecta como dono das tabelas e não é afetado pelo RLS.
+- Migration nova: `supabase migration new <nome>` (o CLI gera a versão, nunca escreva à mão), testar em transação com `ROLLBACK`, aplicar só com autorização e, se aplicada por outro meio, renomear o arquivo para a versão que o banco registrou.
+- `spring.jpa.hibernate.ddl-auto=update` cria tabelas **sem RLS, FKs nem checks** se o backend subir antes das migrations. Em ambiente novo aplique as migrations primeiro; o recomendado é `validate` ou `none`.
+- Segredos do banco só em `backend/.env` (ignorado pelo Git). Nunca em arquivo versionado nem no chat.
+
 ## 10. Como a IA deve responder
 1. **Se faltar informação, perguntar** em vez de supor. Não inventar endpoints, tabelas, campos ou dados institucionais da UFRPE.
 2. Dizer **o que verificou e o que não verificou** (compilou? rodou testes? abriu no navegador?). Nada de afirmar "funciona" sem ter executado.
@@ -94,16 +103,27 @@ Toda tabela, view, função e tela nova deve seguir **antes do commit**:
 ```bash
 # Backend (porta 8080, saúde em /actuator/health)
 cd backend && ./mvnw spring-boot:run
+cd backend && ./mvnw test            # BackendApplicationTests precisa do banco; os demais são unitários
 
 # Frontend (porta 3000)
 cd frontend && npm install && npm run dev
 npx tsc --noEmit && npx eslint src && npm run build   # checagem antes de commit
+
+# Banco (na raiz do repositório)
+supabase migration new <nome>        # cria supabase/migrations/<versão>_<nome>.sql
 ```
+O backend lê `backend/.env` com `DB_URL` (`jdbc:postgresql://HOST:PORTA/postgres`, **sem** `?` no fim: a aplicação acrescenta usuário e senha), `DB_USER` e `DB_PASSWORD`. A conexão direta do Supabase só resolve por IPv6; se der `UnknownHostException`, use o host do **Session pooler** (IPv4), na aba Connect do painel. Para uma verificação que não altere o schema: `./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.jpa.hibernate.ddl-auto=none"`.
+
+Se o `tsc` falhar em `frontend/.next/dev/types/validator.ts`, é um arquivo gerado e ignorado pelo Git que ficou corrompido; ele é recriado pelo `next dev`/`next build`.
 
 ## 12. Estado atual (atualize ao mudar)
-- **Pronto:** shell da Home (header, sidebar, busca, seletor de idioma), mapa Leaflet/OSM restrito ao campus Sede (limites do OSM em `data/mapConfig.ts`) com marcadores clicáveis nas coordenadas reais dos locais (`data/mockPlaces.ts`, `position` em lat/lng; as marcadas como APROXIMADA/PROVÁVEL precisam de conferência), rota em linha reta origem→destino (`services/routeService.ts`), i18n PT/EN/ES para a interface, mocks, rewrite `/api`.
-- **Não existe ainda:** integração do mapa/locais com o backend (tudo ainda é mock em `services/`), cache de pontos de interesse, rota pela malha viária, catálogo, telas além da Home (links da sidebar levam a 404), endpoints do backend, banco, painel admin, testes automatizados.
-- Plano detalhado: `docs/plano-implementacao-home.md`.
+- **Já vem do banco (via `/api`):** mapa, busca, cartão e página do local (`/api/places`; 31 locais no banco, 29 publicados, coordenadas do Google Places ainda sem conferência em campo); origem padrão das distâncias = Prédio Central (`reitoria`); `?local=<slug>` na URL com voltar/avançar; atalho Ctrl/⌘+K; sugestões de departamentos e cursos na busca (UC38); páginas `/cursos`, `/cursos/[id]` e `/departamentos/[id]` (UC37, somente leitura).
+- **Backend:** `GET` de locais, departamentos, cursos e busca; CRUD de `services`, `notices` (avisos) e `msg` (mensagens). Avisos têm tela (`/avisos` e `/admin/avisos`), mas ela ainda usa mock e não chama `/api/avisos`; `services` e `msg` não têm tela. Migrations aplicadas: RLS das tabelas, cursos/departamentos/matriz, locais e carga inicial.
+- **Dados:** 9 departamentos (só nome, sigla e o local onde funcionam, tirados dos documentos). **Nenhum curso, matriz ou coordenador** — não há fonte oficial no repositório. Locais sem horário, acessibilidade, foto, telefone e endereço; sem portarias nem RU. CEU e Casa Samyr Pessoa são rascunho (sem coordenada).
+- **Painel admin (`/admin`, tudo mock):** login (UC12), administradores (UC13), locais (UC14), avisos, cardápio do RU (UC25), edição dos tópicos de acolhimento em PT/EN/ES (exceto Guia de Recife), histórico de mudanças com desfazer (UC23) e logout com aviso de alterações não salvas (UC24). Os dados ficam na memória da aba: recarregar a página desfaz as edições.
+- **Ainda mock (`data/` + `services/`):** login e administradores (a senha é conferida no navegador), auditoria, cardápio, avisos, guias de acolhimento e Guia de Recife, CRUD de locais do painel admin (diverge do banco), rota em linha reta (`routeService`).
+- **Não existe ainda:** autenticação real no backend — os endpoints de escrita de `/api/services`, `/api/avisos` e `/api/messages` estão abertos, e `GET /api/messages` devolve nome, e-mail e telefone; UC35/UC36 (editar e excluir curso, dependem do login); telas `/servicos`, `/contato`, `/acessibilidade`, `/portarias-e-paradas`, `/onde-comer` e `/espacos-de-estudo` (os links da sidebar dão 404); GPS no botão da busca (FA-38.02); cache offline persistente (RNF03); rota pela malha viária; Dockerfile e CI/CD; testes automatizados no frontend.
+- Plano detalhado: `docs/plano-implementacao-home.md` (parcialmente desatualizado: foi escrito antes da integração com o banco).
 
 ## 13. Modelo de prompt para a tarefa
 ```
@@ -115,6 +135,9 @@ Critérios de pronto: [comportamento esperado]
 Restrições extras: [prazos, bibliotecas proibidas, etc.]
 ```
 
-## 14. Branchs e commits
-
-Sempre crie branchs das versões mais atualizadas. antes de qualquer código, rode git pull a a partir da dev.
+## 14. Branches e commits
+- Sempre crie branches a partir da `dev` mais atualizada: rode `git pull` na `dev` antes de qualquer código.
+- Um trabalho por branch, com commits pequenos e separados. Mensagens no formato `tipo(escopo): descrição` (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`).
+- Abra PR para a `dev`. Se um branch depende de outro, diga a ordem de merge na descrição do PR. Use **merge commit** (não squash), para preservar autoria e hashes dos commits.
+- **Autoria:** quando o código vem do trabalho de outra pessoa, traga o commit dela (merge ou cherry-pick) em vez de só citar com `Co-authored-by`. Nunca reescreva histórico já enviado (sem `push --force`): se precisar corrigir, faça um commit novo ou um branch novo.
+- Commits feitos com ajuda da IA terminam com a linha `Co-Authored-By` da ferramenta.

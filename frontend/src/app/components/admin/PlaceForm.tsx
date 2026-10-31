@@ -58,6 +58,8 @@ const CATEGORY_ICONS: Record<PlaceCategory, ReactNode> = {
   esporte: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18" />,
   sala: <path d="M4 5h16v11H4zM8 20h8M12 16v4M8 9h8M8 12h5" />,
   saude: <path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-3 4.5 4.5 0 0 1 8 3c0 6-8 11-8 11zM12 9v6M9 12h6" />,
+  moradia: <path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-6h4v6" />,
+  apoio: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01" />,
 };
 
 type FieldKey = "name" | "shortName" | "category" | "lat" | "lng" | "photo" | "hours";

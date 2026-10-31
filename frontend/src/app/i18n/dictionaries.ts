@@ -1,5 +1,6 @@
 import type { GuideSection, GuideStage } from "../data/mockGuides";
 import type { AccessibilityFeature, PlaceCategory } from "../data/mockPlaces";
+import type { CourseType } from "../services/coursesService";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -42,6 +43,8 @@ export type Dictionary = {
     locating: string;
     locateDenied: string;
     locateOutside: string;
+    department: string;
+    course: string;
   };
   map: {
     title: string;
@@ -173,6 +176,59 @@ export type Dictionary = {
     empty: string;
     today: string;
   };
+  courses: {
+    title: string;
+    subtitle: string;
+    departmentsEmpty: string;
+    loadErrorTitle: string;
+    loadErrorText: string;
+    retry: string;
+    notFoundTitle: string;
+    notFoundText: string;
+    backToList: string;
+    backToDepartment: string;
+    viewDepartment: string;
+    about: string;
+    foundedIn: string;
+    hours: string;
+    contact: string;
+    academicCenter: string;
+    linkedCourses: string;
+    programsOffered: string;
+    undergraduate: string;
+    postgraduate: string;
+    types: Record<CourseType, string>;
+    viewCurriculum: string;
+    coordinations: string;
+    extension: string;
+    duration: string;
+    semesters: string;
+    active: string;
+    courseCode: string;
+    coordination: string;
+    coordinator: string;
+    viceCoordinator: string;
+    office: string;
+    officeHours: string;
+    attendanceMode: string;
+    channels: string;
+    phone: string;
+    email: string;
+    curriculum: string;
+    totalWorkload: string;
+    period: string;
+    electives: string;
+    subjectCode: string;
+    subject: string;
+    workload: string;
+    credits: string;
+    nature: string;
+    prerequisites: string;
+    none: string;
+    obligatory: string;
+    optional: string;
+    noSubjects: string;
+  };
 };
 
 export const dictionaries: Record<Language, Dictionary> = {
@@ -208,12 +264,14 @@ export const dictionaries: Record<Language, Dictionary> = {
       myLocation: "Usar minha localização",
       filters: "Filtros",
       recent: "Últimos acessos:",
-      noResults: "Nenhum local encontrado.",
+      noResults: "Nenhum resultado encontrado.",
       minChars: "Digite ao menos 3 caracteres para ver sugestões.",
       shortcut: "Atalho para pesquisar",
       locating: "Obtendo sua localização...",
       locateDenied: "Não foi possível acessar o GPS do dispositivo.",
       locateOutside: "Você está fora dos limites do campus Sede.",
+      department: "Departamento",
+      course: "Curso",
     },
     map: {
       title: "Mapa do campus",
@@ -232,6 +290,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       alimentacao: "Alimentação & RU",
       sala: "Sala de aula",
       portaria: "Portaria / parada",
+      moradia: "Moradia estudantil",
+      apoio: "Apoio e serviços",
       saude: "Saúde",
       auditorio: "Auditório / teatro",
       esporte: "Parque esportivo",
@@ -252,7 +312,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       openNow: "Aberto agora",
       closed: "Fechado agora",
       walk: "a pé",
-      fromOrigin: "a partir da Portaria Principal",
+      fromOrigin: "a partir do Prédio Central",
       hours: "Horário",
       viewFull: "Ver página completa do local",
       save: "Salvar local",
@@ -264,7 +324,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFound: "Local não encontrado",
       notFoundText: "Este local não existe ou não está publicado.",
       recommendedRoute: "Trajeto recomendado pelo GPS",
-      fromGate: "da Portaria Principal",
+      fromGate: "do Prédio Central",
       traceRoute: "Traçar rota no mapa",
       viewOnMap: "Ver no mapa",
       hours: "Horário de funcionamento",
@@ -372,6 +432,59 @@ export const dictionaries: Record<Language, Dictionary> = {
       empty: "Nenhum cardápio publicado para esta semana.",
       today: "Hoje",
     },
+    courses: {
+      title: "Cursos e departamentos",
+      subtitle: "Escolha um departamento para ver seus cursos de graduação e pós-graduação.",
+      departmentsEmpty: "Nenhum departamento cadastrado ainda.",
+      loadErrorTitle: "Não foi possível carregar os dados",
+      loadErrorText: "Verifique sua conexão e tente novamente.",
+      retry: "Tentar novamente",
+      notFoundTitle: "Não encontramos esta página",
+      notFoundText: "O departamento ou curso não existe ou não está mais disponível.",
+      backToList: "Cursos e departamentos",
+      backToDepartment: "Voltar ao departamento",
+      viewDepartment: "Ver departamento",
+      about: "Sobre o departamento",
+      foundedIn: "Fundado em",
+      hours: "Horário de funcionamento",
+      contact: "Secretaria e telefone",
+      academicCenter: "Centro acadêmico",
+      linkedCourses: "Cursos vinculados",
+      programsOffered: "programas oferecidos",
+      undergraduate: "Graduação",
+      postgraduate: "Pós-graduação",
+      types: { BACHARELADO: "Bacharelado", LICENCIATURA: "Licenciatura", STRICTO_SENSU: "Stricto sensu" },
+      viewCurriculum: "Ver grade",
+      coordinations: "Coordenações de curso",
+      extension: "Ramal",
+      duration: "Duração",
+      semesters: "semestres",
+      active: "Ativo",
+      courseCode: "Código",
+      coordination: "Coordenação do curso",
+      coordinator: "Coordenação",
+      viceCoordinator: "Vice-coordenação",
+      office: "Gabinete e expediente",
+      officeHours: "Horário de atendimento",
+      attendanceMode: "Modalidade de atendimento",
+      channels: "Canais oficiais",
+      phone: "Telefone",
+      email: "E-mail",
+      curriculum: "Matriz curricular e cadeiras",
+      totalWorkload: "de carga horária total",
+      period: "Período",
+      electives: "Optativas / Eletivas",
+      subjectCode: "Código",
+      subject: "Disciplina",
+      workload: "Carga horária",
+      credits: "créditos",
+      nature: "Natureza",
+      prerequisites: "Pré-requisitos",
+      none: "Nenhum",
+      obligatory: "Obrigatória",
+      optional: "Optativa",
+      noSubjects: "Nenhuma disciplina cadastrada neste período.",
+    },
   },
   en: {
     header: { publicPlatform: "Public Platform • Free Access" },
@@ -405,12 +518,14 @@ export const dictionaries: Record<Language, Dictionary> = {
       myLocation: "Use my location",
       filters: "Filters",
       recent: "Recently visited:",
-      noResults: "No places found.",
+      noResults: "No results found.",
       minChars: "Type at least 3 characters to see suggestions.",
       shortcut: "Search shortcut",
       locating: "Getting your location...",
       locateDenied: "Could not access the device GPS.",
       locateOutside: "You are outside the main campus.",
+      department: "Department",
+      course: "Course",
     },
     map: {
       title: "Campus map",
@@ -429,6 +544,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       alimentacao: "Food & canteen",
       sala: "Classrooms",
       portaria: "Gate / stop",
+      moradia: "Student housing",
+      apoio: "Support and services",
       saude: "Health",
       auditorio: "Auditorium",
       esporte: "Sports area",
@@ -449,7 +566,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       openNow: "Open now",
       closed: "Closed now",
       walk: "walk",
-      fromOrigin: "from the Main Gate",
+      fromOrigin: "from the Central Building",
       hours: "Hours",
       viewFull: "View full place page",
       save: "Save place",
@@ -461,7 +578,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFound: "Place not found",
       notFoundText: "This place does not exist or is not published.",
       recommendedRoute: "GPS recommended route",
-      fromGate: "from the Main Gate",
+      fromGate: "from the Central Building",
       traceRoute: "Show route on map",
       viewOnMap: "View on map",
       hours: "Opening hours",
@@ -569,6 +686,59 @@ export const dictionaries: Record<Language, Dictionary> = {
       empty: "No menu published for this week.",
       today: "Today",
     },
+    courses: {
+      title: "Courses and departments",
+      subtitle: "Choose a department to see its undergraduate and graduate courses.",
+      departmentsEmpty: "No departments registered yet.",
+      loadErrorTitle: "Could not load the data",
+      loadErrorText: "Check your connection and try again.",
+      retry: "Try again",
+      notFoundTitle: "We could not find this page",
+      notFoundText: "The department or course does not exist or is no longer available.",
+      backToList: "Courses and departments",
+      backToDepartment: "Back to the department",
+      viewDepartment: "View department",
+      about: "About the department",
+      foundedIn: "Founded in",
+      hours: "Opening hours",
+      contact: "Office and phone",
+      academicCenter: "Academic center",
+      linkedCourses: "Linked courses",
+      programsOffered: "programs offered",
+      undergraduate: "Undergraduate",
+      postgraduate: "Graduate",
+      types: { BACHARELADO: "Bachelor's", LICENCIATURA: "Teaching degree", STRICTO_SENSU: "Stricto sensu" },
+      viewCurriculum: "View curriculum",
+      coordinations: "Course coordination",
+      extension: "Ext.",
+      duration: "Duration",
+      semesters: "semesters",
+      active: "Active",
+      courseCode: "Code",
+      coordination: "Course coordination",
+      coordinator: "Coordinator",
+      viceCoordinator: "Vice-coordinator",
+      office: "Office and hours",
+      officeHours: "Service hours",
+      attendanceMode: "Service mode",
+      channels: "Official channels",
+      phone: "Phone",
+      email: "E-mail",
+      curriculum: "Curriculum and subjects",
+      totalWorkload: "total workload",
+      period: "Term",
+      electives: "Electives",
+      subjectCode: "Code",
+      subject: "Subject",
+      workload: "Workload",
+      credits: "credits",
+      nature: "Type",
+      prerequisites: "Prerequisites",
+      none: "None",
+      obligatory: "Required",
+      optional: "Elective",
+      noSubjects: "No subjects registered for this term.",
+    },
   },
   es: {
     header: { publicPlatform: "Plataforma Pública • Acceso Libre" },
@@ -602,12 +772,14 @@ export const dictionaries: Record<Language, Dictionary> = {
       myLocation: "Usar mi ubicación",
       filters: "Filtros",
       recent: "Últimos accesos:",
-      noResults: "No se encontraron lugares.",
+      noResults: "No se encontraron resultados.",
       minChars: "Escribe al menos 3 caracteres para ver sugerencias.",
       shortcut: "Atajo para buscar",
       locating: "Obteniendo tu ubicación...",
       locateDenied: "No fue posible acceder al GPS del dispositivo.",
       locateOutside: "Estás fuera de los límites del campus Sede.",
+      department: "Departamento",
+      course: "Curso",
     },
     map: {
       title: "Mapa del campus",
@@ -626,6 +798,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       alimentacao: "Alimentación y comedor",
       sala: "Aulas",
       portaria: "Portería / parada",
+      moradia: "Vivienda estudiantil",
+      apoio: "Apoyo y servicios",
       saude: "Salud",
       auditorio: "Auditorio",
       esporte: "Área deportiva",
@@ -646,7 +820,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       openNow: "Abierto ahora",
       closed: "Cerrado ahora",
       walk: "a pie",
-      fromOrigin: "desde la Portería Principal",
+      fromOrigin: "desde el Edificio Central",
       hours: "Horario",
       viewFull: "Ver página completa del lugar",
       save: "Guardar lugar",
@@ -658,7 +832,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFound: "Lugar no encontrado",
       notFoundText: "Este lugar no existe o no está publicado.",
       recommendedRoute: "Trayecto recomendado por GPS",
-      fromGate: "de la Portería Principal",
+      fromGate: "desde el Edificio Central",
       traceRoute: "Trazar ruta en el mapa",
       viewOnMap: "Ver en el mapa",
       hours: "Horario de atención",
@@ -765,6 +939,59 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Jugo",
       empty: "No hay menú publicado para esta semana.",
       today: "Hoy",
+    },
+    courses: {
+      title: "Cursos y departamentos",
+      subtitle: "Elige un departamento para ver sus cursos de grado y posgrado.",
+      departmentsEmpty: "Aún no hay departamentos registrados.",
+      loadErrorTitle: "No se pudieron cargar los datos",
+      loadErrorText: "Revisa tu conexión e inténtalo de nuevo.",
+      retry: "Intentar de nuevo",
+      notFoundTitle: "No encontramos esta página",
+      notFoundText: "El departamento o curso no existe o ya no está disponible.",
+      backToList: "Cursos y departamentos",
+      backToDepartment: "Volver al departamento",
+      viewDepartment: "Ver departamento",
+      about: "Sobre el departamento",
+      foundedIn: "Fundado en",
+      hours: "Horario de atención",
+      contact: "Secretaría y teléfono",
+      academicCenter: "Centro académico",
+      linkedCourses: "Cursos vinculados",
+      programsOffered: "programas ofrecidos",
+      undergraduate: "Grado",
+      postgraduate: "Posgrado",
+      types: { BACHARELADO: "Licenciatura (bachillerato)", LICENCIATURA: "Profesorado", STRICTO_SENSU: "Stricto sensu" },
+      viewCurriculum: "Ver malla",
+      coordinations: "Coordinaciones de curso",
+      extension: "Int.",
+      duration: "Duración",
+      semesters: "semestres",
+      active: "Activo",
+      courseCode: "Código",
+      coordination: "Coordinación del curso",
+      coordinator: "Coordinación",
+      viceCoordinator: "Vicecoordinación",
+      office: "Despacho y horario",
+      officeHours: "Horario de atención",
+      attendanceMode: "Modalidad de atención",
+      channels: "Canales oficiales",
+      phone: "Teléfono",
+      email: "Correo electrónico",
+      curriculum: "Malla curricular y asignaturas",
+      totalWorkload: "de carga horaria total",
+      period: "Período",
+      electives: "Optativas / Electivas",
+      subjectCode: "Código",
+      subject: "Asignatura",
+      workload: "Carga horaria",
+      credits: "créditos",
+      nature: "Naturaleza",
+      prerequisites: "Requisitos previos",
+      none: "Ninguno",
+      obligatory: "Obligatoria",
+      optional: "Optativa",
+      noSubjects: "No hay asignaturas registradas en este período.",
     },
   },
 };

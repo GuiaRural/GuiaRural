@@ -1,58 +1,47 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
 import { MIN_SEARCH_CHARS, getRecentPlaces, searchPlaces } from "../../services/placesService";
+import { MAX_SUGGESTIONS, searchDepartmentsAndCourses, suggestionHref, type Suggestion } from "../../services/searchService";
 
-const noopSubscribe = () => () => {};
+type Item = { kind: "place"; key: string; place: Place } | { kind: "link"; key: string; suggestion: Suggestion };
 
-// No macOS o atalho é ⌘K; nos demais sistemas, Ctrl+K. No servidor assume Ctrl para não divergir na hidratação.
-function useIsMac() {
-  return useSyncExternalStore(
-    noopSubscribe,
-    () => /Mac|iPhone|iPad/.test(navigator.userAgent),
-    () => false,
-  );
-}
+const DEBOUNCE_MS = 250;
 
-export default function SearchBar({
-  onSelect,
-  recentVersion = 0,
-  onLocate,
-  locating = false,
-}: {
-  onSelect: (place: Place) => void;
-  recentVersion?: number;
-  onLocate?: () => void;
-  locating?: boolean;
-}) {
+export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (place: Place) => void; recentVersion?: number }) {
   const { t } = useLanguage();
-  const isMac = useIsMac();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Place[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [linked, setLinked] = useState<Suggestion[]>([]);
   const [recent, setRecent] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const latestQuery = useRef("");
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const input = useRef<HTMLInputElement>(null);
 
   // recentVersion muda a cada local consultado, para refletir a lista atualizada (RN-UC02.02).
   useEffect(() => {
-    getRecentPlaces().then(setRecent);
+    getRecentPlaces().then(setRecent, () => setRecent([]));
   }, [recentVersion]);
 
-  // Ctrl/⌘+K aciona o campo de busca de qualquer ponto do mapa (passo 1 do fluxo principal).
+  useEffect(() => () => clearTimeout(debounce.current), []);
+
+  // FA-38.01: Ctrl+K (⌘K no Mac) foca o campo de busca de qualquer ponto da tela.
   useEffect(() => {
-    function handleShortcut(e: globalThis.KeyboardEvent) {
+    function onKeyDown(e: globalThis.KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
+        input.current?.focus();
+        input.current?.select();
       }
     }
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   function handleChange(value: string) {
@@ -60,28 +49,66 @@ export default function SearchBar({
     setOpen(true);
     setActive(-1);
     latestQuery.current = value;
-    searchPlaces(value, t.categories).then((found) => {
-      if (latestQuery.current === value) setResults(found);
-    });
+    clearTimeout(debounce.current);
+
+    searchPlaces(value).then(
+      (found) => {
+        if (latestQuery.current === value) setPlaces(found);
+      },
+      () => {
+        if (latestQuery.current === value) setPlaces([]);
+      },
+    );
+
+    if (value.trim().length < MIN_SEARCH_CHARS) {
+      setLinked([]);
+      return;
+    }
+    // Departamentos e cursos vêm do backend: espera o usuário parar de digitar para limitar as requisições (RNF01).
+    debounce.current = setTimeout(() => {
+      searchDepartmentsAndCourses(value)
+        .then((found) => {
+          if (latestQuery.current === value) setLinked(found);
+        })
+        // Sem backend, a busca segue só com os locais do mapa.
+        .catch(() => {
+          if (latestQuery.current === value) setLinked([]);
+        });
+    }, DEBOUNCE_MS);
   }
 
-  function select(place: Place) {
+  const items: Item[] = [
+    ...places.map((place): Item => ({ kind: "place", key: `place-${place.id}`, place })),
+    ...linked.map((suggestion): Item => ({ kind: "link", key: `${suggestion.type}-${suggestion.id}`, suggestion })),
+  ].slice(0, MAX_SUGGESTIONS);
+
+  function selectPlace(place: Place) {
     setQuery(place.name);
     setOpen(false);
     onSelect(place);
   }
 
+  function choose(item: Item) {
+    if (item.kind === "place") {
+      selectPlace(item.place);
+      return;
+    }
+    setQuery(item.suggestion.name);
+    setOpen(false);
+    router.push(suggestionHref(item.suggestion));
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (!showList || results.length === 0) return;
+    if (!showList || items.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActive((i) => (i + 1) % results.length);
+      setActive((i) => (i + 1) % items.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActive((i) => (i <= 0 ? results.length - 1 : i - 1));
+      setActive((i) => (i <= 0 ? items.length - 1 : i - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      select(results[Math.max(active, 0)]);
+      choose(items[Math.max(active, 0)]);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -102,12 +129,13 @@ export default function SearchBar({
           </svg>
           <div className="relative min-w-0 flex-1">
             <input
-              ref={inputRef}
+              ref={input}
               type="search"
               role="combobox"
               aria-expanded={showList}
               aria-controls="search-suggestions"
               aria-autocomplete="list"
+              aria-keyshortcuts="Control+K Meta+K"
               aria-activedescendant={active >= 0 ? `search-option-${active}` : undefined}
               aria-label={t.search.label}
               placeholder={t.search.placeholder}
@@ -126,22 +154,28 @@ export default function SearchBar({
               >
                 {tooShort ? (
                   <li className="px-3 py-2 text-sm text-slate-600">{t.search.minChars}</li>
-                ) : results.length === 0 ? (
+                ) : items.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-slate-600">{t.search.noResults}</li>
                 ) : (
-                  results.map((p, i) => (
-                    <li key={p.id} id={`search-option-${i}`} role="option" aria-selected={i === active}>
+                  items.map((item, i) => (
+                    <li key={item.key} id={`search-option-${i}`} role="option" aria-selected={i === active}>
                       <button
                         type="button"
                         tabIndex={-1}
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => select(p)}
+                        onClick={() => choose(item)}
                         className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100 ${
                           i === active ? "bg-slate-100" : ""
                         }`}
                       >
-                        <span>{p.name}</span>
-                        <span className="shrink-0 text-xs text-slate-500">{t.categories[p.category]}</span>
+                        <span>{item.kind === "place" ? item.place.name : item.suggestion.name}</span>
+                        <span className="shrink-0 text-xs text-slate-500">
+                          {item.kind === "place"
+                            ? t.categories[item.place.category]
+                            : item.suggestion.type === "COURSE"
+                              ? t.search.course
+                              : t.search.department}
+                        </span>
                       </button>
                     </li>
                   ))
@@ -151,25 +185,16 @@ export default function SearchBar({
           </div>
           <button
             type="button"
-            onClick={onLocate}
-            disabled={locating}
-            aria-label={locating ? t.search.locating : t.search.myLocation}
-            title={locating ? t.search.locating : t.search.myLocation}
-            className="relative grid size-10 shrink-0 place-items-center rounded-lg bg-brand-yellow text-navy-900 shadow-sm hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900 disabled:cursor-wait"
+            aria-label={t.search.myLocation}
+            title={t.search.myLocation}
+            className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-yellow text-navy-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900"
           >
-            <svg aria-hidden className={`size-5 ${locating ? "animate-pulse" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" fill="currentColor" />
+            <svg aria-hidden className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
               <circle cx="12" cy="12" r="7" />
               <path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" />
             </svg>
-            <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full bg-red-600 ring-2 ring-brand-yellow" />
           </button>
-          <kbd
-            title={t.search.shortcut}
-            className="hidden h-7 shrink-0 items-center rounded-md bg-slate-100 px-2 font-sans text-xs font-semibold text-slate-600 sm:flex"
-          >
-            {isMac ? "⌘K" : "Ctrl K"}
-          </kbd>
           <button
             type="button"
             aria-label={t.search.filters}
@@ -187,22 +212,13 @@ export default function SearchBar({
 
       {/* FA-01.02: seleção direta pelos últimos acessos */}
       {recent.length > 0 && (
-        <div className="mt-2 hidden items-center gap-x-1 overflow-hidden whitespace-nowrap rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
-          <svg aria-hidden className="size-3.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-            <path d="M3 3v5h5M12 7v5l3 2" />
-          </svg>
-          <span className="shrink-0 font-semibold text-navy-900">{t.search.recent}</span>
+        <div className="mt-2 hidden flex-wrap items-center gap-x-1 gap-y-1 rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
+          <span className="font-semibold">{t.search.recent}</span>
           {recent.map((p, i) => (
-            <span key={p.id} className="flex shrink-0 items-center gap-1">
+            <span key={p.id} className="flex items-center gap-1">
               {i > 0 && <span aria-hidden>•</span>}
-              <button
-                type="button"
-                onClick={() => select(p)}
-                title={p.name}
-                className="rounded px-1 hover:bg-slate-100 hover:text-navy-900 hover:underline"
-              >
-                {p.name.length <= 26 ? p.name : p.shortName}
+              <button type="button" onClick={() => selectPlace(p)} className="rounded px-1 hover:bg-slate-100 hover:text-navy-900 hover:underline">
+                {p.shortName}
               </button>
             </span>
           ))}

@@ -14,22 +14,21 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
   const { t } = useLanguage();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
   const origin = getDefaultOrigin();
-  const route = place.position && origin.position ? computeRoute(origin.position, place.position) : null;
-  const open = isOpenNow(place.hours);
-  const hours = place.hours.replaceAll("-", ` ${t.placeCard.hoursTo} `);
+  // A própria origem não mostra distância (seria "0 m").
+  const route = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
+  // Horário e acessibilidade podem não estar cadastrados: sem o dado, a tela não afirma "fechado" nem "sem recursos".
+  const hasHours = place.hours !== "";
+  const open = hasHours && isOpenNow(place.hours);
 
   return (
     <section
       aria-label={place.name}
-      className="w-full overflow-hidden rounded-2xl bg-white shadow-2xl sm:w-[26rem]"
+      className="w-full overflow-hidden rounded-2xl bg-white shadow-2xl sm:w-80"
     >
       <div className="relative">
-        <PlacePhoto place={place} className="h-36 sm:h-40" />
-        <span className="absolute left-3 top-3 flex max-w-[calc(100%-4rem)] items-center gap-1.5 rounded-md bg-navy-900/85 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-          <span aria-hidden className="size-2 shrink-0 rounded-full bg-red-500" />
-          <span className="truncate">
-            {t.categories[place.category]} • {place.shortName}
-          </span>
+        <PlacePhoto place={place} className="h-32" />
+        <span className="absolute left-3 top-3 rounded-full bg-navy-900/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          {t.categories[place.category]}
         </span>
         <button
           type="button"
@@ -41,24 +40,25 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
             <path d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
-        <div className="absolute inset-x-3 bottom-2 flex items-center justify-between text-xs font-semibold">
+        <div className="absolute inset-x-3 bottom-2 flex items-center justify-between text-[11px] font-semibold">
           {route && (
-            <span className="rounded-md border border-white/40 bg-navy-900/85 px-2 py-0.5 text-white" title={t.placeCard.fromOrigin}>
+            <span className="rounded-full bg-navy-900/85 px-2 py-0.5 text-white" title={t.placeCard.fromOrigin}>
               {route.minutes} {t.common.minutes} {t.placeCard.walk} • {route.meters} {t.common.meters}
             </span>
           )}
-          <span className={`ml-auto rounded-md px-2 py-0.5 text-white ${open ? "bg-emerald-600" : "bg-slate-600"}`}>
-            <span aria-hidden>• </span>
-            {open ? t.placeCard.openNow : t.placeCard.closed}
-          </span>
+          {hasHours && (
+            <span className={`rounded-full px-2 py-0.5 text-white ${open ? "bg-emerald-600" : "bg-slate-600"}`}>
+              {open ? t.placeCard.openNow : t.placeCard.closed}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h2 className="text-lg font-bold leading-tight text-navy-900">{place.name}</h2>
-            <p className="text-sm text-slate-600">{place.address}</p>
+            <h2 className="font-bold leading-tight text-navy-900">{place.name}</h2>
+            <p className="text-xs text-slate-600">{place.address}</p>
           </div>
           {/* FA-02.02: salvar local a partir do mapa */}
           <button
@@ -75,45 +75,33 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
           </button>
         </div>
 
-        <dl className="grid grid-cols-2 gap-2 text-xs">
-          <div className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-            <svg aria-hidden className="mt-0.5 size-4 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 2" />
-            </svg>
-            <div>
-              <dt className="text-slate-500">{t.placeCard.hours}</dt>
-              <dd className="font-semibold text-slate-900">{hours}</dd>
-            </div>
-          </div>
-          <div className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-            <svg aria-hidden className="mt-0.5 size-4 shrink-0 text-navy-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="4" r="1.6" fill="currentColor" />
-              <path d="M11 7v6h5l2 6M11 10h5" />
-              <path d="M8 11.5a5 5 0 1 0 7 6" />
-            </svg>
-            <div>
-              <dt className="text-slate-500">{t.accessibility.title}</dt>
-              <dd className="font-semibold text-slate-900">
-                {place.accessibility.length
-                  ? place.accessibility.map((a) => t.accessibility[a]).join(", ")
-                  : t.accessibility.none}
-              </dd>
-            </div>
-          </div>
-        </dl>
+        {(hasHours || place.accessibility.length > 0) && (
+          <dl className="grid grid-cols-2 gap-2 text-xs">
+            {hasHours && (
+              <div className="rounded-lg bg-slate-50 p-2">
+                <dt className="text-slate-500">{t.placeCard.hours}</dt>
+                <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
+              </div>
+            )}
+            {place.accessibility.length > 0 && (
+              <div className="rounded-lg bg-slate-50 p-2">
+                <dt className="text-slate-500">{t.accessibility.title}</dt>
+                <dd className="font-semibold text-slate-900">
+                  {place.accessibility.map((a) => t.accessibility[a]).join(", ")}
+                </dd>
+              </div>
+            )}
+          </dl>
+        )}
 
-        <p className="line-clamp-3 text-xs text-slate-700">{place.description}</p>
+        {place.description && <p className="line-clamp-3 text-xs text-slate-700">{place.description}</p>}
 
         <Link
           href={`/locais/${place.id}`}
-          className="flex items-center gap-2 rounded-lg bg-navy-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-yellow"
+          className="flex items-center justify-center gap-2 rounded-lg bg-navy-900 px-3 py-2.5 text-sm font-bold text-white hover:bg-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-yellow"
         >
-          <svg aria-hidden className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 11v5M12 8h.01" />
-          </svg>
           {t.placeCard.viewFull}
+          <span aria-hidden>→</span>
         </Link>
       </div>
     </section>
