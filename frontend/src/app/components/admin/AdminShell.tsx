@@ -11,6 +11,7 @@ const NAV = [
   { href: "/admin", label: "Painel" },
   { href: "/admin/locais", label: "Locais e prédios" },
   { href: "/admin/cardapio", label: "Cardápio do RU" },
+  { href: "/admin/avisos", label: "Avisos" },
   { href: "/admin/administradores", label: "Administradores" },
   { href: "/admin/historico", label: "Histórico de mudanças" },
 ];
