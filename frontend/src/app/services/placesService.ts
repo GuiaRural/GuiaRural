@@ -1,4 +1,4 @@
-import { DEFAULT_ORIGIN_ID, MOCK_PLACES, MOCK_RECENT_IDS, type Place, type PlaceStatus } from "../data/mockPlaces";
+import { DEFAULT_ORIGIN_ID, MOCK_PLACES, MOCK_RECENT_IDS, type Place, type PlaceCategory, type PlaceStatus } from "../data/mockPlaces";
 import { delay, readJson, writeJson } from "../lib/storage";
 import { recordChange, snapshot } from "./auditService";
 
@@ -22,12 +22,19 @@ function isPublic(p: Place): p is Place & { position: NonNullable<Place["positio
   return p.status === "publicado" && p.position !== null;
 }
 
-export async function searchPlaces(query: string): Promise<Place[]> {
+// RN-01.02: categoryLabels traz os nomes das categorias no idioma ativo, para que "library" ou "comedor"
+// também encontrem os locais.
+export async function searchPlaces(query: string, categoryLabels?: Record<PlaceCategory, string>): Promise<Place[]> {
   const q = normalize(query.trim());
   if (q.length < MIN_SEARCH_CHARS) return [];
   return places
     .filter(isPublic)
-    .filter((p) => normalize(p.name).includes(q) || normalize(p.shortName).includes(q))
+    .filter(
+      (p) =>
+        normalize(p.name).includes(q) ||
+        normalize(p.shortName).includes(q) ||
+        (categoryLabels !== undefined && normalize(categoryLabels[p.category]).includes(q)),
+    )
     .slice(0, 5);
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "../../context/LanguageContext";
+import Logo from "./Logo";
 
 export default function Header({
   menuId,
@@ -27,10 +28,7 @@ export default function Header({
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
-      <div className="leading-tight">
-        <p className="text-base font-semibold">GuiaRural</p>
-        <p className="text-[10px] tracking-wide text-slate-300">UFRPE</p>
-      </div>
+      <Logo />
       <span className="mx-1 hidden h-6 w-px bg-white/20 sm:block" />
       <p className="hidden items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs sm:flex">
         <span aria-hidden className="size-2 rounded-full bg-emerald-400" />

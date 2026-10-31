@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAdmin } from "../../../components/admin/AdminShell";
-import PageHeader, { primaryButton } from "../../../components/admin/PageHeader";
+import PageHeader, { ctaButton } from "../../../components/admin/PageHeader";
 import Modal, { ConfirmModal } from "../../../components/ui/Modal";
 import type { AuditLog } from "../../../data/mockAuditLogs";
 import { IT_SECTOR, PERMISSIONS, SECTORS, type Admin, type Permission, type Sector } from "../../../data/mockAdmins";
@@ -78,7 +78,7 @@ export default function AdminsPage() {
           Últimas mudanças
         </button>
         {isGeneral && (
-          <button type="button" onClick={openCreate} className={`${primaryButton} h-10 bg-amber-400 hover:bg-amber-300`}>
+          <button type="button" onClick={openCreate} className={`${ctaButton} h-10`}>
             + Novo
           </button>
         )}
@@ -89,7 +89,7 @@ export default function AdminsPage() {
         subtitle="Quem tem acesso ao painel e com qual permissão."
         actions={
           isGeneral ? (
-            <button type="button" className={`${primaryButton} h-11 bg-amber-400 px-5 text-base hover:bg-amber-300`} onClick={openCreate}>
+            <button type="button" className={`${ctaButton} h-11 px-5 text-base`} onClick={openCreate}>
               + Cadastrar administrador
             </button>
           ) : (
@@ -150,7 +150,7 @@ export default function AdminsPage() {
                       {isGeneral && a.status === "aguardando" && (
                         <button
                           type="button"
-                          className="rounded-md bg-amber-400 px-3 py-1.5 text-xs font-bold text-navy-900 hover:bg-amber-300"
+                          className="rounded-md bg-brand-yellow px-3 py-1.5 text-xs font-bold text-navy-900 hover:brightness-95"
                           onClick={async () => {
                             await approveAdmin(a.id, session.name);
                             setNotice(`${a.name} foi aprovado e já pode acessar o painel.`);

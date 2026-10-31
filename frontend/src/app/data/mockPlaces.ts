@@ -5,19 +5,24 @@ export const PLACE_CATEGORIES = [
   "administrativo",
   "biblioteca",
   "alimentacao",
-  "sala",
+  "laboratorio",
   "portaria",
-  "saude",
   "auditorio",
   "esporte",
+  "sala",
+  "saude",
 ] as const;
 export type PlaceCategory = (typeof PLACE_CATEGORIES)[number];
 
-export const ACCESSIBILITY_FEATURES = ["rampa", "elevador", "piso_tatil", "banheiro", "vaga"] as const;
+export const ACCESSIBILITY_FEATURES = ["rampa", "elevador", "piso_tatil", "banheiro", "portas", "libras", "vaga"] as const;
 export type AccessibilityFeature = (typeof ACCESSIBILITY_FEATURES)[number];
 
 // publicado: visível no mapa e na busca; rascunho e inativo: só na área do administrador (RN-UC14.02).
 export type PlaceStatus = "publicado" | "rascunho" | "inativo";
+
+// Situação física do prédio, independente de estar publicado no mapa (passo 4 do UC14).
+export const OPERATIONAL_STATUSES = ["aberto", "obras", "restrito"] as const;
+export type OperationalStatus = (typeof OPERATIONAL_STATUSES)[number];
 
 export type PlaceService = { name: string; hours: string; description: string };
 
@@ -27,6 +32,7 @@ export type Place = {
   shortName: string;
   category: PlaceCategory;
   status: PlaceStatus;
+  operation?: OperationalStatus;
   // Coordenadas no mapa; null enquanto o local não for georreferenciado.
   position: LatLng | null;
   address: string;

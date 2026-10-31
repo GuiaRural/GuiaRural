@@ -1,12 +1,35 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
 import { MIN_SEARCH_CHARS, getRecentPlaces, searchPlaces } from "../../services/placesService";
 
-export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (place: Place) => void; recentVersion?: number }) {
+const noopSubscribe = () => () => {};
+
+// No macOS o atalho é ⌘K; nos demais sistemas, Ctrl+K. No servidor assume Ctrl para não divergir na hidratação.
+function useIsMac() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => /Mac|iPhone|iPad/.test(navigator.userAgent),
+    () => false,
+  );
+}
+
+export default function SearchBar({
+  onSelect,
+  recentVersion = 0,
+  onLocate,
+  locating = false,
+}: {
+  onSelect: (place: Place) => void;
+  recentVersion?: number;
+  onLocate?: () => void;
+  locating?: boolean;
+}) {
   const { t } = useLanguage();
+  const isMac = useIsMac();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Place[]>([]);
   const [recent, setRecent] = useState<Place[]>([]);
@@ -19,12 +42,25 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
     getRecentPlaces().then(setRecent);
   }, [recentVersion]);
 
+  // Ctrl/⌘+K aciona o campo de busca de qualquer ponto do mapa (passo 1 do fluxo principal).
+  useEffect(() => {
+    function handleShortcut(e: globalThis.KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
   function handleChange(value: string) {
     setQuery(value);
     setOpen(true);
     setActive(-1);
     latestQuery.current = value;
-    searchPlaces(value).then((found) => {
+    searchPlaces(value, t.categories).then((found) => {
       if (latestQuery.current === value) setResults(found);
     });
   }
@@ -66,6 +102,7 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
           </svg>
           <div className="relative min-w-0 flex-1">
             <input
+              ref={inputRef}
               type="search"
               role="combobox"
               aria-expanded={showList}
@@ -114,16 +151,25 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
           </div>
           <button
             type="button"
-            aria-label={t.search.myLocation}
-            title={t.search.myLocation}
-            className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-yellow text-navy-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900"
+            onClick={onLocate}
+            disabled={locating}
+            aria-label={locating ? t.search.locating : t.search.myLocation}
+            title={locating ? t.search.locating : t.search.myLocation}
+            className="relative grid size-10 shrink-0 place-items-center rounded-lg bg-brand-yellow text-navy-900 shadow-sm hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900 disabled:cursor-wait"
           >
-            <svg aria-hidden className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" />
+            <svg aria-hidden className={`size-5 ${locating ? "animate-pulse" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" fill="currentColor" />
               <circle cx="12" cy="12" r="7" />
               <path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" />
             </svg>
+            <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full bg-red-600 ring-2 ring-brand-yellow" />
           </button>
+          <kbd
+            title={t.search.shortcut}
+            className="hidden h-7 shrink-0 items-center rounded-md bg-slate-100 px-2 font-sans text-xs font-semibold text-slate-600 sm:flex"
+          >
+            {isMac ? "⌘K" : "Ctrl K"}
+          </kbd>
           <button
             type="button"
             aria-label={t.search.filters}
@@ -141,13 +187,22 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
 
       {/* FA-01.02: seleção direta pelos últimos acessos */}
       {recent.length > 0 && (
-        <div className="mt-2 hidden flex-wrap items-center gap-x-1 gap-y-1 rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
-          <span className="font-semibold">{t.search.recent}</span>
+        <div className="mt-2 hidden items-center gap-x-1 overflow-hidden whitespace-nowrap rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
+          <svg aria-hidden className="size-3.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5M12 7v5l3 2" />
+          </svg>
+          <span className="shrink-0 font-semibold text-navy-900">{t.search.recent}</span>
           {recent.map((p, i) => (
-            <span key={p.id} className="flex items-center gap-1">
+            <span key={p.id} className="flex shrink-0 items-center gap-1">
               {i > 0 && <span aria-hidden>•</span>}
-              <button type="button" onClick={() => select(p)} className="rounded px-1 hover:bg-slate-100 hover:text-navy-900 hover:underline">
-                {p.shortName}
+              <button
+                type="button"
+                onClick={() => select(p)}
+                title={p.name}
+                className="rounded px-1 hover:bg-slate-100 hover:text-navy-900 hover:underline"
+              >
+                {p.name.length <= 26 ? p.name : p.shortName}
               </button>
             </span>
           ))}

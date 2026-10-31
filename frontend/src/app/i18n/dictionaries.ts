@@ -1,4 +1,4 @@
-import type { GuideSection } from "../data/mockGuides";
+import type { GuideSection, GuideStage } from "../data/mockGuides";
 import type { AccessibilityFeature, PlaceCategory } from "../data/mockPlaces";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
@@ -38,6 +38,10 @@ export type Dictionary = {
     recent: string;
     noResults: string;
     minChars: string;
+    shortcut: string;
+    locating: string;
+    locateDenied: string;
+    locateOutside: string;
   };
   map: {
     title: string;
@@ -47,7 +51,7 @@ export type Dictionary = {
     zoomOut: string;
     recenter: string;
   };
-  language: { label: string };
+  language: { label: string; open: string };
   common: { close: string; cancel: string; loading: string; minutes: string; meters: string };
   categories: Record<PlaceCategory, string>;
   accessibility: Record<AccessibilityFeature, string> & { title: string; none: string };
@@ -60,6 +64,7 @@ export type Dictionary = {
     viewFull: string;
     save: string;
     saved: string;
+    hoursTo: string;
   };
   placePage: {
     backToMap: string;
@@ -124,6 +129,35 @@ export type Dictionary = {
     supportLinks: string;
     backToTopics: string;
     translateHint: string;
+    sectionsLabel: string;
+    emptyReader: string;
+    readingTime: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    searchResults: string;
+    noResults: string;
+    source: string;
+    viewOnMap: string;
+    progressOf: string;
+    downloadsTitle: string;
+    helpTitle: string;
+    emergencyTitle: string;
+    timelineTitle: string;
+    timelineIntro: string;
+    openFolder: string;
+    photoCredit: string;
+    copyLink: string;
+    linkCopied: string;
+    topicsCount: string;
+    stages: Record<GuideStage, string>;
+  };
+  notices: {
+    title: string;
+    subtitle: string;
+    empty: string;
+    error: string;
+    retry: string;
+    portugueseOnly: string;
   };
   weeklyMenu: {
     title: string;
@@ -176,6 +210,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       recent: "Últimos acessos:",
       noResults: "Nenhum local encontrado.",
       minChars: "Digite ao menos 3 caracteres para ver sugestões.",
+      shortcut: "Atalho para pesquisar",
+      locating: "Obtendo sua localização...",
+      locateDenied: "Não foi possível acessar o GPS do dispositivo.",
+      locateOutside: "Você está fora dos limites do campus Sede.",
     },
     map: {
       title: "Mapa do campus",
@@ -185,7 +223,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       zoomOut: "Afastar",
       recenter: "Centralizar mapa",
     },
-    language: { label: "Idioma" },
+    language: { label: "Idioma", open: "Trocar idioma" },
     common: { close: "Fechar", cancel: "Cancelar", loading: "Carregando...", minutes: "min", meters: "m" },
     categories: {
       departamento: "Departamento acadêmico",
@@ -197,6 +235,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Saúde",
       auditorio: "Auditório / teatro",
       esporte: "Parque esportivo",
+      laboratorio: "Laboratório especializado",
     },
     accessibility: {
       title: "Acessibilidade",
@@ -206,6 +245,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       piso_tatil: "Piso tátil",
       banheiro: "Banheiro adaptado",
       vaga: "Vaga reservada",
+      portas: "Portas com vão livre (90 cm)",
+      libras: "Intérprete de Libras",
     },
     placeCard: {
       openNow: "Aberto agora",
@@ -216,6 +257,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewFull: "Ver página completa do local",
       save: "Salvar local",
       saved: "Local salvo",
+      hoursTo: "às",
     },
     placePage: {
       backToMap: "Voltar ao mapa interativo",
@@ -286,6 +328,35 @@ export const dictionaries: Record<Language, Dictionary> = {
       supportLinks: "Links de apoio",
       backToTopics: "Voltar aos tópicos",
       translateHint: "Use o seletor PT / EN / ES para trocar o idioma.",
+      sectionsLabel: "Cartilhas de acolhimento",
+      emptyReader: "Selecione uma cartilha ao lado para ler o conteúdo completo e os links de apoio.",
+      readingTime: "min de leitura",
+      searchLabel: "Buscar nas cartilhas",
+      searchPlaceholder: "Ex.: CPF, visto, RU, consentimento...",
+      searchResults: "resultados em todas as cartilhas",
+      noResults: "Nenhuma cartilha encontrada para essa busca.",
+      source: "Fonte",
+      viewOnMap: "Ver local no mapa",
+      progressOf: "de",
+      downloadsTitle: "Cartilhas oficiais",
+      helpTitle: "Precisa de ajuda?",
+      emergencyTitle: "Emergência (ligação gratuita)",
+      timelineTitle: "Sua jornada de documentos",
+      timelineIntro: "Siga as etapas na ordem. Marque os documentos que já separou — o progresso fica salvo neste navegador.",
+      openFolder: "Abrir pasta no Google Drive",
+      photoCredit: "Fotos",
+      copyLink: "Copiar link",
+      linkCopied: "Link copiado!",
+      topicsCount: "tópicos",
+      stages: { antes: "Antes de viajar", chegada: "Na chegada (até 30 dias)", "primeiras-semanas": "Primeiras semanas", mobilidade: "Editais e mobilidade" },
+    },
+    notices: {
+      title: "Avisos do campus",
+      subtitle: "Comunicados da UFRPE sobre o campus Dois Irmãos (Sede).",
+      empty: "Nenhum aviso publicado no momento.",
+      error: "Não foi possível carregar os avisos.",
+      retry: "Tentar novamente",
+      portugueseOnly: "",
     },
     weeklyMenu: {
       title: "Cardápio da semana",
@@ -336,6 +407,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       recent: "Recently visited:",
       noResults: "No places found.",
       minChars: "Type at least 3 characters to see suggestions.",
+      shortcut: "Search shortcut",
+      locating: "Getting your location...",
+      locateDenied: "Could not access the device GPS.",
+      locateOutside: "You are outside the main campus.",
     },
     map: {
       title: "Campus map",
@@ -345,7 +420,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       zoomOut: "Zoom out",
       recenter: "Recenter map",
     },
-    language: { label: "Language" },
+    language: { label: "Language", open: "Change language" },
     common: { close: "Close", cancel: "Cancel", loading: "Loading...", minutes: "min", meters: "m" },
     categories: {
       departamento: "Academic department",
@@ -357,6 +432,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Health",
       auditorio: "Auditorium",
       esporte: "Sports area",
+      laboratorio: "Specialized laboratory",
     },
     accessibility: {
       title: "Accessibility",
@@ -366,6 +442,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       piso_tatil: "Tactile paving",
       banheiro: "Accessible restroom",
       vaga: "Reserved parking",
+      portas: "Wide doorways (90 cm)",
+      libras: "Sign language interpreter",
     },
     placeCard: {
       openNow: "Open now",
@@ -376,6 +454,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewFull: "View full place page",
       save: "Save place",
       saved: "Place saved",
+      hoursTo: "to",
     },
     placePage: {
       backToMap: "Back to interactive map",
@@ -446,6 +525,35 @@ export const dictionaries: Record<Language, Dictionary> = {
       supportLinks: "Support links",
       backToTopics: "Back to topics",
       translateHint: "Use the PT / EN / ES switch to change the language.",
+      sectionsLabel: "Welcome guides",
+      emptyReader: "Select a guide on the left to read the full content and support links.",
+      readingTime: "min read",
+      searchLabel: "Search the guides",
+      searchPlaceholder: "E.g. CPF, visa, canteen, consent...",
+      searchResults: "results across all guides",
+      noResults: "No guide matches this search.",
+      source: "Source",
+      viewOnMap: "View place on map",
+      progressOf: "of",
+      downloadsTitle: "Official booklets",
+      helpTitle: "Need help?",
+      emergencyTitle: "Emergency (free calls)",
+      timelineTitle: "Your document journey",
+      timelineIntro: "Follow the steps in order. Tick the documents you already have — progress is saved in this browser.",
+      openFolder: "Open folder in Google Drive",
+      photoCredit: "Photos",
+      copyLink: "Copy link",
+      linkCopied: "Link copied!",
+      topicsCount: "topics",
+      stages: { antes: "Before travelling", chegada: "On arrival (within 30 days)", "primeiras-semanas": "First weeks", mobilidade: "Calls and mobility" },
+    },
+    notices: {
+      title: "Campus notices",
+      subtitle: "UFRPE announcements about the Dois Irmãos (main) campus.",
+      empty: "No notices at the moment.",
+      error: "Could not load the notices.",
+      retry: "Try again",
+      portugueseOnly: "Notices are published in Portuguese.",
     },
     weeklyMenu: {
       title: "Weekly menu",
@@ -496,6 +604,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       recent: "Últimos accesos:",
       noResults: "No se encontraron lugares.",
       minChars: "Escribe al menos 3 caracteres para ver sugerencias.",
+      shortcut: "Atajo para buscar",
+      locating: "Obteniendo tu ubicación...",
+      locateDenied: "No fue posible acceder al GPS del dispositivo.",
+      locateOutside: "Estás fuera de los límites del campus Sede.",
     },
     map: {
       title: "Mapa del campus",
@@ -505,7 +617,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       zoomOut: "Alejar",
       recenter: "Centrar mapa",
     },
-    language: { label: "Idioma" },
+    language: { label: "Idioma", open: "Cambiar idioma" },
     common: { close: "Cerrar", cancel: "Cancelar", loading: "Cargando...", minutes: "min", meters: "m" },
     categories: {
       departamento: "Departamento académico",
@@ -517,6 +629,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Salud",
       auditorio: "Auditorio",
       esporte: "Área deportiva",
+      laboratorio: "Laboratorio especializado",
     },
     accessibility: {
       title: "Accesibilidad",
@@ -526,6 +639,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       piso_tatil: "Piso táctil",
       banheiro: "Baño adaptado",
       vaga: "Plaza reservada",
+      portas: "Puertas con vano libre (90 cm)",
+      libras: "Intérprete de lengua de señas",
     },
     placeCard: {
       openNow: "Abierto ahora",
@@ -536,6 +651,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewFull: "Ver página completa del lugar",
       save: "Guardar lugar",
       saved: "Lugar guardado",
+      hoursTo: "a",
     },
     placePage: {
       backToMap: "Volver al mapa interactivo",
@@ -606,6 +722,35 @@ export const dictionaries: Record<Language, Dictionary> = {
       supportLinks: "Enlaces de apoyo",
       backToTopics: "Volver a los temas",
       translateHint: "Usa el selector PT / EN / ES para cambiar el idioma.",
+      sectionsLabel: "Guías de acogida",
+      emptyReader: "Selecciona una guía al lado para leer el contenido completo y los enlaces de apoyo.",
+      readingTime: "min de lectura",
+      searchLabel: "Buscar en las guías",
+      searchPlaceholder: "Ej.: CPF, visa, comedor, consentimiento...",
+      searchResults: "resultados en todas las guías",
+      noResults: "Ninguna guía coincide con esta búsqueda.",
+      source: "Fuente",
+      viewOnMap: "Ver lugar en el mapa",
+      progressOf: "de",
+      downloadsTitle: "Cartillas oficiales",
+      helpTitle: "¿Necesitas ayuda?",
+      emergencyTitle: "Emergencia (llamada gratuita)",
+      timelineTitle: "Tu recorrido de documentos",
+      timelineIntro: "Sigue las etapas en orden. Marca los documentos que ya tienes — el progreso se guarda en este navegador.",
+      openFolder: "Abrir carpeta en Google Drive",
+      photoCredit: "Fotos",
+      copyLink: "Copiar enlace",
+      linkCopied: "¡Enlace copiado!",
+      topicsCount: "temas",
+      stages: { antes: "Antes de viajar", chegada: "Al llegar (hasta 30 días)", "primeiras-semanas": "Primeras semanas", mobilidade: "Convocatorias y movilidad" },
+    },
+    notices: {
+      title: "Avisos del campus",
+      subtitle: "Comunicados de la UFRPE sobre el campus Dois Irmãos (Sede).",
+      empty: "No hay avisos publicados por el momento.",
+      error: "No fue posible cargar los avisos.",
+      retry: "Intentar de nuevo",
+      portugueseOnly: "Los avisos se publican en portugués.",
     },
     weeklyMenu: {
       title: "Menú de la semana",
