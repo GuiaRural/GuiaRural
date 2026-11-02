@@ -7,7 +7,9 @@
 alter table public.services enable row level security;
 alter table public.avisos   enable row level security;
 alter table public.messages enable row level security;
+alter table public.contacts enable row level security;
 
 revoke all on table public.services from anon, authenticated;
 revoke all on table public.avisos   from anon, authenticated;
 revoke all on table public.messages from anon, authenticated;
+revoke all on table public.contacts from anon, authenticated;
