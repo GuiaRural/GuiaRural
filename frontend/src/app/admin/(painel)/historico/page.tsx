@@ -254,7 +254,8 @@ export default function HistoryPage() {
                         e.stopPropagation();
                         setSelected(l);
                       }}
-                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      aria-label={`Ver detalhes da mudança em ${l.entityName}`}
+                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-900"
                     >
                       Ver detalhes
                     </button>
