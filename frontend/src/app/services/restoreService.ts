@@ -1,7 +1,9 @@
 import type { AuditLog } from "../data/mockAuditLogs";
 import { restoreAdmin } from "./adminsService";
 import { recordChange } from "./auditService";
+import { restoreGuideTopic } from "./guidesService";
 import { restoreMenu } from "./menuService";
+import { restoreNotice } from "./noticesService";
 import { restorePlace } from "./placesService";
 import { delay } from "../lib/storage";
 
@@ -16,6 +18,8 @@ export async function restoreFromLog(log: AuditLog, author: string): Promise<voi
   if (!canRestore(log)) throw new Error("Restauração de serviços ainda não é suportada pelo backend.");
   if (log.entity === "Local") restorePlace(log.entityId, log.before);
   if (log.entity === "Cardápio") restoreMenu(log.entityId, log.before);
+  if (log.entity === "Aviso") restoreNotice(log.entityId, log.before);
+  if (log.entity === "Acolhimento") restoreGuideTopic(log.entityId, log.before);
   if (log.entity === "Administrador") restoreAdmin(log.entityId, log.before);
   recordChange({
     author,

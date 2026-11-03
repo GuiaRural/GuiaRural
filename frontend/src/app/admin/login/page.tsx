@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Logo from "../../components/common/Logo";
+import { takeFlash } from "../../lib/flash";
 import { login } from "../../services/authService";
 
 const MESSAGES = {
@@ -23,6 +24,13 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<keyof typeof MESSAGES | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [forgotInfo, setForgotInfo] = useState(false);
+  const [farewell, setFarewell] = useState<string | null>(null);
+
+  // Mensagem deixada pelo logout (UC24).
+  useEffect(() => {
+    const flash = takeFlash();
+    if (flash) queueMicrotask(() => setFarewell(flash));
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -82,6 +90,15 @@ export default function AdminLoginPage() {
             </div>
             <h1 className="mt-5 text-center text-2xl font-bold text-navy-900 sm:text-[28px]">Painel administrativo</h1>
             <p className="mt-3 text-center text-sm text-slate-500">Acesso restrito às equipes e setores da UFRPE</p>
+
+            {farewell && !error && (
+              <p role="status" className="mt-6 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                <svg aria-hidden className="mt-0.5 size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m5 12 5 5L20 7" />
+                </svg>
+                {farewell}
+              </p>
+            )}
 
             {error && (
               <p role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -152,7 +169,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-7 h-12 w-full rounded-lg bg-amber-400 text-base font-bold text-navy-900 shadow-sm hover:bg-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-900 disabled:opacity-70"
+              className="mt-7 h-12 w-full rounded-lg bg-brand-yellow text-base font-bold text-navy-900 shadow-sm hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-900 disabled:opacity-70"
             >
               {submitting ? "Entrando..." : "Entrar"}
             </button>

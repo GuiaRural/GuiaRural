@@ -1,4 +1,4 @@
-export type AuditEntity = "Local" | "Serviço" | "Cardápio" | "Administrador";
+export type AuditEntity = "Local" | "Serviço" | "Cardápio" | "Aviso" | "Acolhimento" | "Administrador";
 export type AuditAction = "criado" | "editado" | "deletado" | "restaurado";
 
 export type AuditLog = {

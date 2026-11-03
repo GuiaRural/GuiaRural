@@ -98,7 +98,7 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
 
         <Link
           href={`/locais/${place.id}`}
-          className="flex items-center justify-center gap-2 rounded-lg bg-brand-yellow px-3 py-2.5 text-sm font-bold text-navy-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900"
+          className="flex items-center justify-center gap-2 rounded-lg bg-navy-900 px-3 py-2.5 text-sm font-bold text-white hover:bg-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-yellow"
         >
           {t.placeCard.viewFull}
           <span aria-hidden>→</span>

@@ -139,7 +139,7 @@ function PlaceDetails({ place }: { place: Place }) {
           >
             {locating ? t.route.locating : t.placePage.traceRoute}
           </button>
-          <Link href={`/?local=${place.id}`} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+          <Link href={`/?local=${place.id}`} className="rounded-lg border border-navy-900 bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 hover:bg-navy-900/5">
             {t.placePage.viewOnMap}
           </Link>
         </div>
