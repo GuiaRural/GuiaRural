@@ -11,6 +11,25 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function apiSend<T>(method: "POST" | "PUT", path: string, body: unknown): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    method,
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new ApiError(response.status);
+  return (await response.json()) as T;
+}
+
+export const apiPost = <T>(path: string, body: unknown) => apiSend<T>("POST", path, body);
+export const apiPut = <T>(path: string, body: unknown) => apiSend<T>("PUT", path, body);
+
+// Sucesso no DELETE é 204, sem corpo para ler.
+export async function apiDelete(path: string): Promise<void> {
+  const response = await fetch(`/api${path}`, { method: "DELETE" });
+  if (!response.ok) throw new ApiError(response.status);
+}
+
 // O backend responde 400 para um id que não é número e 404 para um que não existe: para a tela, ambos são "não encontrado".
 export function isNotFound(error: unknown) {
   return error instanceof ApiError && (error.status === 404 || error.status === 400);
