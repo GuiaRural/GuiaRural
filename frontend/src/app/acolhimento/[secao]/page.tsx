@@ -361,6 +361,7 @@ function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void 
                     ) : (
                       <a href={l.url} target="_blank" rel="noopener noreferrer" className={className}>
                         {tr(l.label)} <span aria-hidden>↗</span>
+                        <span className="sr-only">({t.serviceCard.newTab})</span>
                       </a>
                     )}
                   </li>
@@ -558,7 +559,8 @@ function GalleryBlock({ block }: { block: Extract<GuideBlock, { type: "gallery" 
           </span>
         </span>
         <a href={block.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-navy-700 underline">
-          {t.guides.openFolder} ↗
+          {t.guides.openFolder} <span aria-hidden>↗</span>
+          <span className="sr-only">({t.serviceCard.newTab})</span>
         </a>
       </figcaption>
     </figure>
