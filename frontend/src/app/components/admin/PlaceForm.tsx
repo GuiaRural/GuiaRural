@@ -403,9 +403,16 @@ export default function PlaceForm({ place }: { place?: Place }) {
                 ✓ Foto principal definida
               </span>
               <div className="absolute right-3 top-3 flex gap-2">
-                <label className="cursor-pointer rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-navy-900 shadow hover:bg-white">
+                <label className="cursor-pointer rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-navy-900 shadow hover:bg-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-yellow">
                   Substituir imagem de fachada
-                  <input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={handlePhoto} />
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="sr-only"
+                    onChange={handlePhoto}
+                    aria-invalid={photoError}
+                    aria-describedby={photoError ? "pl-photo-error" : undefined}
+                  />
                 </label>
                 <button type="button" onClick={() => change(setPhoto)(undefined)} className="rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-red-700 shadow hover:bg-white">
                   Remover
@@ -419,7 +426,7 @@ export default function PlaceForm({ place }: { place?: Place }) {
             <label
               className={`flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center ${
                 photoError ? "border-red-400 bg-red-50" : "border-stone-300 bg-stone-50 hover:border-navy-700 hover:bg-white"
-              }`}
+              } has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-yellow`}
             >
               <svg aria-hidden className="size-9 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 7h3l2-3h6l2 3h3v13H4z" />
@@ -427,11 +434,18 @@ export default function PlaceForm({ place }: { place?: Place }) {
               </svg>
               <span className="text-sm font-semibold text-navy-900">Enviar fotografia de fachada</span>
               <span className="text-xs text-slate-500">JPG ou PNG, até 5MB</span>
-              <input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={handlePhoto} />
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="sr-only"
+                onChange={handlePhoto}
+                aria-invalid={photoError}
+                aria-describedby={photoError ? "pl-photo-error" : undefined}
+              />
             </label>
           )}
           {photoError && (
-            <p role="alert" className="mt-2 text-sm text-red-700">
+            <p id="pl-photo-error" role="alert" className="mt-2 text-sm text-red-700">
               {MESSAGES.photo}
             </p>
           )}
