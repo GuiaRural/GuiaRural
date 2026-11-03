@@ -174,6 +174,13 @@ export default function PlaceForm({ place }: { place?: Place }) {
     reader.readAsDataURL(file);
   }
 
+  // O resumo do erro fica no topo do formulário; rola até ele para que seja visto mesmo ao salvar pelo rodapé.
+  function fail(fields: Partial<Record<FieldKey, true>>, message: string) {
+    setErrors(fields);
+    setSummary(message);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function save(status: "rascunho" | "publicado") {
     const missing: Partial<Record<FieldKey, true>> = {};
     if (!name.trim()) missing.name = true;
@@ -183,29 +190,12 @@ export default function PlaceForm({ place }: { place?: Place }) {
       if (!category) missing.category = true;
       if (!hours) missing.hours = true;
     }
-    if (Object.keys(missing).length) {
-      setErrors(missing);
-      setSummary(MESSAGES.required);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+    if (Object.keys(missing).length) return fail(missing, MESSAGES.required);
     // FE-14.02
-    if (coordsFilled && !coordsValid) {
-      setErrors({ lat: true, lng: true });
-      setSummary(MESSAGES.coords);
-      return;
-    }
-    if (hours && !isValidHours(hours)) {
-      setErrors({ hours: true });
-      setSummary(MESSAGES.hours);
-      return;
-    }
+    if (coordsFilled && !coordsValid) return fail({ lat: true, lng: true }, MESSAGES.coords);
+    if (hours && !isValidHours(hours)) return fail({ hours: true }, MESSAGES.hours);
     // RN-UC14.01
-    if (status === "publicado" && !position) {
-      setErrors({ lat: true, lng: true });
-      setSummary(MESSAGES.georef);
-      return;
-    }
+    if (status === "publicado" && !position) return fail({ lat: true, lng: true }, MESSAGES.georef);
 
     setErrors({});
     setSummary(null);
