@@ -1,15 +1,21 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Sidebar from './Sidebar';
+import { useState, type ReactNode } from "react";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+const SIDEBAR_ID = "sidebar-nav";
+
+export default function AppShell({ children }: { children: ReactNode }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100">
-      <Sidebar />
-      <main className="relative flex-1 overflow-hidden">
-        {children}
-      </main>
+    <div className="flex h-dvh flex-col">
+      <Header menuId={SIDEBAR_ID} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} />
+      <div className="flex min-h-0 flex-1">
+        <Sidebar id={SIDEBAR_ID} open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <main className="relative min-w-0 flex-1">{children}</main>
+      </div>
     </div>
   );
 }
