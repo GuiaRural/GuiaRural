@@ -1,31 +1,34 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { LanguageProvider } from "./context/LanguageContext";
+'use client';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import './globals.css';
+import Header from './components/common/Header';
+import Sidebar from './components/common/Sidebar';
+import { LanguageProvider } from './context/LanguageContext';
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "GuiaRural UFRPE",
-  description: "Mapa e guia do campus Dois Irmãos (Sede) da UFRPE, de acesso livre.",
-};
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html
-      lang="pt"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-        <LanguageProvider>{children}</LanguageProvider>
+    <html lang="pt-BR" className="h-full w-full">
+      <body className="h-full w-full overflow-hidden bg-slate-100 antialiased">
+        <LanguageProvider>
+          <div className="flex h-screen w-screen flex-col overflow-hidden">
+            {/* Header Superior Fixo */}
+            <Header />
+
+            <div className="flex flex-1 overflow-hidden relative">
+              {/* Sidebar Fixa no Canto Esquerdo */}
+              <Sidebar />
+
+              {/* Conteúdo Dinâmico (Troca entre Mapa e Guia de Recife) */}
+              <main className="relative flex-1 h-full w-full overflow-y-auto">
+                {children}
+              </main>
+            </div>
+          </div>
+        </LanguageProvider>
       </body>
     </html>
   );

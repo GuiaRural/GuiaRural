@@ -1,7 +1,7 @@
 # Variáveis
 PORT ?= 8080
 BACKEND_DIR = backend
-MAVEN = ./mvnw
+MAVEN = mvnw
 
 .PHONY: help run run-port test clean
 

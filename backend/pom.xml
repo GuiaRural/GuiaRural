@@ -11,6 +11,10 @@
 	<groupId>br.com.guiarural</groupId>
 	<artifactId>backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+	<modules>
+		<module>escape</module>
+	</modules>
 	<name>backend</name>
 	<description/>
 	<url/>
