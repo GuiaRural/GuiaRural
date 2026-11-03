@@ -35,10 +35,34 @@ export type RecifeGuide = {
   support: { before: string; bold: string; after: string; cta: string };
 };
 
-// Conteúdo fictício copiado do protótipo (UC40), só em português, até a integração com a API.
-// Distâncias e horários não foram verificados; não representam dados oficiais da UFRPE.
 export const MOCK_RECIFE_GUIDE: RecifeGuide = {
   spots: [
+    {
+      id: "horto-dois-irmaos",
+      title: "Parque Estadual Dois Irmãos (Horto)",
+      address: "Praça Farias Neves, s/n, Dois Irmãos",
+      description:
+        "Vizinho imediato da UFRPE, é um dos maiores remanescentes de Mata Atlântica de Pernambuco. Abriga o Parque Zoobotânico com centenas de espécies de animais, açude, trilhas ecológicas guias e um centro de conservação ambiental.",
+      tag: { label: "Natureza & Conservação", tone: "olive" },
+      badge: { label: "Ao Lado da UFRPE (~1 km)", tone: "highlight" },
+      distance: { label: "Ter a Dom • 09h às 15h", icon: "clock" },
+      detailsLayout: "columns",
+      details: [
+        {
+          label: "Acesso discente",
+          text: "Ingresso simbólico com meia-entrada para estudantes",
+          icon: "ticket",
+          iconTone: "green",
+          emphasis: true,
+        },
+        {
+          label: "Destaques do parque",
+          text: "Mata nativa preserved, zoológico histórico e trilhas de educação ambiental.",
+          icon: "star",
+          iconTone: "amber",
+        },
+      ],
+    },
     {
       id: "marco-zero",
       title: "Marco Zero & Bairro do Recife Antigo",
@@ -66,6 +90,32 @@ export const MOCK_RECIFE_GUIDE: RecifeGuide = {
       ],
     },
     {
+      id: "muhne",
+      title: "Museu do Homem do Nordeste (MUHNE)",
+      address: "Avenida 17 de Agosto, Casa Forte",
+      description:
+        "Vinculado à Fundação Joaquim Nabuco (Fundaj) e muito próximo da UFRPE, o MUHNE possui um acervo antropológico e social valiosíssimo. Explora as matrizes culturais indígena, africana e européia na formação da sociedade nordestina.",
+      tag: { label: "Cultura & Sociedade", tone: "red" },
+      badge: { label: "Próximo à UFRPE (~3.2 km)", tone: "highlight" },
+      distance: { label: "Ter a Sex • 10h às 16h", icon: "clock" },
+      detailsLayout: "columns",
+      details: [
+        {
+          label: "Benefício UFRPE",
+          text: "Entrada gratuita / Meia-entrada discente",
+          icon: "graduation",
+          iconTone: "green",
+          emphasis: true,
+        },
+        {
+          label: "Destaques do acervo",
+          text: "Exposições sobre açúcar, religiosidade, arte popular e Cinema da Fundaj.",
+          icon: "star",
+          iconTone: "amber",
+        },
+      ],
+    },
+    {
       id: "irb",
       title: "Instituto Ricardo Brennand (IRB)",
       address: "Alameda Antônio Brennand, Várzea",
@@ -88,6 +138,101 @@ export const MOCK_RECIFE_GUIDE: RecifeGuide = {
           text: "Castelo São João, Pinacoteca dos Mestres, tapeçarias flamengas e jardins de Burle Marx.",
           icon: "star",
           iconTone: "amber",
+        },
+      ],
+    },
+    {
+      id: "jaqueira-tamarineira",
+      title: "Parque da Jaqueira & Parque da Tamarineira",
+      address: "Rua do Futuro / Av. Rosa e Silva, Zona Norte",
+      description:
+        "Duas das principais áreas verdes de convivência da Zona Norte. A Jaqueira conta com pista de cooper, ciclovia e feiras orgânicas; já o vizinho Parque da Tamarineira é um oásis arborizado recém-estruturado, ideal para passeios e leitura.",
+      tag: { label: "Lazer & Natureza", tone: "olive" },
+      badge: { label: "Acesso Livre • 05h às 22h", tone: "free" },
+      distance: { label: "Zona Norte • ~5.5 km", icon: "map" },
+      detailsLayout: "columns",
+      details: [
+        {
+          label: "Atividades",
+          text: "Pista de caminhada, estações de exercício, área verde para piqueniques e cafés ao redor.",
+        },
+        {
+          label: "Transporte fácil",
+          text: "Acesso direto por linhas de ônibus da Rosa e Silva",
+          icon: "link",
+          iconTone: "green",
+          emphasis: true,
+        },
+      ],
+    },
+    {
+      id: "parque-das-gracas",
+      title: "Parque das Graças (Orla do Capibaribe)",
+      address: "Rua das Graças / Beira do Rio Capibaribe",
+      description:
+        "Um dos novos cartões-postais sustentáveis do Recife. Um parque linear flutuante às margens do Rio Capibaribe, com mirantes panorâmicos, jardins de contemplação, playground e área dedicada a pets e mobilidade ativa.",
+      tag: { label: "Lazer & Natureza", tone: "olive" },
+      badge: { label: "Acesso Livre • 24h", tone: "free" },
+      distance: { label: "Zona Norte / Graças • ~7 km", icon: "map" },
+      detailsLayout: "columns",
+      details: [
+        {
+          label: "Melhor horário",
+          text: "Final de tarde (pôr do sol às margens do Capibaribe)",
+          icon: "sunset",
+          iconTone: "green",
+          emphasis: true,
+        },
+        {
+          label: "Atrações urbanas",
+          text: "Conexão com a malha cicloviária e gastronomia do bairro das Graças e Espinheiro.",
+        },
+      ],
+    },
+    {
+      id: "capela-dourada",
+      title: "Capela Dourada & Convento de São Francisco",
+      address: "Rua do Imperador Dom Pedro II, Santo Antônio",
+      description:
+        "Uma das maiores expressões do Barroco brasileiro no Nordeste. Famosa pela quantidade espetacular de talha em madeira coberta por folhas de ouro e painéis de azulejos portugueses do século XVIII.",
+      tag: { label: "História & Barroco", tone: "red" },
+      badge: { label: "Centro Histórico", tone: "free" },
+      distance: { label: "Seg a Sex • 09h às 16h", icon: "clock" },
+      detailsLayout: "columns",
+      details: [
+        {
+          label: "Destaque arquitetônico",
+          text: "Museu Franciscano de Arte Sacra, altar-mor folheado a ouro e pátio do convento.",
+        },
+        {
+          label: "Acesso",
+          text: "Ingresso simbólico com meia para estudantes",
+          icon: "ticket",
+          iconTone: "green",
+          emphasis: true,
+        },
+      ],
+    },
+    {
+      id: "riomar-recife",
+      title: "Shopping RioMar Recife",
+      address: "Avenida República do Líbano, Pina",
+      description:
+        "Um dos centros de compras e lazer mais modernos do país, situado às margens do Bacia do Pina. Conta com complexo de cinemas Cinemark, teatro moderno, alameda gourmet com restaurantes renomados e vista panorâmica para o manguezal e o mar.",
+      tag: { label: "Serviços & Lazer", tone: "navy" },
+      badge: { label: "Seg a Sáb 09h-22h • Dom 12h-21h", tone: "free" },
+      distance: { label: "Pina / Zona Sul • ~12 km", icon: "map" },
+      detailsLayout: "columns",
+      details: [
+        {
+          label: "Entretenimento & cultura",
+          text: "Teatro RioMar, salas de cinema VIP/XD, livrarias e praças de alimentação variadas.",
+        },
+        {
+          label: "Mobilidade",
+          text: "Conexão de ônibus via Via Mangue e Expresso RioMar",
+          icon: "link",
+          iconTone: "green",
         },
       ],
     },
