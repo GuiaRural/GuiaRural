@@ -58,6 +58,14 @@ export type Dictionary = {
   common: { close: string; cancel: string; loading: string; minutes: string; meters: string };
   categories: Record<PlaceCategory, string>;
   accessibility: Record<AccessibilityFeature, string> & { title: string; none: string };
+  serviceCard: {
+    howToApply: string;
+    requirements: string;
+    deadline: string;
+    openLink: string;
+    newTab: string;
+    newBadge: string;
+  };
   placeCard: {
     openNow: string;
     closed: string;
@@ -307,6 +315,14 @@ export const dictionaries: Record<Language, Dictionary> = {
       vaga: "Vaga reservada",
       portas: "Portas com vão livre (90 cm)",
       libras: "Intérprete de Libras",
+    },
+    serviceCard: {
+      howToApply: "Como solicitar",
+      requirements: "Requisitos e documentos",
+      deadline: "Prazo",
+      openLink: "Consultar edital ou guia",
+      newTab: "abre em nova aba",
+      newBadge: "Novo",
     },
     placeCard: {
       openNow: "Aberto agora",
@@ -562,6 +578,14 @@ export const dictionaries: Record<Language, Dictionary> = {
       portas: "Wide doorways (90 cm)",
       libras: "Sign language interpreter",
     },
+    serviceCard: {
+      howToApply: "How to apply",
+      requirements: "Requirements and documents",
+      deadline: "Deadline",
+      openLink: "View notice or guide",
+      newTab: "opens in a new tab",
+      newBadge: "New",
+    },
     placeCard: {
       openNow: "Open now",
       closed: "Closed now",
@@ -815,6 +839,14 @@ export const dictionaries: Record<Language, Dictionary> = {
       vaga: "Plaza reservada",
       portas: "Puertas con vano libre (90 cm)",
       libras: "Intérprete de lengua de señas",
+    },
+    serviceCard: {
+      howToApply: "Cómo solicitar",
+      requirements: "Requisitos y documentos",
+      deadline: "Plazo",
+      openLink: "Consultar convocatoria o guía",
+      newTab: "se abre en una pestaña nueva",
+      newBadge: "Nuevo",
     },
     placeCard: {
       openNow: "Abierto ahora",

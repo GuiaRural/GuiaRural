@@ -13,6 +13,7 @@ const SHORTCUTS = [
   { href: "/admin/locais", title: "Locais e prédios", text: "Cadastrar e publicar locais no mapa." },
   { href: "/admin/cardapio", title: "Cardápio da semana / RU", text: "Criar e duplicar cardápios do RU." },
   { href: "/admin/avisos", title: "Avisos do campus", text: "Publicar, editar e remover avisos." },
+  { href: "/admin/servicos", title: "Serviços", text: "Cadastrar serviços estudantis, passo a passo e editais." },
   { href: "/admin/acolhimento/cultura", title: "Acolhimento", text: "Editar cartilhas e traduções PT / EN / ES." },
   { href: "/admin/administradores", title: "Administradores", text: "Quem tem acesso ao painel." },
   { href: "/admin/historico", title: "Logs de mudanças / Histórico", text: "Auditar e desfazer alterações." },
