@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
+import { selectPlace } from "../../hooks/useSelectedPlaceId";
 import { getRecentPlaces, searchPlaces } from "../../services/placesService";
 
 export default function SearchBar() {
@@ -29,6 +30,7 @@ export default function SearchBar() {
   function select(place: Place) {
     setQuery(place.name);
     setOpen(false);
+    selectPlace(place.id);
   }
 
   const showList = open && query.trim().length > 0;
@@ -108,10 +110,23 @@ export default function SearchBar() {
       </div>
 
       {recent.length > 0 && (
-        <p className="mt-2 hidden truncate rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:block">
-          <span className="font-semibold">{t.search.recent}</span>{" "}
-          {recent.map((p) => p.name).join(" • ")}
-        </p>
+        <div className="mt-2 hidden items-center gap-1 overflow-hidden whitespace-nowrap rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
+          <span className="font-semibold">{t.search.recent}</span>
+          <ul className="flex min-w-0 items-center gap-1">
+            {recent.map((p, i) => (
+              <li key={p.id} className="flex items-center gap-1">
+                {i > 0 && <span aria-hidden>•</span>}
+                <button
+                  type="button"
+                  onClick={() => select(p)}
+                  className="rounded hover:text-navy-900 hover:underline focus-visible:outline-2 focus-visible:outline-navy-700"
+                >
+                  {p.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

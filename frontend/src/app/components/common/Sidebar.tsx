@@ -1,5 +1,6 @@
 'use client';
 
+<<<<<<< HEAD
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -8,6 +9,12 @@ import {
   GraduationCap, Wrench, Calendar, HeartHandshake, 
   FileText, HelpCircle, Map, Headset, Accessibility, UserCheck 
 } from 'lucide-react';
+=======
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useLanguage } from "../../context/LanguageContext";
+import type { Dictionary } from "../../i18n/dictionaries";
+>>>>>>> 3e9ba4ef989892cd785ea197f561d90b1a5548d7
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -118,4 +125,49 @@ export default function Sidebar() {
       </div>
     </aside>
   );
+<<<<<<< HEAD
 }
+=======
+}
+
+export default function Sidebar({ id, open, onClose }: { id: string; open: boolean; onClose: () => void }) {
+  const { t } = useLanguage();
+  const pathname = usePathname();
+
+  return (
+    <>
+      {open && (
+        <button
+          type="button"
+          aria-label={t.sidebar.closeMenu}
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+        />
+      )}
+      <aside
+        id={id}
+        className={`fixed inset-y-0 left-0 z-40 w-64 overflow-y-auto bg-navy-900 px-3 pb-6 pt-16 text-white transition-transform md:static md:z-auto md:translate-x-0 md:pt-4 ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <nav aria-label={t.sidebar.campusNavigation}>
+          <div className="px-3 pb-3">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              {t.sidebar.campusNavigation}
+            </h2>
+            <p className="mt-1 font-semibold">{t.sidebar.campusName}</p>
+          </div>
+          <p className="border-t border-white/10 px-3 pt-3 text-xs text-slate-400">{t.sidebar.cityLabel}</p>
+          <div className="mt-2">
+            <NavGroup items={NAV} current={pathname} />
+          </div>
+          <SectionTitle>{t.sidebar.welcomeSection}</SectionTitle>
+          <NavGroup items={WELCOME} current={pathname} />
+          <SectionTitle>{t.sidebar.supportSection}</SectionTitle>
+          <NavGroup items={SUPPORT} current={pathname} />
+        </nav>
+      </aside>
+    </>
+  );
+}
+>>>>>>> 3e9ba4ef989892cd785ea197f561d90b1a5548d7

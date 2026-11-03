@@ -35,8 +35,51 @@ export type Dictionary = {
     recent: string;
     noResults: string;
   };
-  map: { placeholderTitle: string; placeholderText: string };
+  map: { title: string; loading: string; zoomIn: string; zoomOut: string };
   language: { label: string };
+  guide: {
+    breadcrumbLabel: string;
+    breadcrumbHome: string;
+    breadcrumbCurrent: string;
+    defaultOrigin: string;
+    quickTips: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    tipsTitle: string;
+    tipsSubtitle: string;
+    partnerships: string;
+    footerBrand: string;
+    footerTagline: string;
+    footerInstitution: string;
+    scale: string;
+    errorTitle: string;
+    errorText: string;
+    retry: string;
+    saveSpot: string;
+    unsaveSpot: string;
+  };
+  place: {
+    close: string;
+    save: string;
+    unsave: string;
+    hours: string;
+    until: string;
+    openNow: string;
+    closed: string;
+    viewDetails: string;
+    breadcrumbLabel: string;
+    home: string;
+    backToMap: string;
+    about: string;
+    howToGet: string;
+    servicesTitle: string;
+    noHours: string;
+    notFoundTitle: string;
+    notFoundText: string;
+    loadErrorTitle: string;
+    loadErrorText: string;
+    retry: string;
+  };
 };
 
 export const dictionaries: Record<Language, Dictionary> = {
@@ -75,10 +118,56 @@ export const dictionaries: Record<Language, Dictionary> = {
       noResults: "Nenhum local encontrado",
     },
     map: {
-      placeholderTitle: "Mapa do campus",
-      placeholderText: "O mapa interativo (Leaflet + OpenStreetMap) será integrado aqui.",
+      title: "Mapa do campus",
+      loading: "Carregando o mapa…",
+      zoomIn: "Aumentar zoom",
+      zoomOut: "Diminuir zoom",
     },
     language: { label: "Idioma" },
+    guide: {
+      breadcrumbLabel: "Trilha de navegação",
+      breadcrumbHome: "Início",
+      breadcrumbCurrent: "Guia de Recife & RMR",
+      defaultOrigin: "Origem Padrão: Campus Dois Irmãos (UFRPE)",
+      quickTips: "Dicas Rápidas de Mobilidade",
+      heroTitle: "Guia de Recife • Conheça a Cidade Além do Campus",
+      heroSubtitle:
+        "Selecionamos os pontos culturais, históricos e litorâneos mais emblemáticos da capital pernambucana e arredores.",
+      tipsTitle: "Dicas Essenciais para Estudantes na RMR",
+      tipsSubtitle: "Facilitando sua circulação autônoma por Recife, Olinda e Região Metropolitana.",
+      partnerships: "Convênios & parcerias UFRPE ativas",
+      footerBrand: "GuiaRural • UFRPE",
+      footerTagline: "— Plataforma Aberta de Mobilidade & Cidadania Universitária",
+      footerInstitution: "Universidade Federal Rural de Pernambuco • Pró-Reitoria de Assuntos Estudantis",
+      scale: "Escala 1:2500 • Recife-PE",
+      errorTitle: "Não foi possível carregar o guia",
+      errorText: "Verifique sua conexão e tente novamente.",
+      retry: "Tentar novamente",
+      saveSpot: "Salvar local",
+      unsaveSpot: "Remover local salvo",
+    },
+    place: {
+      close: "Fechar",
+      save: "Salvar local",
+      unsave: "Remover local salvo",
+      hours: "Horário",
+      until: "às",
+      openNow: "Aberto agora",
+      closed: "Fechado",
+      viewDetails: "Ver Página Completa do Local",
+      breadcrumbLabel: "Trilha de navegação",
+      home: "Início",
+      backToMap: "Voltar ao mapa",
+      about: "Sobre o local",
+      howToGet: "Como chegar",
+      servicesTitle: "Serviços disponíveis",
+      noHours: "Horário não informado",
+      notFoundTitle: "Local não encontrado",
+      notFoundText: "O endereço pode estar incorreto ou o local não está mais cadastrado.",
+      loadErrorTitle: "Não foi possível carregar o local",
+      loadErrorText: "Verifique sua conexão e tente novamente.",
+      retry: "Tentar novamente",
+    },
   },
   en: {
     header: { publicPlatform: "Public Platform • Free Access" },
@@ -115,10 +204,56 @@ export const dictionaries: Record<Language, Dictionary> = {
       noResults: "No places found",
     },
     map: {
-      placeholderTitle: "Campus map",
-      placeholderText: "The interactive map (Leaflet + OpenStreetMap) will be integrated here.",
+      title: "Campus map",
+      loading: "Loading the map…",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
     },
     language: { label: "Language" },
+    guide: {
+      breadcrumbLabel: "Breadcrumb",
+      breadcrumbHome: "Home",
+      breadcrumbCurrent: "Recife & RMR Guide",
+      defaultOrigin: "Default origin: Dois Irmãos Campus (UFRPE)",
+      quickTips: "Quick Mobility Tips",
+      heroTitle: "Recife Guide • Discover the City Beyond the Campus",
+      heroSubtitle:
+        "We selected the most emblematic cultural, historic and coastal spots of the capital of Pernambuco and its surroundings.",
+      tipsTitle: "Essential Tips for Students in the RMR",
+      tipsSubtitle: "Making it easier to get around Recife, Olinda and the Metropolitan Region on your own.",
+      partnerships: "Active UFRPE agreements & partnerships",
+      footerBrand: "GuiaRural • UFRPE",
+      footerTagline: "— Open Platform for Mobility & University Citizenship",
+      footerInstitution: "Federal Rural University of Pernambuco • Student Affairs Office",
+      scale: "Scale 1:2500 • Recife-PE",
+      errorTitle: "Could not load the guide",
+      errorText: "Check your connection and try again.",
+      retry: "Try again",
+      saveSpot: "Save place",
+      unsaveSpot: "Remove saved place",
+    },
+    place: {
+      close: "Close",
+      save: "Save place",
+      unsave: "Remove saved place",
+      hours: "Hours",
+      until: "to",
+      openNow: "Open now",
+      closed: "Closed",
+      viewDetails: "View Full Place Page",
+      breadcrumbLabel: "Breadcrumb",
+      home: "Home",
+      backToMap: "Back to map",
+      about: "About this place",
+      howToGet: "How to get there",
+      servicesTitle: "Available services",
+      noHours: "Hours not provided",
+      notFoundTitle: "Place not found",
+      notFoundText: "The address may be wrong or the place is no longer listed.",
+      loadErrorTitle: "Couldn't load this place",
+      loadErrorText: "Check your connection and try again.",
+      retry: "Try again",
+    },
   },
   es: {
     header: { publicPlatform: "Plataforma Pública • Acceso Libre" },
@@ -155,9 +290,55 @@ export const dictionaries: Record<Language, Dictionary> = {
       noResults: "No se encontraron lugares",
     },
     map: {
-      placeholderTitle: "Mapa del campus",
-      placeholderText: "El mapa interactivo (Leaflet + OpenStreetMap) se integrará aquí.",
+      title: "Mapa del campus",
+      loading: "Cargando el mapa…",
+      zoomIn: "Acercar",
+      zoomOut: "Alejar",
     },
     language: { label: "Idioma" },
+    guide: {
+      breadcrumbLabel: "Ruta de navegación",
+      breadcrumbHome: "Inicio",
+      breadcrumbCurrent: "Guía de Recife & RMR",
+      defaultOrigin: "Origen predeterminado: Campus Dois Irmãos (UFRPE)",
+      quickTips: "Consejos Rápidos de Movilidad",
+      heroTitle: "Guía de Recife • Conoce la Ciudad Más Allá del Campus",
+      heroSubtitle:
+        "Seleccionamos los puntos culturales, históricos y costeros más emblemáticos de la capital de Pernambuco y alrededores.",
+      tipsTitle: "Consejos Esenciales para Estudiantes en la RMR",
+      tipsSubtitle: "Facilitando tu circulación autónoma por Recife, Olinda y la Región Metropolitana.",
+      partnerships: "Convenios y alianzas UFRPE activos",
+      footerBrand: "GuiaRural • UFRPE",
+      footerTagline: "— Plataforma Abierta de Movilidad y Ciudadanía Universitaria",
+      footerInstitution: "Universidad Federal Rural de Pernambuco • Pro-Rectoría de Asuntos Estudiantiles",
+      scale: "Escala 1:2500 • Recife-PE",
+      errorTitle: "No se pudo cargar la guía",
+      errorText: "Revisa tu conexión e inténtalo de nuevo.",
+      retry: "Intentar de nuevo",
+      saveSpot: "Guardar lugar",
+      unsaveSpot: "Quitar lugar guardado",
+    },
+    place: {
+      close: "Cerrar",
+      save: "Guardar lugar",
+      unsave: "Quitar lugar guardado",
+      hours: "Horario",
+      until: "a",
+      openNow: "Abierto ahora",
+      closed: "Cerrado",
+      viewDetails: "Ver Página Completa del Lugar",
+      breadcrumbLabel: "Ruta de navegación",
+      home: "Inicio",
+      backToMap: "Volver al mapa",
+      about: "Sobre el lugar",
+      howToGet: "Cómo llegar",
+      servicesTitle: "Servicios disponibles",
+      noHours: "Horario no informado",
+      notFoundTitle: "Lugar no encontrado",
+      notFoundText: "La dirección puede ser incorrecta o el lugar ya no está registrado.",
+      loadErrorTitle: "No se pudo cargar el lugar",
+      loadErrorText: "Verifica tu conexión e inténtalo de nuevo.",
+      retry: "Intentar de nuevo",
+    },
   },
 };
