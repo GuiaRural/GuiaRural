@@ -19,10 +19,10 @@ export default function RootLayout({
             <Header />
 
             <div className="flex flex-1 overflow-hidden relative">
-              {/* Sidebar Fixa no Canto Esquerdo */}
+              {/* Sidebar Fixa */}
               <Sidebar />
 
-              {/* Conteúdo Dinâmico (Troca entre Mapa e Guia de Recife) */}
+              {/* Conteúdo Dinâmico */}
               <main className="relative flex-1 h-full w-full overflow-y-auto">
                 {children}
               </main>

@@ -1,19 +1,25 @@
-"use client";
+'use client';
 
-import { useLanguage } from "../../context/LanguageContext";
+import React from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
-// Ocupa o lugar do mapa enquanto o Leaflet (só cliente) é carregado.
 export default function MapLoading() {
-  const { t } = useLanguage();
+  let loadingText = 'Carregando mapa da UFRPE...';
+
+  try {
+    const { t } = useLanguage();
+    if (t?.map?.loading) {
+      loadingText = t.map.loading;
+    }
+  } catch (e) {
+    // Fallback seguro caso o contexto ainda não esteja montado
+  }
 
   return (
-    <div
-      role="status"
-      className="absolute inset-0 grid place-items-center bg-[#e6efdc] bg-[radial-gradient(circle,#c9d9b8_1px,transparent_1px)] [background-size:24px_24px]"
-    >
-      <div className="mx-6 max-w-sm rounded-xl bg-white/90 p-5 text-center shadow">
-        <p className="font-semibold text-navy-900">{t.map.title}</p>
-        <p className="mt-1 text-sm text-slate-700">{t.map.loading}</p>
+    <div className="flex h-full w-full items-center justify-center bg-slate-100/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-3 p-6 bg-white rounded-2xl shadow-lg border border-slate-200/80">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        <p className="text-xs font-semibold text-slate-700">{loadingText}</p>
       </div>
     </div>
   );

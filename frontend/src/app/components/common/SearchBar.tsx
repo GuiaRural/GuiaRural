@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
@@ -7,7 +7,28 @@ import { selectPlace } from "../../hooks/useSelectedPlaceId";
 import { getRecentPlaces, searchPlaces } from "../../services/placesService";
 
 export default function SearchBar() {
-  const { t } = useLanguage();
+  // Fallbacks seguros de traduções para evitar quebras de renderização
+  let searchLabel = "Buscar locais";
+  let placeholderText = "Buscar locais, prédios...";
+  let noResultsText = "Nenhum local encontrado";
+  let myLocationText = "Minha localização";
+  let filtersText = "Filtros";
+  let recentText = "Últimos acessos:";
+
+  try {
+    const { t } = useLanguage();
+    if (t?.search) {
+      searchLabel = t.search.label || searchLabel;
+      placeholderText = t.search.placeholder || placeholderText;
+      noResultsText = t.search.noResults || noResultsText;
+      myLocationText = t.search.myLocation || myLocationText;
+      filtersText = t.search.filters || filtersText;
+      recentText = t.search.recent || recentText;
+    }
+  } catch (e) {
+    // Mantém fallbacks padrão caso o contexto ainda não esteja montado
+  }
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Place[]>([]);
   const [recent, setRecent] = useState<Place[]>([]);
@@ -49,8 +70,8 @@ export default function SearchBar() {
               role="combobox"
               aria-expanded={showList}
               aria-controls="search-suggestions"
-              aria-label={t.search.label}
-              placeholder={t.search.placeholder}
+              aria-label={searchLabel}
+              placeholder={placeholderText}
               value={query}
               onChange={(e) => handleChange(e.target.value)}
               onFocus={() => setOpen(true)}
@@ -64,7 +85,7 @@ export default function SearchBar() {
                 className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-slate-300 bg-white shadow-lg"
               >
                 {results.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-600">{t.search.noResults}</li>
+                  <li className="px-3 py-2 text-sm text-slate-600">{noResultsText}</li>
                 ) : (
                   results.map((p) => (
                     <li key={p.id} role="option" aria-selected={false}>
@@ -84,8 +105,8 @@ export default function SearchBar() {
           </div>
           <button
             type="button"
-            aria-label={t.search.myLocation}
-            title={t.search.myLocation}
+            aria-label={myLocationText}
+            title={myLocationText}
             className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-yellow text-navy-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900"
           >
             <svg aria-hidden className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -96,8 +117,8 @@ export default function SearchBar() {
           </button>
           <button
             type="button"
-            aria-label={t.search.filters}
-            title={t.search.filters}
+            aria-label={filtersText}
+            title={filtersText}
             className="hidden size-10 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 sm:grid"
           >
             <svg aria-hidden className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -111,7 +132,7 @@ export default function SearchBar() {
 
       {recent.length > 0 && (
         <div className="mt-2 hidden items-center gap-1 overflow-hidden whitespace-nowrap rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
-          <span className="font-semibold">{t.search.recent}</span>
+          <span className="font-semibold">{recentText}</span>
           <ul className="flex min-w-0 items-center gap-1">
             {recent.map((p, i) => (
               <li key={p.id} className="flex items-center gap-1">
