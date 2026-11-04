@@ -339,6 +339,12 @@ function NewAdminForm({
 
   const field = (key: keyof Errors) => `${fieldClass} ${errors[key] ? "border-red-500 bg-red-50/40" : "border-slate-300"}`;
   const select = (key: keyof Errors, empty: boolean) => `${field(key)} appearance-none pr-10 ${empty ? "text-slate-500" : ""}`;
+  // Liga o campo à mensagem de erro/dica renderizada por <Field> (id `${id}-msg`).
+  const describe = (key: keyof Errors, id: string, hasHint = false) => ({
+    "aria-invalid": !!errors[key],
+    "aria-required": true,
+    "aria-describedby": errors[key] || hasHint ? `${id}-msg` : undefined,
+  });
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5 sm:px-1 sm:py-1">
@@ -354,14 +360,14 @@ function NewAdminForm({
       )}
       <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
         <Field id="adm-name" label="Nome completo" error={errors.name}>
-          <input id="adm-name" className={field("name")} placeholder="Ex: Profa. Maria Silva" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!errors.name} />
+          <input id="adm-name" className={field("name")} placeholder="Ex: Profa. Maria Silva" value={name} onChange={(e) => setName(e.target.value)} {...describe("name", "adm-name")} />
         </Field>
         <Field id="adm-email" label="E-mail institucional" error={errors.email} hint="Obrigatório domínio @ufrpe.br">
-          <input id="adm-email" type="email" className={field("email")} placeholder="nome.sobrenome@ufrpe.br" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.email} />
+          <input id="adm-email" type="email" className={field("email")} placeholder="nome.sobrenome@ufrpe.br" value={email} onChange={(e) => setEmail(e.target.value)} {...describe("email", "adm-email", true)} />
         </Field>
         <Field id="adm-sector" label="Setor / departamento responsável" error={errors.sector}>
           <SelectWrap>
-            <select id="adm-sector" className={select("sector", !sector)} value={sector} onChange={(e) => setSector(e.target.value as Sector)} aria-invalid={!!errors.sector}>
+            <select id="adm-sector" className={select("sector", !sector)} value={sector} onChange={(e) => setSector(e.target.value as Sector)} {...describe("sector", "adm-sector")}>
               <option value="">Selecione um setor...</option>
               {SECTORS.map((s) => (
                 <option key={s}>{s}</option>
@@ -371,7 +377,7 @@ function NewAdminForm({
         </Field>
         <Field id="adm-permission" label="Nível de permissão" error={errors.permission}>
           <SelectWrap>
-            <select id="adm-permission" className={select("permission", !permission)} value={permission} onChange={(e) => setPermission(e.target.value as Permission)} aria-invalid={!!errors.permission}>
+            <select id="adm-permission" className={select("permission", !permission)} value={permission} onChange={(e) => setPermission(e.target.value as Permission)} {...describe("permission", "adm-permission")}>
               <option value="">Defina o escopo de acesso...</option>
               {Object.entries(PERMISSIONS).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -382,10 +388,10 @@ function NewAdminForm({
           </SelectWrap>
         </Field>
         <Field id="adm-password" label="Senha provisória" error={errors.password}>
-          <input id="adm-password" type="password" autoComplete="new-password" placeholder="••••••••" className={field("password")} value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={!!errors.password} />
+          <input id="adm-password" type="password" autoComplete="new-password" placeholder="••••••••" className={field("password")} value={password} onChange={(e) => setPassword(e.target.value)} {...describe("password", "adm-password")} />
         </Field>
         <Field id="adm-confirm" label="Confirmar senha provisória" error={errors.confirm}>
-          <input id="adm-confirm" type="password" autoComplete="new-password" placeholder="••••••••" className={field("confirm")} value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={!!errors.confirm} />
+          <input id="adm-confirm" type="password" autoComplete="new-password" placeholder="••••••••" className={field("confirm")} value={confirm} onChange={(e) => setConfirm(e.target.value)} {...describe("confirm", "adm-confirm")} />
         </Field>
       </div>
       {/* FA-13.02: desmarcar evita o envio automático */}
@@ -425,10 +431,20 @@ function Field({ id, label, error, hint, children }: { id: string; label: string
   return (
     <div>
       <label htmlFor={id} className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-        {label} <span className="text-red-600">*</span>
+        {label} <span aria-hidden className="text-red-600">*</span>
       </label>
       <div className="mt-2">{children}</div>
-      {error ? <p className="mt-1 text-xs text-red-700">{error}</p> : hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {error ? (
+        <p id={`${id}-msg`} className="mt-1 text-xs text-red-700">
+          {error}
+        </p>
+      ) : (
+        hint && (
+          <p id={`${id}-msg`} className="mt-1 text-xs text-slate-500">
+            {hint}
+          </p>
+        )
+      )}
     </div>
   );
 }

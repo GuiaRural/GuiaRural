@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
 // Usa <dialog> nativo: foco preso no modal, Esc fecha e o fundo fica inerte.
 export default function Modal({
@@ -21,6 +22,8 @@ export default function Modal({
   size?: "sm" | "md" | "lg";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -38,7 +41,7 @@ export default function Modal({
         e.preventDefault();
         onClose();
       }}
-      aria-labelledby="modal-title"
+      aria-labelledby={titleId}
       className={`m-auto w-[calc(100%-2rem)] ${width} overflow-hidden rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/60`}
     >
       {open && (
@@ -51,7 +54,7 @@ export default function Modal({
                 </span>
               )}
               <div>
-                <h2 id="modal-title" className="text-lg font-bold">
+                <h2 id={titleId} className="text-lg font-bold">
                   {title}
                 </h2>
                 {description && <p className="mt-0.5 text-xs text-slate-300">{description}</p>}
@@ -60,7 +63,7 @@ export default function Modal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Fechar"
+              aria-label={t.common.close}
               className="grid size-8 shrink-0 place-items-center rounded-md hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-brand-yellow"
             >
               <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
