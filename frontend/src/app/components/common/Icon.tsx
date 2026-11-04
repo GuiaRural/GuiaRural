@@ -18,6 +18,7 @@ export type IconName =
   | "compass"
   | "headset"
   | "bus"
+  | "megaphone"
   | "pencil"
   | "trash"
   | "plus";
@@ -80,6 +81,7 @@ const PATHS: Record<IconName, string[]> = {
     "M7 21v-3",
     "M17 21v-3",
   ],
+  megaphone: ["m3 11 18-5v12L3 14v-3z", "M11.6 16.8a3 3 0 1 1-5.8-1.6"],
   pencil: ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"],
   trash: ["M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6", "M10 11v6", "M14 11v6"],
   plus: ["M12 5v14", "M5 12h14"],
