@@ -16,7 +16,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // CT-026.04: Exibe mensagem de alerta se a sessão foi expirada
     if (searchParams.get("expired") === "true") {
       setError("Sua sessão expirou. Faça login novamente para continuar.");
     }

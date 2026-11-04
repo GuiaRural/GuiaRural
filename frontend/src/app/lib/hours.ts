@@ -1,7 +1,9 @@
 // Interpreta horários no formato "07:00-18:00" ou "11:00-14:00, 17:30-19:30" (dias úteis).
 function toMinutes(hhmm: string): number | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  if (!m) return null;
+  const [h, min] = [Number(m[1]), Number(m[2])];
+  return h <= 23 && min <= 59 ? h * 60 + min : null;
 }
 
 // O campus funciona no horário de Recife, independente do fuso de quem acessa (ex.: estudante ainda no exterior).

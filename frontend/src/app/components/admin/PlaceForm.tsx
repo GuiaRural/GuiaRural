@@ -174,6 +174,13 @@ export default function PlaceForm({ place }: { place?: Place }) {
     reader.readAsDataURL(file);
   }
 
+  // O resumo do erro fica no topo do formulário; rola até ele para que seja visto mesmo ao salvar pelo rodapé.
+  function fail(fields: Partial<Record<FieldKey, true>>, message: string) {
+    setErrors(fields);
+    setSummary(message);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function save(status: "rascunho" | "publicado") {
     const missing: Partial<Record<FieldKey, true>> = {};
     if (!name.trim()) missing.name = true;
@@ -183,29 +190,12 @@ export default function PlaceForm({ place }: { place?: Place }) {
       if (!category) missing.category = true;
       if (!hours) missing.hours = true;
     }
-    if (Object.keys(missing).length) {
-      setErrors(missing);
-      setSummary(MESSAGES.required);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+    if (Object.keys(missing).length) return fail(missing, MESSAGES.required);
     // FE-14.02
-    if (coordsFilled && !coordsValid) {
-      setErrors({ lat: true, lng: true });
-      setSummary(MESSAGES.coords);
-      return;
-    }
-    if (hours && !isValidHours(hours)) {
-      setErrors({ hours: true });
-      setSummary(MESSAGES.hours);
-      return;
-    }
+    if (coordsFilled && !coordsValid) return fail({ lat: true, lng: true }, MESSAGES.coords);
+    if (hours && !isValidHours(hours)) return fail({ hours: true }, MESSAGES.hours);
     // RN-UC14.01
-    if (status === "publicado" && !position) {
-      setErrors({ lat: true, lng: true });
-      setSummary(MESSAGES.georef);
-      return;
-    }
+    if (status === "publicado" && !position) return fail({ lat: true, lng: true }, MESSAGES.georef);
 
     setErrors({});
     setSummary(null);
@@ -413,9 +403,16 @@ export default function PlaceForm({ place }: { place?: Place }) {
                 ✓ Foto principal definida
               </span>
               <div className="absolute right-3 top-3 flex gap-2">
-                <label className="cursor-pointer rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-navy-900 shadow hover:bg-white">
+                <label className="cursor-pointer rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-navy-900 shadow hover:bg-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-yellow">
                   Substituir imagem de fachada
-                  <input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={handlePhoto} />
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="sr-only"
+                    onChange={handlePhoto}
+                    aria-invalid={photoError}
+                    aria-describedby={photoError ? "pl-photo-error" : undefined}
+                  />
                 </label>
                 <button type="button" onClick={() => change(setPhoto)(undefined)} className="rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-red-700 shadow hover:bg-white">
                   Remover
@@ -429,7 +426,7 @@ export default function PlaceForm({ place }: { place?: Place }) {
             <label
               className={`flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center ${
                 photoError ? "border-red-400 bg-red-50" : "border-stone-300 bg-stone-50 hover:border-navy-700 hover:bg-white"
-              }`}
+              } has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-yellow`}
             >
               <svg aria-hidden className="size-9 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 7h3l2-3h6l2 3h3v13H4z" />
@@ -437,11 +434,18 @@ export default function PlaceForm({ place }: { place?: Place }) {
               </svg>
               <span className="text-sm font-semibold text-navy-900">Enviar fotografia de fachada</span>
               <span className="text-xs text-slate-500">JPG ou PNG, até 5MB</span>
-              <input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={handlePhoto} />
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="sr-only"
+                onChange={handlePhoto}
+                aria-invalid={photoError}
+                aria-describedby={photoError ? "pl-photo-error" : undefined}
+              />
             </label>
           )}
           {photoError && (
-            <p role="alert" className="mt-2 text-sm text-red-700">
+            <p id="pl-photo-error" role="alert" className="mt-2 text-sm text-red-700">
               {MESSAGES.photo}
             </p>
           )}

@@ -161,11 +161,11 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
       <Section title="Dia e turno" subtitle="Só é possível um cardápio por dia e turno.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="mn-date" label="Data de referência" required>
-            <input id="mn-date" type="date" className={inputCls("date")} value={fields.date} onChange={(e) => update("date", e.target.value)} aria-invalid={!!errors.date} />
+            <input id="mn-date" type="date" className={inputCls("date")} value={fields.date} onChange={(e) => update("date", e.target.value)} required aria-invalid={!!errors.date} />
           </Field>
           <fieldset>
             <legend className="block text-xs font-bold text-slate-800">
-              Turno <span className="text-red-600">*</span>
+              Turno <span aria-hidden className="text-red-600">*</span>
             </legend>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(Object.keys(SHIFT_LABELS) as Shift[]).map((s) => (
@@ -175,7 +175,7 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
                     fields.shift === s ? "border-navy-900 bg-navy-900 text-white" : errors.shift ? "border-red-500 bg-red-50/50 text-slate-800" : "border-stone-200 bg-stone-50 text-slate-800 hover:bg-white"
                   }`}
                 >
-                  <input type="radio" name="shift" value={s} checked={fields.shift === s} onChange={() => update("shift", s)} className="sr-only" />
+                  <input type="radio" name="shift" value={s} checked={fields.shift === s} onChange={() => update("shift", s)} required className="sr-only" />
                   {SHIFT_LABELS[s]}
                 </label>
               ))}
@@ -194,6 +194,7 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
                 placeholder={d.placeholder}
                 value={fields[d.key]}
                 onChange={(e) => update(d.key, e.target.value)}
+                required={d.required}
                 aria-invalid={!!errors[d.key]}
               />
             </Field>
@@ -220,7 +221,7 @@ function Field({ id, label, required, children }: { id: string; label: string; r
   return (
     <div>
       <label htmlFor={id} className="block text-xs font-bold text-slate-800">
-        {label} {required && <span className="text-red-600">*</span>}
+        {label} {required && <span aria-hidden className="text-red-600">*</span>}
       </label>
       <div className="mt-2">{children}</div>
     </div>
