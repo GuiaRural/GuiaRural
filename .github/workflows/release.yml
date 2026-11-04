@@ -1,0 +1,47 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+  # Execucao manual (rodar a partir da main): faz so o dry-run, sem publicar nada.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Generate Release and Changelog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # RELEASE_TOKEN: token de um admin (esta na lista de bypass do ruleset da main).
+          # O GITHUB_TOKEN nao serve: o push do commit de release na main seria recusado.
+          token: ${{ secrets.RELEASE_TOKEN }}
+          persist-credentials: true
+
+      - name: Set up node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Sem npm ci: o semantic-release so le/atualiza a versao em frontend/package.json
+      # (pkgRoot) e nao publica no npm. Ele e os plugins sao instalados so no runner,
+      # sem entrar nas dependencias do frontend.
+      - name: Executar Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: >
+          npx --yes
+          -p semantic-release
+          -p @semantic-release/changelog
+          -p @semantic-release/git
+          semantic-release
+          ${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}
