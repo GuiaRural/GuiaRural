@@ -101,7 +101,7 @@ export default function AdminLoginPage() {
             )}
 
             {error && (
-              <p role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <p id="login-error" role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                 {MESSAGES[error]}
               </p>
             )}
@@ -116,6 +116,7 @@ export default function AdminLoginPage() {
               placeholder="setor@ufrpe.br"
               value={email}
               aria-invalid={emailInvalid}
+              aria-describedby={emailInvalid ? "login-error" : undefined}
               onChange={(e) => setEmail(e.target.value)}
               className={`mt-2 ${inputClass(emailInvalid)}`}
             />
@@ -131,6 +132,7 @@ export default function AdminLoginPage() {
                 placeholder="••••••••"
                 value={password}
                 aria-invalid={passwordInvalid}
+                aria-describedby={passwordInvalid ? "login-error" : undefined}
                 onChange={(e) => setPassword(e.target.value)}
                 className={`pr-11 ${inputClass(passwordInvalid)}`}
               />
