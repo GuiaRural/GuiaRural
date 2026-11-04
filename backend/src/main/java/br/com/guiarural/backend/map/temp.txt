@@ -1,0 +1,10 @@
+📁 controller/
+📁 model/
+📁 repository/
+📁 service/
+
+Tarefas:
+    1: buscar informações do local
+        a) Sistema para ir até o local digitado
+        b) Sistema para abrir informações de um local
+    
