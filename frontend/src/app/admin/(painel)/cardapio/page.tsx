@@ -19,19 +19,30 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// UC25 — Criar cardápio do RU: gerenciamento dos cardápios (passo 1).
+// UC25 / UC26 — Gerenciamento e Edição dos cardápios do RU.
 export default function MenusAdminPage() {
   const [menus, setMenus] = useState<Menu[] | null>(null);
   const [filter, setFilter] = useState<Filter>("proximos");
   const [message, setMessage] = useState<string | null>(null);
 
-  // Ao voltar do formulário, mostra a confirmação de criação.
-  useEffect(() => {
+  // Função para carregar a lista atualizada
+  const refreshMenus = () => {
     const flash = takeFlash();
     listMenus().then((all) => {
-      setMenus(all);
+      setMenus([...all]); // Força a re-renderização com o novo array
       if (flash) setMessage(flash);
     });
+  };
+
+  // Carrega ao montar e escuta atualizações da janela/foco
+  useEffect(() => {
+    refreshMenus();
+
+    // Recarrega se a janela/aba receber foco novamente
+    window.addEventListener("focus", refreshMenus);
+    return () => {
+      window.removeEventListener("focus", refreshMenus);
+    };
   }, []);
 
   const today = todayIso();
@@ -134,8 +145,16 @@ export default function MenusAdminPage() {
                 <td className="px-4 py-3 text-slate-700">{m.vegetarian}</td>
                 <td className="px-4 py-3 text-slate-700">{m.dessert || "—"}</td>
                 <td className="px-4 py-3">
-                  <div className="flex justify-end">
-                    {/* FA02: clonar como base */}
+                  <div className="flex justify-end gap-2">
+                    {/* UC26 — Editar cardápio */}
+                    <Link
+                      href={`/admin/cardapio/${m.id}/editar`}
+                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Editar
+                    </Link>
+
+                    {/* FA02 — Duplicar */}
                     <Link
                       href={`/admin/cardapio/novo?base=${m.id}`}
                       className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
