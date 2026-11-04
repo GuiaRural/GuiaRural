@@ -32,20 +32,21 @@ const SUPPORT: Item[] = [
   { key: "admin", href: "/admin" },
 ];
 
-function NavGroup({ items, current }: { items: Item[]; current: string }) {
+function NavGroup({ items, current, onNavigate }: { items: Item[]; current: string; onNavigate: () => void }) {
   const { t } = useLanguage();
   return (
     <ul className="space-y-0.5">
       {items.map((item) => {
-        const active = item.href === current;
+        const active = item.href === "/" ? current === "/" : current === item.href || current.startsWith(`${item.href}/`);
         return (
           <li key={item.key}>
             <Link
               href={item.href}
+              onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-brand-yellow ${
-                item.sub ? "ml-4 text-slate-300" : "text-white"
-              } ${active ? "bg-navy-700 font-semibold" : "hover:bg-white/10"}`}
+                item.sub ? "ml-4 rounded-l-none border-l border-white/20 text-slate-300" : "text-white"
+              } ${active ? "border-l-4 border-slate-300 bg-navy-700 font-semibold" : "hover:bg-white/10"}`}
             >
               <span>{t.sidebar[item.key]}</span>
               {item.badge && (
@@ -100,14 +101,15 @@ export default function Sidebar({ id, open, onClose }: { id: string; open: boole
             </h2>
             <p className="mt-1 font-semibold">{t.sidebar.campusName}</p>
           </div>
-          <p className="border-t border-white/10 px-3 pt-3 text-xs text-slate-400">{t.sidebar.cityLabel}</p>
+          <p className="border-t border-white/10 px-3 pt-3 text-xs text-slate-400">v2 · Dois Irmãos</p>
+          <p className="mt-5 px-3 text-xs text-slate-400">{t.sidebar.cityLabel}</p>
           <div className="mt-2">
-            <NavGroup items={NAV} current={pathname} />
+            <NavGroup items={NAV} current={pathname} onNavigate={onClose} />
           </div>
           <SectionTitle>{t.sidebar.welcomeSection}</SectionTitle>
-          <NavGroup items={WELCOME} current={pathname} />
+          <NavGroup items={WELCOME} current={pathname} onNavigate={onClose} />
           <SectionTitle>{t.sidebar.supportSection}</SectionTitle>
-          <NavGroup items={SUPPORT} current={pathname} />
+          <NavGroup items={SUPPORT} current={pathname} onNavigate={onClose} />
         </nav>
       </aside>
     </>

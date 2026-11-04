@@ -15,7 +15,7 @@ export const MAP_MAX_BOUNDS: LatLngBounds = [
   [CAMPUS_BOUNDS[1][0] + MAX_BOUNDS_PADDING, CAMPUS_BOUNDS[1][1] + MAX_BOUNDS_PADDING],
 ];
 
-// O zoom mínimo não é fixo: MapCanvas o calcula para que a área acima caiba inteira na tela.
+// O zoom mínimo não é fixo: CampusMap o calcula para que a área acima caiba inteira na tela.
 export const MAP_MAX_ZOOM = 19;
 
 // Servidor público do OSM: uso moderado, sem prefetch e com atribuição visível

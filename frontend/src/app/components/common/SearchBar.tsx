@@ -1,39 +1,123 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../data/mockPlaces";
-import { selectPlace } from "../../hooks/useSelectedPlaceId";
-import { getRecentPlaces, searchPlaces } from "../../services/placesService";
+import { MIN_SEARCH_CHARS, getRecentPlaces, searchPlaces } from "../../services/placesService";
+import { MAX_SUGGESTIONS, searchDepartmentsAndCourses, suggestionHref, type Suggestion } from "../../services/searchService";
 
-export default function SearchBar() {
+type Item = { kind: "place"; key: string; place: Place } | { kind: "link"; key: string; suggestion: Suggestion };
+
+const DEBOUNCE_MS = 250;
+
+export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (place: Place) => void; recentVersion?: number }) {
   const { t } = useLanguage();
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Place[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [linked, setLinked] = useState<Suggestion[]>([]);
   const [recent, setRecent] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
   const latestQuery = useRef("");
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const input = useRef<HTMLInputElement>(null);
 
+  // recentVersion muda a cada local consultado, para refletir a lista atualizada (RN-UC02.02).
   useEffect(() => {
-    getRecentPlaces().then(setRecent);
+    getRecentPlaces().then(setRecent, () => setRecent([]));
+  }, [recentVersion]);
+
+  useEffect(() => () => clearTimeout(debounce.current), []);
+
+  // FA-38.01: Ctrl+K (⌘K no Mac) foca o campo de busca de qualquer ponto da tela.
+  useEffect(() => {
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        input.current?.focus();
+        input.current?.select();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   function handleChange(value: string) {
     setQuery(value);
     setOpen(true);
+    setActive(-1);
     latestQuery.current = value;
-    searchPlaces(value).then((found) => {
-      if (latestQuery.current === value) setResults(found);
-    });
+    clearTimeout(debounce.current);
+
+    searchPlaces(value).then(
+      (found) => {
+        if (latestQuery.current === value) setPlaces(found);
+      },
+      () => {
+        if (latestQuery.current === value) setPlaces([]);
+      },
+    );
+
+    if (value.trim().length < MIN_SEARCH_CHARS) {
+      setLinked([]);
+      return;
+    }
+    // Departamentos e cursos vêm do backend: espera o usuário parar de digitar para limitar as requisições (RNF01).
+    debounce.current = setTimeout(() => {
+      searchDepartmentsAndCourses(value)
+        .then((found) => {
+          if (latestQuery.current === value) setLinked(found);
+        })
+        // Sem backend, a busca segue só com os locais do mapa.
+        .catch(() => {
+          if (latestQuery.current === value) setLinked([]);
+        });
+    }, DEBOUNCE_MS);
   }
 
-  function select(place: Place) {
+  const items: Item[] = [
+    ...places.map((place): Item => ({ kind: "place", key: `place-${place.id}`, place })),
+    ...linked.map((suggestion): Item => ({ kind: "link", key: `${suggestion.type}-${suggestion.id}`, suggestion })),
+  ].slice(0, MAX_SUGGESTIONS);
+
+  function selectPlace(place: Place) {
     setQuery(place.name);
     setOpen(false);
-    selectPlace(place.id);
+    onSelect(place);
   }
 
-  const showList = open && query.trim().length > 0;
+  function choose(item: Item) {
+    if (item.kind === "place") {
+      selectPlace(item.place);
+      return;
+    }
+    setQuery(item.suggestion.name);
+    setOpen(false);
+    router.push(suggestionHref(item.suggestion));
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (!showList || items.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i + 1) % items.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i <= 0 ? items.length - 1 : i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      choose(items[Math.max(active, 0)]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
+  // FE-01.02: campo vazio não dispara busca nem abre a lista.
+  const trimmed = query.trim();
+  const showList = open && trimmed.length > 0;
+  const tooShort = trimmed.length < MIN_SEARCH_CHARS;
 
   return (
     <div className="w-full max-w-2xl">
@@ -45,14 +129,19 @@ export default function SearchBar() {
           </svg>
           <div className="relative min-w-0 flex-1">
             <input
+              ref={input}
               type="search"
               role="combobox"
               aria-expanded={showList}
               aria-controls="search-suggestions"
+              aria-autocomplete="list"
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-activedescendant={active >= 0 ? `search-option-${active}` : undefined}
               aria-label={t.search.label}
               placeholder={t.search.placeholder}
               value={query}
               onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 120)}
               className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-navy-700 focus:ring-2 focus:ring-brand-yellow"
@@ -63,18 +152,30 @@ export default function SearchBar() {
                 role="listbox"
                 className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-slate-300 bg-white shadow-lg"
               >
-                {results.length === 0 ? (
+                {tooShort ? (
+                  <li className="px-3 py-2 text-sm text-slate-600">{t.search.minChars}</li>
+                ) : items.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-slate-600">{t.search.noResults}</li>
                 ) : (
-                  results.map((p) => (
-                    <li key={p.id} role="option" aria-selected={false}>
+                  items.map((item, i) => (
+                    <li key={item.key} id={`search-option-${i}`} role="option" aria-selected={i === active}>
                       <button
                         type="button"
+                        tabIndex={-1}
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => select(p)}
-                        className="w-full px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100"
+                        onClick={() => choose(item)}
+                        className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100 ${
+                          i === active ? "bg-slate-100" : ""
+                        }`}
                       >
-                        {p.name}
+                        <span>{item.kind === "place" ? item.place.name : item.suggestion.name}</span>
+                        <span className="shrink-0 text-xs text-slate-500">
+                          {item.kind === "place"
+                            ? t.categories[item.place.category]
+                            : item.suggestion.type === "COURSE"
+                              ? t.search.course
+                              : t.search.department}
+                        </span>
                       </button>
                     </li>
                   ))
@@ -109,23 +210,18 @@ export default function SearchBar() {
         </div>
       </div>
 
+      {/* FA-01.02: seleção direta pelos últimos acessos */}
       {recent.length > 0 && (
-        <div className="mt-2 hidden items-center gap-1 overflow-hidden whitespace-nowrap rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
+        <div className="mt-2 hidden flex-wrap items-center gap-x-1 gap-y-1 rounded-lg bg-white/90 px-3 py-1.5 text-xs text-slate-700 shadow sm:flex">
           <span className="font-semibold">{t.search.recent}</span>
-          <ul className="flex min-w-0 items-center gap-1">
-            {recent.map((p, i) => (
-              <li key={p.id} className="flex items-center gap-1">
-                {i > 0 && <span aria-hidden>•</span>}
-                <button
-                  type="button"
-                  onClick={() => select(p)}
-                  className="rounded hover:text-navy-900 hover:underline focus-visible:outline-2 focus-visible:outline-navy-700"
-                >
-                  {p.name}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {recent.map((p, i) => (
+            <span key={p.id} className="flex items-center gap-1">
+              {i > 0 && <span aria-hidden>•</span>}
+              <button type="button" onClick={() => selectPlace(p)} className="rounded px-1 hover:bg-slate-100 hover:text-navy-900 hover:underline">
+                {p.shortName}
+              </button>
+            </span>
+          ))}
         </div>
       )}
     </div>
