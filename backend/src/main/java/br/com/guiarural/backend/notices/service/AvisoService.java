@@ -1,5 +1,6 @@
 package br.com.guiarural.backend.notices.service;
 
+import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,14 +38,14 @@ public class AvisoService {
     @Transactional(readOnly = true)
     public AvisoResponseDTO buscarPorId(Long id) {
         AvisoEntity aviso = avisoRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Aviso não encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Aviso não encontrado"));
         return AvisoResponseDTO.fromEntity(aviso);
     }
 
     @Transactional
     public AvisoResponseDTO atualizarAviso(Long id, AvisoRequestDTO dto) {
         AvisoEntity aviso = avisoRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Aviso não encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Aviso não encontrado"));
         
         aviso.setNome(dto.nome());
         aviso.setDescricao(dto.descricao());
@@ -57,7 +58,7 @@ public class AvisoService {
     @Transactional
     public void deletarAviso(Long id) {
         if (!avisoRepository.existsById(id)) {
-            throw new RuntimeException("Aviso não encontrado");
+            throw new ResourceNotFoundException("Aviso não encontrado");
         }
         avisoRepository.deleteById(id);
     }

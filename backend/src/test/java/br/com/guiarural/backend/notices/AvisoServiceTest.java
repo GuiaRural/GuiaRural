@@ -1,5 +1,6 @@
 package br.com.guiarural.backend.notices;
 
+import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,6 +66,6 @@ class AvisoServiceTest {
     void buscarPorId_DeveLancarExcecaoSeNaoExistir() {
         when(avisoRepository.findById(2L)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> avisoService.buscarPorId(2L));
+        assertThrows(ResourceNotFoundException.class, () -> avisoService.buscarPorId(2L));
     }
 }
