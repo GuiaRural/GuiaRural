@@ -43,12 +43,12 @@ export function validateAviso(input: AvisoInput): Partial<Record<AvisoField, Avi
   return errors;
 }
 
-// O aviso nasce publicado, com a data definida pelo servidor.
-export async function createAviso(input: AvisoInput): Promise<Aviso> {
+// Valida no cliente e, se o servidor recusar por campo, devolve o erro no campo certo.
+async function send(input: AvisoInput, request: (body: AvisoInput) => Promise<Aviso>): Promise<Aviso> {
   const errors = validateAviso(input);
   if (Object.keys(errors).length) throw new AvisoValidationError(errors);
   try {
-    return await apiPost<Aviso>("/avisos", { nome: input.nome.trim(), descricao: input.descricao.trim() });
+    return await request({ nome: input.nome.trim(), descricao: input.descricao.trim() });
   } catch (error) {
     // O servidor valida de novo; os erros por campo voltam em `fields`.
     if (error instanceof ApiError && error.status === 400 && error.fields) {
@@ -62,8 +62,14 @@ export async function createAviso(input: AvisoInput): Promise<Aviso> {
   }
 }
 
+// O aviso nasce publicado, com a data definida pelo servidor.
+export function createAviso(input: AvisoInput): Promise<Aviso> {
+  return send(input, (body) => apiPost<Aviso>("/avisos", body));
+}
+
+// A data de publicação não muda na edição (decisão do backend).
 export function updateAviso(id: number, input: AvisoInput): Promise<Aviso> {
-  return apiPut<Aviso>(`/avisos/${id}`, input);
+  return send(input, (body) => apiPut<Aviso>(`/avisos/${id}`, body));
 }
 
 // Aviso inexistente falha com 404 (FE-18.01).

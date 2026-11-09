@@ -8,6 +8,7 @@ import {
   DESCRICAO_MAX_LENGTH,
   NOME_MAX_LENGTH,
   createAviso,
+  updateAviso,
   validateAviso,
 } from "../src/app/services/avisosService";
 
@@ -65,4 +66,23 @@ test("400 do servidor com erros por campo vira AvisoValidationError no campo cer
 test("403 (perfil sem permissão) chega como ApiError para a tela explicar", async () => {
   respond(403, { detail: "Sem permissão para esta ação." });
   await assert.rejects(createAviso({ nome: "a", descricao: "b" }), (error) => error instanceof ApiError && error.status === 403);
+});
+
+test("editar envia PUT com título e descrição limpos e devolve o aviso atualizado", async () => {
+  const atualizado = { id: 9, nome: "Manutenção adiada", descricao: "Domingo", data: "2026-11-09T10:00:00" };
+  respond(200, atualizado);
+
+  assert.deepEqual(await updateAviso(9, { nome: " Manutenção adiada ", descricao: "Domingo " }), atualizado);
+  assert.equal(calls[0].url, "/api/avisos/9");
+  assert.equal(calls[0].init.method, "PUT");
+  assert.deepEqual(JSON.parse(String(calls[0].init.body)), { nome: "Manutenção adiada", descricao: "Domingo" });
+});
+
+test("editar com campo em branco não chama a API, e aviso que não existe mais (404) chega como ApiError", async () => {
+  respond(200, {});
+  await assert.rejects(updateAviso(9, { nome: "  ", descricao: "texto" }), AvisoValidationError);
+  assert.equal(calls.length, 0);
+
+  respond(404, { detail: "Aviso não encontrado" });
+  await assert.rejects(updateAviso(9, { nome: "a", descricao: "b" }), (error) => error instanceof ApiError && error.status === 404);
 });

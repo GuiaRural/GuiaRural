@@ -7,6 +7,7 @@ import {
   DESCRICAO_MAX_LENGTH,
   NOME_MAX_LENGTH,
   createAviso,
+  updateAviso,
   validateAviso,
   type Aviso,
   type AvisoField,
@@ -25,33 +26,41 @@ const ERROR_TEXT: Record<AvisoField, Record<AvisoFieldError, string>> = {
   descricao: { required: "Informe a descrição do aviso.", tooLong: `A descrição pode ter até ${DESCRICAO_MAX_LENGTH} caracteres.` },
 };
 
-// Novo aviso do campus. Fechar o modal descarta o que foi digitado.
-export default function NewAvisoModal({
+// Publicar ou editar um aviso do campus. Fechar o modal descarta o que foi digitado.
+export default function AvisoFormModal({
   open,
+  aviso,
   onCancel,
-  onCreated,
+  onSaved,
 }: {
   open: boolean;
+  // Aviso a editar; ausente = novo aviso.
+  aviso?: Aviso | null;
   onCancel: () => void;
-  onCreated: (aviso: Aviso) => void;
+  onSaved: (aviso: Aviso) => void;
 }) {
+  const editing = !!aviso;
   return (
     <Modal
       open={open}
       onClose={onCancel}
-      title="Novo aviso"
-      description="O aviso é publicado assim que for salvo e aparece para os estudantes na página de avisos."
+      title={editing ? "Editar aviso" : "Novo aviso"}
+      description={
+        editing
+          ? "As mudanças aparecem para os estudantes assim que forem salvas. A data de publicação não muda."
+          : "O aviso é publicado assim que for salvo e aparece para os estudantes na página de avisos."
+      }
       size="md"
       icon={<Icon name="plus" className="size-5" />}
     >
-      <NewAvisoForm onCancel={onCancel} onCreated={onCreated} />
+      <AvisoForm aviso={aviso ?? null} onCancel={onCancel} onSaved={onSaved} />
     </Modal>
   );
 }
 
-function NewAvisoForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (aviso: Aviso) => void }) {
-  const [nome, setNome] = useState("");
-  const [descricao, setDescricao] = useState("");
+function AvisoForm({ aviso, onCancel, onSaved }: { aviso: Aviso | null; onCancel: () => void; onSaved: (aviso: Aviso) => void }) {
+  const [nome, setNome] = useState(aviso?.nome ?? "");
+  const [descricao, setDescricao] = useState(aviso?.descricao ?? "");
   const [errors, setErrors] = useState<Errors>({});
   const [summary, setSummary] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -74,12 +83,13 @@ function NewAvisoForm({ onCancel, onCreated }: { onCancel: () => void; onCreated
     setSummary(null);
     setSaving(true);
     try {
-      onCreated(await createAviso({ nome, descricao }));
+      onSaved(aviso ? await updateAviso(aviso.id, { nome, descricao }) : await createAviso({ nome, descricao }));
     } catch (err) {
       if (err instanceof AvisoValidationError) showErrors(err.errors);
       // O formulário continua aberto e preenchido.
-      else if (err instanceof ApiError && err.status === 403) setSummary("Seu perfil não tem permissão para publicar avisos.");
-      else setSummary("Não foi possível publicar o aviso. Tente novamente.");
+      else if (err instanceof ApiError && err.status === 403) setSummary("Seu perfil não tem permissão para alterar avisos.");
+      else if (err instanceof ApiError && err.status === 404) setSummary("Este aviso não existe mais. Feche e atualize a página.");
+      else setSummary(aviso ? "Não foi possível salvar o aviso. Tente novamente." : "Não foi possível publicar o aviso. Tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -153,7 +163,7 @@ function NewAvisoForm({ onCancel, onCreated }: { onCancel: () => void; onCreated
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-60"
         >
           <span aria-hidden>✓</span>
-          {saving ? "Publicando..." : "Publicar aviso"}
+          {saving ? (aviso ? "Salvando..." : "Publicando...") : aviso ? "Salvar alterações" : "Publicar aviso"}
         </button>
       </div>
     </form>
