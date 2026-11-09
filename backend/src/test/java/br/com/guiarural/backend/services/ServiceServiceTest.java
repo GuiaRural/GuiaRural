@@ -1,5 +1,6 @@
 package br.com.guiarural.backend.services;
 
+import br.com.guiarural.backend.core.audit.AuditService;
 import br.com.guiarural.backend.services.dto.ServiceRequestDTO;
 import br.com.guiarural.backend.services.dto.ServiceResponseDTO;
 import br.com.guiarural.backend.services.model.ServiceEntity;
@@ -24,6 +25,9 @@ import static org.mockito.Mockito.*;
 public class ServiceServiceTest {
     @Mock
     private ServiceRepository repository;
+
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private ServiceService service;
@@ -127,12 +131,13 @@ public class ServiceServiceTest {
     void shouldDeleteBuildingServiceSuccessfully() {
         Long serviceId = 1L;
 
-        when(repository.existsById(serviceId)).thenReturn(true);
-        doNothing().when(repository).deleteById(serviceId);
+        ServiceEntity existing = new ServiceEntity(serviceId, "Xerox", "Cópias", "Bloco A", true);
+        when(repository.findById(serviceId)).thenReturn(Optional.of(existing));
 
         assertDoesNotThrow(() -> service.delete(serviceId));
 
-        verify(repository, times(1)).existsById(serviceId);
-        verify(repository, times(1)).deleteById(serviceId);
+        verify(repository, times(1)).delete(existing);
+        verify(auditService).record(eq(AuditService.Entity.SERVICO), eq("1"), eq("Xerox"),
+                eq(AuditService.Action.DELETADO), any(ServiceResponseDTO.class), isNull());
     }
 }
