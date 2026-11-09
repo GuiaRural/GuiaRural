@@ -57,7 +57,7 @@ export const MOCK_RECIFE_GUIDE: RecifeGuide = {
         },
         {
           label: "Destaques do parque",
-          text: "Mata nativa preserved, zoológico histórico e trilhas de educação ambiental.",
+          text: "Mata nativa preservada, zoológico histórico e trilhas de educação ambiental.",
           icon: "star",
           iconTone: "amber",
         },
