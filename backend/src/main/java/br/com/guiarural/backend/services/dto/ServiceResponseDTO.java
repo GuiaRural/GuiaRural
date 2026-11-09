@@ -1,9 +1,18 @@
 package br.com.guiarural.backend.services.dto;
 
-public record ServiceResponseDTO (
-    Long id,
-    String name,
-    String description,
-    String locationReference,
-    Boolean active
-) {}
+import java.util.List;
+
+public record ServiceResponseDTO(
+        Long id,
+        String category,
+        String name,
+        String sector,
+        String description,
+        List<String> steps,
+        String requirements,
+        String url,
+        String deadline,
+        String locationReference,
+        Boolean active
+) {
+}

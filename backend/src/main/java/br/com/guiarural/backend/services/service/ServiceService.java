@@ -1,6 +1,8 @@
 package br.com.guiarural.backend.services.service;
 
 import br.com.guiarural.backend.core.audit.AuditService;
+import br.com.guiarural.backend.core.exception.BadRequestException;
+import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 import br.com.guiarural.backend.services.dto.ServiceRequestDTO;
 import br.com.guiarural.backend.services.dto.ServiceResponseDTO;
 import br.com.guiarural.backend.services.model.ServiceEntity;
@@ -8,6 +10,7 @@ import br.com.guiarural.backend.services.repository.ServiceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -23,10 +26,9 @@ public class ServiceService {
     @Transactional
     public ServiceResponseDTO create(ServiceRequestDTO dto) {
         ServiceEntity entity = new ServiceEntity();
-        entity.setName(dto.name());
-        entity.setDescription(dto.description());
-        entity.setLocationReference(dto.locationReference());
-        entity.setActive(dto.active());
+        apply(entity, dto);
+        // RN-19.02: todo serviço novo nasce publicado, a não ser que se peça o contrário.
+        entity.setActive(dto.active() == null || dto.active());
 
         ServiceEntity savedEntity = repository.save(entity);
         ServiceResponseDTO created = mapToResponseDTO(savedEntity);
@@ -35,31 +37,39 @@ public class ServiceService {
         return created;
     }
 
+    // Catálogo público: só o que está publicado.
     @Transactional(readOnly = true)
     public List<ServiceResponseDTO> findAll() {
-        return repository.findAll()
-                .stream()
+        return repository.findByActiveTrueOrderByNameAsc().stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
+    // Painel administrativo: todos, inclusive os despublicados.
+    @Transactional(readOnly = true)
+    public List<ServiceResponseDTO> findAllForAdmin() {
+        return repository.findAllByOrderByIdAsc().stream()
                 .map(this::mapToResponseDTO)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ServiceResponseDTO findById(Long id) {
-        ServiceEntity entity = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado com ID: " + id));
+        ServiceEntity entity = repository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado com ID: " + id));
         return mapToResponseDTO(entity);
     }
 
     @Transactional
     public ServiceResponseDTO update(Long id, ServiceRequestDTO dto) {
         ServiceEntity entity = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado com ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado com ID: " + id));
         ServiceResponseDTO before = mapToResponseDTO(entity);
 
-        entity.setName(dto.name());
-        entity.setDescription(dto.description());
-        entity.setLocationReference(dto.locationReference());
-        entity.setActive(dto.active());
+        apply(entity, dto);
+        if (dto.active() != null) {
+            entity.setActive(dto.active());
+        }
 
         ServiceEntity updatedEntity = repository.save(entity);
         ServiceResponseDTO after = mapToResponseDTO(updatedEntity);
@@ -71,20 +81,50 @@ public class ServiceService {
     @Transactional
     public void delete(Long id) {
         ServiceEntity entity = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Serviço não encontrado com ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado com ID: " + id));
         ServiceResponseDTO before = mapToResponseDTO(entity);
         repository.delete(entity);
         auditService.record(AuditService.Entity.SERVICO, String.valueOf(id), before.name(),
                 AuditService.Action.DELETADO, before, null);
     }
 
+    // Copia os campos do formulário, sem espaços nas pontas; opcional em branco vira nulo.
+    private void apply(ServiceEntity entity, ServiceRequestDTO dto) {
+        entity.setName(dto.name().trim());
+        entity.setDescription(dto.description().trim());
+        entity.setCategory(dto.category().trim());
+        entity.setSector(dto.sector().trim());
+        String[] steps = dto.steps().stream()
+                .filter(step -> step != null && !step.isBlank())
+                .map(String::trim)
+                .toArray(String[]::new);
+        if (steps.length == 0) {
+            throw new BadRequestException("Informe pelo menos um passo de \"Como solicitar\".");
+        }
+        entity.setSteps(steps);
+        entity.setRequirements(blankToNull(dto.requirements()));
+        entity.setUrl(blankToNull(dto.url()));
+        entity.setDeadline(blankToNull(dto.deadline()));
+        entity.setLocationReference(blankToNull(dto.locationReference()));
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private ServiceResponseDTO mapToResponseDTO(ServiceEntity entity) {
         return new ServiceResponseDTO(
                 entity.getId(),
+                entity.getCategory(),
                 entity.getName(),
+                entity.getSector(),
                 entity.getDescription(),
+                entity.getSteps() == null ? List.of() : Arrays.asList(entity.getSteps()),
+                entity.getRequirements(),
+                entity.getUrl(),
+                entity.getDeadline(),
                 entity.getLocationReference(),
                 entity.getActive()
         );
-    } 
+    }
 }

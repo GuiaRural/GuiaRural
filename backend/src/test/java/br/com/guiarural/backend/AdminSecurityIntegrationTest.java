@@ -18,7 +18,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,6 +44,7 @@ class AdminSecurityIntegrationTest {
     void seed() {
         jdbc.update("delete from audit_logs");
         jdbc.update("delete from avisos");
+        jdbc.update("delete from services");
         jdbc.update("delete from guide_topics");
         jdbc.update("delete from admins");
         insertAdmin(1, "Editora", "editora@ufrpe.br", "editor", "ativo");
@@ -118,7 +118,12 @@ class AdminSecurityIntegrationTest {
     void writesRequireLogin() throws Exception {
         String body = "{\"nome\":\"Aviso\",\"descricao\":\"Texto\"}";
 
-        mvc.perform(post("/api/avisos").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
+        // Token CSRF válido, obtido como o navegador obtém: num GET qualquer. Não usamos o csrf() do spring-security-test
+        // porque ele troca o repositório de token do filtro para todos os testes seguintes.
+        Cookie xsrf = mvc.perform(get("/api/avisos")).andReturn().getResponse().getCookie("XSRF-TOKEN");
+        assertNotNull(xsrf);
+        mvc.perform(post("/api/avisos").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/avisos").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
@@ -283,5 +288,67 @@ class AdminSecurityIntegrationTest {
         Long id = jdbc.queryForObject("select id from audit_logs where entity = 'aviso'", Long.class);
 
         mvc.perform(editor.write(post("/api/admin/audit-logs/" + id + "/restore"))).andExpect(status().isBadRequest());
+    }
+
+    private static final String SERVICE = "{\"name\":\"Carteira de Estudante\",\"description\":\"Identificação estudantil\","
+            + "\"category\":\"Documentos\",\"sector\":\"DCE\",\"steps\":[\"Separe os documentos.\",\"  \",\"Solicite.\"],"
+            + "\"requirements\":\"Declaração de vínculo\",\"url\":\"https://dce.example.org\",\"deadline\":null}";
+
+    @Test
+    @DisplayName("Serviços: editor cadastra, o público vê só os publicados e o painel vê todos")
+    void servicesPublicVersusAdminView() throws Exception {
+        Auth editor = login("editora@ufrpe.br");
+
+        mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.steps.length()").value(2))
+                .andExpect(jsonPath("$.category").value("Documentos"));
+        mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON)
+                .content(SERVICE.replace("Carteira de Estudante", "Rascunho").replace("\"deadline\":null", "\"active\":false")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.active").value(false));
+
+        mvc.perform(get("/api/services")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Carteira de Estudante"));
+        Long draftId = jdbc.queryForObject("select id from services where name = ?", Long.class, "Rascunho");
+        mvc.perform(get("/api/services/" + draftId)).andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/admin/services")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/admin/services").session(editor.session())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+        assertEquals(2, count("select count(*) from audit_logs where entity = ? and action = ? and author = ?", "servico", "criado", "Editora"));
+    }
+
+    @Test
+    @DisplayName("Serviços: o servidor recusa dados inválidos mesmo que o formulário os deixe passar")
+    void servicesRejectInvalidInput() throws Exception {
+        Auth editor = login("editora@ufrpe.br");
+
+        mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON)
+                .content(SERVICE.replace("\"steps\":[\"Separe os documentos.\",\"  \",\"Solicite.\"]", "\"steps\":[]")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.steps").exists());
+        mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON)
+                .content(SERVICE.replace("https://dce.example.org", "http://dce.example.org")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.url").exists());
+        mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON)
+                .content(SERVICE.replace("\"category\":\"Documentos\"", "\"category\":\"  \"")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.category").exists());
+        assertEquals(0, count("select count(*) from services"));
+    }
+
+    @Test
+    @DisplayName("Serviços: perfil leitura consulta o painel mas não cadastra")
+    void readOnlyAdminCannotCreateService() throws Exception {
+        Auth reader = login("leitora@ufrpe.br");
+
+        mvc.perform(get("/api/admin/services").session(reader.session())).andExpect(status().isOk());
+        mvc.perform(reader.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isForbidden());
+        assertEquals(0, count("select count(*) from services"));
     }
 }
