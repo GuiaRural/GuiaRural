@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAdmin } from "../../../../components/admin/AdminShell";
 import ApiFailure from "../../../../components/courses/ApiFailure";
 import PageHeader, { ctaButton, secondaryButton } from "../../../../components/admin/PageHeader";
 import { ConfirmModal } from "../../../../components/ui/Modal";
@@ -27,7 +26,6 @@ export default function GuideSectionAdminPage() {
 }
 
 function SectionTopics({ section }: { section: Section }) {
-  const { session } = useAdmin();
   const [topics, setTopics] = useState<GuideTopic[] | null>(null);
   const [toDelete, setToDelete] = useState<GuideTopic | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -161,7 +159,7 @@ function SectionTopics({ section }: { section: Section }) {
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (!toDelete) return;
-          await deleteGuideTopic(toDelete.id, session.name);
+          await deleteGuideTopic(toDelete.id);
           setMessage(`"${toDelete.title.pt}" foi excluído.`);
           setToDelete(null);
           reload();

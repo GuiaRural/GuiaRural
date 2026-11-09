@@ -1,8 +1,8 @@
-import { apiGet } from "../lib/api";
-import { delay } from "../lib/storage";
-import { recordChange, snapshot } from "./auditService";
+import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 import {
   GUIDE_SECTIONS,
+  hasTranslation,
+  isFullyTranslated,
   type GuideBlock,
   type GuideLink,
   type GuideSection,
@@ -13,9 +13,9 @@ import {
   type Translated,
 } from "./guidesService";
 
-// Área do administrador do guia de acolhimento. A leitura vem da API (/api/guide/translations, os três idiomas
-// lado a lado); salvar, excluir e desfazer ainda só alteram a cópia em memória, porque o backend não tem login
-// nem endpoints de escrita para o guia. Recarregar a página volta ao que está no banco.
+// Área do administrador do guia de acolhimento. Lê da API (/api/guide/translations, os três idiomas lado a lado)
+// e grava por POST/PUT/DELETE em /api/guide/topics, que exigem login. O histórico e o desfazer ficam no servidor
+// (/api/admin/audit-logs). A lista abaixo é só um cache da tela, atualizado com a resposta de cada escrita.
 let guides: GuideTopic[] | null = null;
 let loading: Promise<GuideTopic[]> | null = null;
 
@@ -156,51 +156,96 @@ function validateTopic(topic: GuideTopic) {
   }
 }
 
-function slugify(text: string) {
-  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// Esquece o que está em memória: a próxima leitura busca de novo no servidor (ex.: depois de desfazer).
+export function resetGuideCache() {
+  guides = null;
+  loading = null;
 }
 
-export async function saveGuideTopic(topic: GuideTopic, author: string): Promise<GuideTopic> {
-  const all = await loadGuides();
-  await delay(400);
-  validateTopic(topic);
-  const current = all.find((g) => g.id === topic.id);
-  if (current) {
-    guides = all.map((g) => (g.id === topic.id ? topic : g));
-  } else {
-    let id = slugify(topic.title.pt) || `topico-${Date.now()}`;
-    if (all.some((g) => g.id === id)) id = `${id}-${Date.now()}`;
-    topic = { ...topic, id };
-    guides = [...all, topic];
+// ── Escrita ──────────────────────────────────────────────────────────────────────────────────────────────
+// O editor trabalha com {pt, en, es} em cada texto; a API recebe um JSON por idioma. Onde falta tradução, o
+// idioma leva o texto em português (o servidor guarda quais idiomas estão completos em fullyTranslatedLangs).
+
+export type TopicWriteDto = Omit<TopicTranslationsDto, "slug"> & { slug?: string };
+
+function resolveBlock(block: GuideBlock, pick: (t: Translated) => string): ResolvedGuideBlock {
+  switch (block.type) {
+    case "heading":
+    case "p":
+      return { type: block.type, text: pick(block.text) };
+    case "list":
+      return { type: "list", items: block.items.map(pick) };
+    case "steps":
+      return { type: "steps", items: block.items.map((s) => ({ title: pick(s.title), ...(s.text !== undefined ? { text: pick(s.text) } : {}) })) };
+    case "checklist":
+      return { type: "checklist", id: block.id, title: pick(block.title), items: block.items.map(pick) };
+    case "callout":
+      return { type: "callout", tone: block.tone, ...(block.title !== undefined ? { title: pick(block.title) } : {}), text: pick(block.text) };
+    case "facts":
+      return { type: "facts", items: block.items.map((f) => ({ label: pick(f.label), value: pick(f.value) })) };
+    case "video":
+    case "gallery":
+      return { ...block, title: pick(block.title) };
   }
-  recordChange({
-    author,
-    entity: "Acolhimento",
-    entityId: topic.id,
-    entityName: topic.title.pt,
-    action: current ? "editado" : "criado",
-    before: snapshot(current),
-    after: snapshot(topic),
+}
+
+const localizedText = (t: Translated): LocalizedText => ({ pt: t.pt, en: t.en || null, es: t.es || null });
+
+// Slug fica de fora: quem já existe usa o do endereço, e quem é novo recebe um gerado pelo servidor.
+export function toWriteDto(topic: GuideTopic): TopicWriteDto {
+  const inLanguage = (lang: "en" | "es") => (t: Translated) => t[lang] || t.pt;
+  const perLanguage = <T,>(build: (pick: (t: Translated) => string) => T): LocalizedJson<T> => ({
+    pt: build((t) => t.pt),
+    en: hasTranslation(topic, "en") ? build(inLanguage("en")) : null,
+    es: hasTranslation(topic, "es") ? build(inLanguage("es")) : null,
   });
-  return topic;
+  return {
+    section: topic.section,
+    stage: topic.stage ?? null,
+    title: localizedText(topic.title),
+    summary: localizedText(topic.summary),
+    blocks: perLanguage((pick) => topic.blocks.map((b) => resolveBlock(b, pick))),
+    links: perLanguage((pick) => topic.links.map((l) => ({ label: pick(l.label), url: l.url }))),
+    source: localizedText(topic.source),
+    placeSlug: topic.placeId ?? null,
+    fullyTranslatedLangs: (["en", "es"] as const).filter((lang) => isFullyTranslated(topic, lang)),
+  };
 }
 
-export async function deleteGuideTopic(id: string, author: string): Promise<void> {
-  const all = await loadGuides();
-  await delay(300);
-  const current = all.find((g) => g.id === id);
-  if (!current) return;
-  guides = all.filter((g) => g.id !== id);
-  recordChange({ author, entity: "Acolhimento", entityId: id, entityName: current.title.pt, action: "deletado", before: snapshot(current), after: null });
-}
-
-export async function restoreGuideTopic(id: string, previous: Record<string, unknown> | null) {
-  // O histórico pode ser aberto antes de qualquer tela do guia: garante que a lista base já foi carregada.
-  const all = await loadGuides();
-  if (!previous) {
-    guides = all.filter((g) => g.id !== id);
-    return;
+// Traduz a falha do servidor numa mensagem que o editor mostra; o que não é conhecido segue como erro genérico.
+function explain(error: unknown): unknown {
+  if (error instanceof ApiError) {
+    if (error.status === 400 || error.status === 409) return new GuideValidationError(error.detail ?? "Dados inválidos.");
+    if (error.status === 403) return new GuideValidationError("Seu perfil não tem permissão para alterar o conteúdo.");
+    if (error.status === 401) return new GuideValidationError("Sua sessão expirou. Faça login novamente.");
   }
-  const restored = previous as GuideTopic;
-  guides = all.some((g) => g.id === id) ? all.map((g) => (g.id === id ? restored : g)) : [...all, restored];
+  return error;
+}
+
+export async function saveGuideTopic(topic: GuideTopic): Promise<GuideTopic> {
+  const all = await loadGuides();
+  validateTopic(topic);
+  const exists = all.some((g) => g.id === topic.id);
+  try {
+    const dto = toWriteDto(topic);
+    const response = exists
+      ? await apiPut<TopicTranslationsDto>(`/guide/topics/${encodeURIComponent(topic.id)}`, dto)
+      : await apiPost<TopicTranslationsDto>("/guide/topics", dto);
+    const saved = toGuideTopic(response);
+    guides = exists ? all.map((g) => (g.id === saved.id ? saved : g)) : [...all, saved];
+    return saved;
+  } catch (error) {
+    throw explain(error);
+  }
+}
+
+export async function deleteGuideTopic(id: string): Promise<void> {
+  const all = await loadGuides();
+  try {
+    await apiDelete(`/guide/topics/${encodeURIComponent(id)}`);
+  } catch (error) {
+    // Já não existe no servidor: a tela só precisa refletir isso.
+    if (!(error instanceof ApiError && error.status === 404)) throw explain(error);
+  }
+  guides = all.filter((g) => g.id !== id);
 }

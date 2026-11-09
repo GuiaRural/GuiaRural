@@ -138,6 +138,11 @@ function topicTexts(topic: GuideTopic): Translated[] {
   return [topic.title, topic.summary, ...topic.blocks.flatMap(blockTexts), ...topic.links.map((l) => l.label)];
 }
 
+// Algum texto do tópico tem tradução neste idioma? (Se nenhum tem, o idioma nem recebe conteúdo próprio.)
+export function hasTranslation(topic: GuideTopic, language: Language): boolean {
+  return topicTexts(topic).some((t) => Boolean(t[language]));
+}
+
 export function isFullyTranslated(topic: GuideTopic, language: Language): boolean {
   if (language === "pt") return true;
   return topicTexts(topic).every((t) => Boolean(t[language]));
