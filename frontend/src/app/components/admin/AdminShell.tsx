@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { PERMISSIONS } from "../../data/mockAdmins";
 import { setFlash } from "../../lib/flash";
-import { getSession, logout, subscribeSession, type Session } from "../../services/authService";
+import { getSession, logout, subscribeSession, verifySession, type Session } from "../../services/authService";
 import LogoutModal, { LogoutIcon } from "./LogoutModal";
 
 type NavItem = { href: string; label: string };
@@ -61,6 +61,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   // Alterações não salvas valem só para a tela em que foram feitas (FE01 do UC24).
   const [dirtyPath, setDirtyPath] = useState<string | null>(null);
   const dirty = dirtyPath === pathname;
+
+  // A cópia local da sessão pode ter sobrevivido ao cookie (expirou, ou o servidor reiniciou): confirma com o servidor.
+  useEffect(() => {
+    void verifySession();
+  }, []);
 
   // RN-02 do UC24: sem sessão, voltar pelo navegador não reabre o painel.
   useEffect(() => {
