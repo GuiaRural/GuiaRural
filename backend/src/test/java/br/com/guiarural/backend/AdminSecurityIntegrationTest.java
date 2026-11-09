@@ -50,6 +50,9 @@ class AdminSecurityIntegrationTest {
         insertAdmin(1, "Editora", "editora@ufrpe.br", "editor", "ativo");
         insertAdmin(2, "Leitora", "leitora@ufrpe.br", "leitura", "ativo");
         insertAdmin(3, "Revogado", "revogado@ufrpe.br", "editor", "revogado");
+        // Conta só do teste de limite de tentativas: o limitador é único no contexto e guarda os erros entre testes,
+        // então bloquear uma conta usada por outros testes os faria falhar conforme a ordem de execução.
+        insertAdmin(4, "Bloqueada", "bloqueada@ufrpe.br", "leitura", "ativo");
     }
 
     private void insertAdmin(int id, String name, String email, String permission, String status) {
@@ -163,10 +166,10 @@ class AdminSecurityIntegrationTest {
     @DisplayName("Depois de 5 erros a conta é barrada com 429 e Retry-After, mesmo com a senha certa")
     void rateLimitsRepeatedFailures() throws Exception {
         for (int i = 0; i < 5; i++) {
-            assertEquals(401, loginAttempt("leitora@ufrpe.br", "errada-" + i).getResponse().getStatus());
+            assertEquals(401, loginAttempt("bloqueada@ufrpe.br", "errada-" + i).getResponse().getStatus());
         }
 
-        MvcResult limited = loginAttempt("leitora@ufrpe.br", PASSWORD);
+        MvcResult limited = loginAttempt("bloqueada@ufrpe.br", PASSWORD);
 
         assertEquals(429, limited.getResponse().getStatus());
         assertNotNull(limited.getResponse().getHeader("Retry-After"));
@@ -369,5 +372,51 @@ class AdminSecurityIntegrationTest {
                 .content("{\"nome\":\"  \",\"descricao\":\"texto\"}"))
                 .andExpect(status().isBadRequest());
         assertEquals(0, count("select count(*) from avisos"));
+    }
+
+    @Test
+    @DisplayName("Serviços: editar despublica sem excluir, excluir remove, e as duas ações ficam no histórico")
+    void servicesEditAndDelete() throws Exception {
+        Auth editor = login("editora@ufrpe.br");
+        MvcResult created = mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isCreated()).andReturn();
+        String id = created.getResponse().getContentAsString().replaceAll(".*\"id\":(\\d+).*", "$1");
+
+        mvc.perform(editor.write(put("/api/services/" + id)).contentType(MediaType.APPLICATION_JSON)
+                .content(SERVICE.replace("Carteira de Estudante", "Carteira Nova").replace("\"deadline\":null", "\"active\":false")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Carteira Nova"))
+                .andExpect(jsonPath("$.active").value(false));
+        mvc.perform(get("/api/services")).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/admin/services").session(editor.session()))
+                .andExpect(jsonPath("$[0].name").value("Carteira Nova"));
+
+        // Editar sem informar "active" mantém o status (aqui, despublicado).
+        mvc.perform(editor.write(put("/api/services/" + id)).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+
+        mvc.perform(editor.write(delete("/api/services/" + id))).andExpect(status().isNoContent());
+        assertEquals(0, count("select count(*) from services"));
+        assertEquals(1, count("select count(*) from audit_logs where entity = ? and action = ?", "servico", "deletado"));
+        assertEquals(2, count("select count(*) from audit_logs where entity = ? and action = ?", "servico", "editado"));
+        mvc.perform(editor.write(put("/api/services/" + id)).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isNotFound());
+        mvc.perform(editor.write(delete("/api/services/" + id))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Serviços: perfil leitura não edita nem exclui")
+    void readOnlyAdminCannotEditOrDeleteService() throws Exception {
+        Auth editor = login("editora@ufrpe.br");
+        MvcResult created = mvc.perform(editor.write(post("/api/services")).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isCreated()).andReturn();
+        String id = created.getResponse().getContentAsString().replaceAll(".*\"id\":(\\d+).*", "$1");
+        Auth reader = login("leitora@ufrpe.br");
+
+        mvc.perform(reader.write(put("/api/services/" + id)).contentType(MediaType.APPLICATION_JSON).content(SERVICE))
+                .andExpect(status().isForbidden());
+        mvc.perform(reader.write(delete("/api/services/" + id))).andExpect(status().isForbidden());
+        assertEquals(1, count("select count(*) from services"));
     }
 }
