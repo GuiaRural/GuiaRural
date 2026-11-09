@@ -4,6 +4,7 @@ import br.com.guiarural.backend.core.exception.BadRequestException;
 import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 import br.com.guiarural.backend.info.dto.GuideTopicDetailDTO;
 import br.com.guiarural.backend.info.dto.GuideTopicSummaryDTO;
+import br.com.guiarural.backend.info.dto.GuideTopicTranslationsDTO;
 import br.com.guiarural.backend.info.model.GuideTopicEntity;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.info.repository.GuideTopicRepository;
@@ -21,8 +22,10 @@ import java.util.Optional;
 
 import static br.com.guiarural.backend.info.GuideTestData.entity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +49,8 @@ class GuideTopicServiceTest {
                 "summaryPt", "Resumo em português",
                 "blocksPt", "[{\"type\":\"p\",\"text\":\"Olá\"}]",
                 "blocksEn", "[{\"type\":\"p\",\"text\":\"Hello\"}]",
-                "linksPt", "[]",
+                "linksPt", "[{\"label\":\"Portal\",\"url\":\"https://x.test\"}]",
+                "fullyTranslatedLangs", new String[]{"en"},
                 "place", place);
     }
 
@@ -99,7 +103,7 @@ class GuideTopicServiceTest {
 
         assertEquals("[{\"type\":\"p\",\"text\":\"Hello\"}]", result.blocks().toString());
         // Links só existem em português: o inglês herda os mesmos.
-        assertEquals("[]", result.links().toString());
+        assertEquals("[{\"label\":\"Portal\",\"url\":\"https://x.test\"}]", result.links().toString());
     }
 
     @Test
@@ -108,5 +112,79 @@ class GuideTopicServiceTest {
         when(repository.findBySlug("nao-existe")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service().findBySlug("nao-existe", Language.PT));
+    }
+
+    @Test
+    @DisplayName("Deve marcar como totalmente traduzido só os idiomas gravados no tópico")
+    void shouldFlagFullyTranslatedLanguages() {
+        when(repository.findBySectionOrderByPositionAsc("cultura")).thenReturn(List.of(topic("Welcome", null)));
+
+        assertTrue(service().findBySection("cultura", Language.PT).get(0).fullyTranslated());
+        assertTrue(service().findBySection("cultura", Language.EN).get(0).fullyTranslated());
+        // O tópico só lista "en": em espanhol houve fallback para o português.
+        assertFalse(service().findBySection("cultura", Language.ES).get(0).fullyTranslated());
+    }
+
+    @Test
+    @DisplayName("Deve informar o idioma em que o título de fato veio")
+    void shouldReportTitleLanguage() {
+        when(repository.findBySlug("com-titulo")).thenReturn(Optional.of(topic("Welcome", null)));
+        when(repository.findBySlug("sem-titulo")).thenReturn(Optional.of(topic(null, null)));
+
+        assertEquals("en", service().findBySlug("com-titulo", Language.EN).titleLang());
+        assertEquals("pt", service().findBySlug("sem-titulo", Language.EN).titleLang());
+        assertEquals("pt", service().findBySlug("com-titulo", Language.PT).titleLang());
+    }
+
+    @Test
+    @DisplayName("Deve buscar sem acento e sem diferenciar maiúsculas, nos textos dos blocos")
+    void shouldSearchIgnoringAccentsAndCase() {
+        when(repository.findAllBy()).thenReturn(List.of(topic("Welcome", null)));
+
+        assertEquals(1, service().search("OLA", Language.PT).size());
+        assertEquals("Welcome", service().search("hello", Language.EN).get(0).title());
+    }
+
+    @Test
+    @DisplayName("Deve buscar também no português quando o idioma ativo é outro")
+    void shouldSearchPortugueseTextInOtherLanguage() {
+        when(repository.findAllBy()).thenReturn(List.of(topic("Welcome", null)));
+
+        assertEquals(1, service().search("Resumo em portugues", Language.EN).size());
+    }
+
+    @Test
+    @DisplayName("Não deve casar com campos técnicos dos blocos nem com URLs")
+    void shouldNotMatchTechnicalFields() {
+        when(repository.findAllBy()).thenReturn(List.of(topic("Welcome", null)));
+
+        // "type" e "https" existem só como chave/URL no JSON.
+        assertTrue(service().search("type", Language.PT).isEmpty());
+        assertTrue(service().search("https", Language.PT).isEmpty());
+    }
+
+    @Test
+    @DisplayName("Deve devolver lista vazia, sem consultar o banco, para busca curta")
+    void shouldReturnEmptyForShortQuery() {
+        assertTrue(service().search("a", Language.PT).isEmpty());
+        assertTrue(service().search("  ", Language.PT).isEmpty());
+        assertTrue(service().search(null, Language.PT).isEmpty());
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("Deve devolver os três idiomas lado a lado, com nulo onde não há tradução")
+    void shouldReturnTranslationsSideBySide() {
+        when(repository.findBySlug("boas-vindas")).thenReturn(Optional.of(topic("Welcome", null)));
+
+        GuideTopicTranslationsDTO result = service().findTranslationsBySlug("boas-vindas");
+
+        assertEquals("Bem-vindo(a)", result.title().pt());
+        assertEquals("Welcome", result.title().en());
+        assertNull(result.title().es());
+        assertEquals("[{\"type\":\"p\",\"text\":\"Olá\"}]", result.blocks().pt().toString());
+        assertEquals("[{\"type\":\"p\",\"text\":\"Hello\"}]", result.blocks().en().toString());
+        assertNull(result.blocks().es());
+        assertEquals(List.of("en"), result.fullyTranslatedLangs());
     }
 }

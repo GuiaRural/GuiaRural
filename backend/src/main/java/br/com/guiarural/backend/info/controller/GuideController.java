@@ -3,6 +3,7 @@ package br.com.guiarural.backend.info.controller;
 import br.com.guiarural.backend.info.dto.GuideResourcesDTO;
 import br.com.guiarural.backend.info.dto.GuideTopicDetailDTO;
 import br.com.guiarural.backend.info.dto.GuideTopicSummaryDTO;
+import br.com.guiarural.backend.info.dto.GuideTopicTranslationsDTO;
 import br.com.guiarural.backend.info.dto.RecifeGuideDTO;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.info.service.GuideResourceService;
@@ -39,6 +40,24 @@ public class GuideController {
     public ResponseEntity<GuideTopicDetailDTO> findTopic(@PathVariable String slug,
                                                          @RequestParam(required = false) String lang) {
         return ResponseEntity.ok(topicService.findBySlug(slug, Language.from(lang)));
+    }
+
+    // Mínimo de 2 caracteres; abaixo disso devolve lista vazia.
+    @GetMapping("/search")
+    public ResponseEntity<List<GuideTopicSummaryDTO>> search(@RequestParam String q,
+                                                             @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(topicService.search(q, Language.from(lang)));
+    }
+
+    // Os três idiomas lado a lado, para o painel administrativo editar as traduções.
+    @GetMapping("/translations/topics")
+    public ResponseEntity<List<GuideTopicTranslationsDTO>> findTopicTranslations(@RequestParam String section) {
+        return ResponseEntity.ok(topicService.findTranslationsBySection(section));
+    }
+
+    @GetMapping("/translations/topics/{slug}")
+    public ResponseEntity<GuideTopicTranslationsDTO> findTopicTranslation(@PathVariable String slug) {
+        return ResponseEntity.ok(topicService.findTranslationsBySlug(slug));
     }
 
     @GetMapping("/recife")

@@ -6,6 +6,9 @@ import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 import br.com.guiarural.backend.info.controller.GuideController;
 import br.com.guiarural.backend.info.dto.GuideResourcesDTO;
 import br.com.guiarural.backend.info.dto.GuideTopicSummaryDTO;
+import br.com.guiarural.backend.info.dto.GuideTopicTranslationsDTO;
+import br.com.guiarural.backend.info.dto.LocalizedJsonDTO;
+import br.com.guiarural.backend.info.dto.LocalizedTextDTO;
 import br.com.guiarural.backend.info.dto.RecifeGuideDTO;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.info.service.GuideResourceService;
@@ -49,7 +52,7 @@ class GuideControllerTest {
     @DisplayName("Deve listar os tópicos da seção no idioma do parâmetro lang")
     void shouldListTopicsWithLanguage() throws Exception {
         when(topicService.findBySection("cultura", Language.EN)).thenReturn(List.of(
-                new GuideTopicSummaryDTO("boas-vindas", "cultura", null, "Welcome", "Summary", null)));
+                new GuideTopicSummaryDTO("boas-vindas", "cultura", null, "Welcome", "Summary", null, true)));
 
         mockMvc.perform(get("/api/guide/topics").param("section", "cultura").param("lang", "en"))
                 .andExpect(status().isOk())
@@ -100,5 +103,36 @@ class GuideControllerTest {
                 .andExpect(jsonPath("$.support").isArray())
                 .andExpect(jsonPath("$.emergency").isArray())
                 .andExpect(jsonPath("$.downloads").isArray());
+    }
+
+    @Test
+    @DisplayName("Deve buscar tópicos pelo termo e pelo idioma")
+    void shouldSearchTopics() throws Exception {
+        when(topicService.search("visto", Language.EN)).thenReturn(List.of(
+                new GuideTopicSummaryDTO("visto", "documentos", "antes", "Visa", "Summary", null, false)));
+
+        mockMvc.perform(get("/api/guide/search").param("q", "visto").param("lang", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].slug").value("visto"))
+                .andExpect(jsonPath("$[0].fullyTranslated").value(false));
+    }
+
+    @Test
+    @DisplayName("Deve devolver as traduções do tópico nos três idiomas")
+    void shouldReturnTopicTranslations() throws Exception {
+        when(topicService.findTranslationsBySlug("cpf")).thenReturn(new GuideTopicTranslationsDTO(
+                "cpf", "documentos", "chegada",
+                new LocalizedTextDTO("CPF", "Tax ID", null),
+                new LocalizedTextDTO("Resumo", null, null),
+                new LocalizedJsonDTO(null, null, null),
+                new LocalizedJsonDTO(null, null, null),
+                new LocalizedTextDTO("Cartilha", null, null),
+                null, List.of("en")));
+
+        mockMvc.perform(get("/api/guide/translations/topics/cpf"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title.pt").value("CPF"))
+                .andExpect(jsonPath("$.title.en").value("Tax ID"))
+                .andExpect(jsonPath("$.fullyTranslatedLangs[0]").value("en"));
     }
 }

@@ -1,5 +1,6 @@
 package br.com.guiarural.backend.info.model;
 
+import java.util.Arrays;
 import java.util.Locale;
 
 public enum Language {
@@ -19,6 +20,25 @@ public enum Language {
             case "es" -> ES;
             default -> PT;
         };
+    }
+
+    public String code() {
+        return name().toLowerCase(Locale.ROOT);
+    }
+
+    // O idioma de fato usado para um texto: o pedido, ou o português quando falta a tradução.
+    public Language effective(String en, String es) {
+        String text = switch (this) {
+            case EN -> en;
+            case ES -> es;
+            case PT -> "x";
+        };
+        return text == null || text.isBlank() ? PT : this;
+    }
+
+    // O português é sempre completo; os outros idiomas dependem da lista gravada no tópico.
+    public boolean isFullyTranslatedIn(String[] fullyTranslatedLangs) {
+        return this == PT || (fullyTranslatedLangs != null && Arrays.asList(fullyTranslatedLangs).contains(code()));
     }
 
     // Texto no idioma pedido; quando falta a tradução (nula ou vazia), devolve o português.

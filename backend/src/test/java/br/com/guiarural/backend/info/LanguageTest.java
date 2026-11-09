@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LanguageTest {
     @Test
@@ -32,5 +34,24 @@ class LanguageTest {
         assertEquals("Hello", Language.EN.pick("Olá", "Hello", "Hola"));
         assertEquals("Olá", Language.EN.pick("Olá", null, "Hola"));
         assertEquals("Olá", Language.ES.pick("Olá", "Hello", "  "));
+    }
+
+    @Test
+    @DisplayName("Deve informar o idioma efetivamente usado em um texto")
+    void shouldReportEffectiveLanguage() {
+        assertEquals(Language.EN, Language.EN.effective("Hello", null));
+        assertEquals(Language.PT, Language.EN.effective(null, "Hola"));
+        assertEquals(Language.PT, Language.ES.effective("Hello", " "));
+        assertEquals(Language.PT, Language.PT.effective("Hello", "Hola"));
+        assertEquals("es", Language.ES.code());
+    }
+
+    @Test
+    @DisplayName("Deve considerar o português sempre completo e os demais pela lista gravada")
+    void shouldCheckFullyTranslatedLanguages() {
+        assertTrue(Language.PT.isFullyTranslatedIn(null));
+        assertTrue(Language.EN.isFullyTranslatedIn(new String[]{"en"}));
+        assertFalse(Language.ES.isFullyTranslatedIn(new String[]{"en"}));
+        assertFalse(Language.EN.isFullyTranslatedIn(null));
     }
 }

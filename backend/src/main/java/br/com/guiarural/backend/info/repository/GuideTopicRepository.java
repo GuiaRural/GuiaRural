@@ -16,4 +16,8 @@ public interface GuideTopicRepository extends JpaRepository<GuideTopicEntity, Lo
 
     @EntityGraph(attributePaths = "place")
     Optional<GuideTopicEntity> findBySlug(String slug);
+
+    // Todas as seções, para a busca.
+    @EntityGraph(attributePaths = "place")
+    List<GuideTopicEntity> findAllBy();
 }

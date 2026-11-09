@@ -51,6 +51,9 @@ public class GuideTopicEntity {
     @JoinColumn(name = "place_id")
     private PlaceEntity place;
     private int position;
+    // Idiomas (en, es) em que todos os textos do tópico estão traduzidos; o português é sempre completo.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private String[] fullyTranslatedLangs;
 
     protected GuideTopicEntity() {
     }
@@ -137,5 +140,9 @@ public class GuideTopicEntity {
 
     public int getPosition() {
         return position;
+    }
+
+    public String[] getFullyTranslatedLangs() {
+        return fullyTranslatedLangs;
     }
 }
