@@ -1,10 +1,7 @@
-import { MOCK_AVISOS } from "../data/mockAvisos";
-import { ApiError } from "../lib/api";
-import { delay } from "../lib/storage";
+import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 
-// Ponto único de acesso aos avisos do campus. Os tipos espelham os DTOs do backend (/api/avisos).
-// Por enquanto os dados vêm do mock, em memória (voltam ao original ao recarregar a página).
-// Com o backend pronto, troque cada função pela chamada indicada no comentário e apague o mock.
+// Ponto único de acesso aos avisos do campus (/api/avisos). Os tipos espelham os DTOs do backend.
+// O backend ainda não tem login: criar, editar e excluir estão abertos até a autenticação do painel existir.
 
 export type Aviso = {
   id: number;
@@ -17,36 +14,65 @@ export type Aviso = {
 // Campos que o administrador preenche ao criar ou editar um aviso.
 export type AvisoInput = Pick<Aviso, "nome" | "descricao">;
 
-let avisos: Aviso[] = [...MOCK_AVISOS];
-let nextId = MOCK_AVISOS.length + 1;
-
-// API: apiGet<Aviso[]>("/avisos"). Mais recentes primeiro.
+// Mais recentes primeiro (o backend não garante ordem).
 export async function listAvisos(): Promise<Aviso[]> {
-  await delay();
+  const avisos = await apiGet<Aviso[]>("/avisos");
   return [...avisos].sort((a, b) => b.data.localeCompare(a.data));
 }
 
-// API: apiPost<Aviso>("/avisos", input)
-export async function createAviso(input: AvisoInput): Promise<Aviso> {
-  await delay();
-  const aviso: Aviso = { ...input, id: nextId++, data: new Date().toISOString().slice(0, 19) };
-  avisos = [...avisos, aviso];
-  return aviso;
+// Mesmos limites do AvisoRequestDTO do backend.
+export const NOME_MAX_LENGTH = 255;
+export const DESCRICAO_MAX_LENGTH = 2000;
+
+export type AvisoField = keyof AvisoInput;
+export type AvisoFieldError = "required" | "tooLong";
+
+export class AvisoValidationError extends Error {
+  constructor(readonly errors: Partial<Record<AvisoField, AvisoFieldError>>) {
+    super("Aviso com campos inválidos.");
+  }
 }
 
-// API: apiPut<Aviso>(`/avisos/${id}`, input)
-export async function updateAviso(id: number, input: AvisoInput): Promise<Aviso> {
-  await delay();
-  const current = avisos.find((a) => a.id === id);
-  if (!current) throw new ApiError(404);
-  const updated = { ...current, ...input };
-  avisos = avisos.map((a) => (a.id === id ? updated : a));
-  return updated;
+// Devolve só os campos com problema; objeto vazio quando está tudo certo.
+export function validateAviso(input: AvisoInput): Partial<Record<AvisoField, AvisoFieldError>> {
+  const errors: Partial<Record<AvisoField, AvisoFieldError>> = {};
+  if (!input.nome.trim()) errors.nome = "required";
+  else if (input.nome.trim().length > NOME_MAX_LENGTH) errors.nome = "tooLong";
+  if (!input.descricao.trim()) errors.descricao = "required";
+  else if (input.descricao.trim().length > DESCRICAO_MAX_LENGTH) errors.descricao = "tooLong";
+  return errors;
 }
 
-// API: apiDelete(`/avisos/${id}`). Aviso inexistente falha como no backend (FE-18.01).
-export async function deleteAviso(id: number): Promise<void> {
-  await delay();
-  if (!avisos.some((a) => a.id === id)) throw new ApiError(404);
-  avisos = avisos.filter((a) => a.id !== id);
+// Valida no cliente e, se o servidor recusar por campo, devolve o erro no campo certo.
+async function send(input: AvisoInput, request: (body: AvisoInput) => Promise<Aviso>): Promise<Aviso> {
+  const errors = validateAviso(input);
+  if (Object.keys(errors).length) throw new AvisoValidationError(errors);
+  try {
+    return await request({ nome: input.nome.trim(), descricao: input.descricao.trim() });
+  } catch (error) {
+    // O servidor valida de novo; os erros por campo voltam em `fields`.
+    if (error instanceof ApiError && error.status === 400 && error.fields) {
+      const fieldErrors: Partial<Record<AvisoField, AvisoFieldError>> = {};
+      for (const [field, message] of Object.entries(error.fields)) {
+        if (field === "nome" || field === "descricao") fieldErrors[field] = /caracteres/.test(message) ? "tooLong" : "required";
+      }
+      if (Object.keys(fieldErrors).length) throw new AvisoValidationError(fieldErrors);
+    }
+    throw error;
+  }
+}
+
+// O aviso nasce publicado, com a data definida pelo servidor.
+export function createAviso(input: AvisoInput): Promise<Aviso> {
+  return send(input, (body) => apiPost<Aviso>("/avisos", body));
+}
+
+// A data de publicação não muda na edição (decisão do backend).
+export function updateAviso(id: number, input: AvisoInput): Promise<Aviso> {
+  return send(input, (body) => apiPut<Aviso>(`/avisos/${id}`, body));
+}
+
+// Aviso inexistente falha com 404 (FE-18.01).
+export function deleteAviso(id: number): Promise<void> {
+  return apiDelete(`/avisos/${id}`);
 }

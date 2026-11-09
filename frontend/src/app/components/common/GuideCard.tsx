@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useLanguage } from "../../context/LanguageContext";
-import type { GuideDetail, GuideSpot } from "../../data/mockGuide";
+import type { GuideDetail, GuideSpot } from "../../services/guideService";
 import { useSavedIds } from "../../hooks/useSavedIds";
 import Icon from "./Icon";
 
@@ -39,7 +39,7 @@ function Detail({ detail }: { detail: GuideDetail }) {
 export default function GuideCard({ spot }: { spot: GuideSpot }) {
   const { t } = useLanguage();
   const { ids, toggle } = useSavedIds(SAVED_GUIDE_SPOTS_KEY);
-  const saved = ids.includes(spot.id);
+  const saved = ids.includes(spot.slug);
 
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
@@ -47,7 +47,7 @@ export default function GuideCard({ spot }: { spot: GuideSpot }) {
         {spot.image ? (
           <Image
             src={spot.image.src}
-            alt={spot.image.alt}
+            alt={spot.image.alt ?? ""}
             fill
             sizes="(min-width: 1024px) 40vw, 100vw"
             className="object-cover"
@@ -56,27 +56,33 @@ export default function GuideCard({ spot }: { spot: GuideSpot }) {
           <Icon name="pin" className="absolute left-1/2 top-1/2 size-16 -translate-x-1/2 -translate-y-1/2 text-white/60" />
         )}
         <div className="absolute inset-x-3 top-3 flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white ${TAG_TONES[spot.tag.tone]}`}
-          >
-            {spot.tag.label}
-          </span>
-          {spot.badge.tone === "highlight" ? (
+          {spot.tag && (
+            <span
+              className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white ${TAG_TONES[spot.tag.tone]}`}
+            >
+              {spot.tag.label}
+            </span>
+          )}
+          {spot.badge && spot.badge.tone === "highlight" ? (
             <span className="flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-[10px] font-bold text-navy-900">
               <Icon name="bolt" className="size-3" />
               {spot.badge.label}
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-              <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
-              {spot.badge.label}
-            </span>
+            spot.badge && (
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-700">
+                <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+                {spot.badge.label}
+              </span>
+            )
           )}
         </div>
-        <p className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-navy-900/80 px-2 py-1 text-[10px] font-semibold text-white">
-          <Icon name={spot.distance.icon} className="size-3" />
-          {spot.distance.label}
-        </p>
+        {spot.distance && (
+          <p className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-navy-900/80 px-2 py-1 text-[10px] font-semibold text-white">
+            <Icon name={spot.distance.icon} className="size-3" />
+            {spot.distance.label}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-4 sm:p-5">
@@ -86,16 +92,18 @@ export default function GuideCard({ spot }: { spot: GuideSpot }) {
             type="button"
             aria-pressed={saved}
             aria-label={`${saved ? t.guide.unsaveSpot : t.guide.saveSpot}: ${spot.title}`}
-            onClick={() => toggle(spot.id)}
+            onClick={() => toggle(spot.slug)}
             className="grid size-8 shrink-0 place-items-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-navy-700"
           >
             <Icon name="bookmark" className={`size-5 ${saved ? "fill-current text-navy-900" : ""}`} />
           </button>
         </div>
-        <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-          <Icon name="pin" className="size-3.5 text-amber-600" />
-          {spot.address}
-        </p>
+        {spot.address && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+            <Icon name="pin" className="size-3.5 text-amber-600" />
+            {spot.address}
+          </p>
+        )}
         <p className="mt-3 max-w-md text-xs leading-relaxed text-slate-600">{spot.description}</p>
 
         <div

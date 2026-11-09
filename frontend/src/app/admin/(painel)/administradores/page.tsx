@@ -160,7 +160,7 @@ export default function AdminsPage() {
                           Aprovar
                         </button>
                       )}
-                      {isGeneral && a.status !== "revogado" && a.id !== session.adminId && (
+                      {isGeneral && a.status !== "revogado" && a.email !== session.email && (
                         <button
                           type="button"
                           className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
@@ -197,7 +197,7 @@ export default function AdminsPage() {
       >
         <NewAdminForm
           author={session.name}
-          authorSector={session.sector}
+          authorSector={session.sector as Sector}
           onCancel={() => setCreating(false)}
           onCreated={(admin, sent) => {
             setCreating(false);

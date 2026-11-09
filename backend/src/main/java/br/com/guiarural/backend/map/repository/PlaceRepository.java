@@ -12,4 +12,6 @@ public interface PlaceRepository extends JpaRepository<PlaceEntity, Long> {
     List<PlaceEntity> findByStatusOrderByNameAsc(String status);
 
     Optional<PlaceEntity> findBySlugAndStatus(String slug, String status);
+
+    Optional<PlaceEntity> findBySlug(String slug);
 }

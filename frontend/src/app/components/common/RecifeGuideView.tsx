@@ -1,7 +1,8 @@
 "use client";
 
 import { useLanguage } from "../../context/LanguageContext";
-import type { RecifeGuide } from "../../data/mockGuide";
+import { useApi } from "../../hooks/useApi";
+import { getRecifeGuide } from "../../services/guideService";
 import Breadcrumb from "./Breadcrumb";
 import GuideCard from "./GuideCard";
 import GuideLoadError from "./GuideLoadError";
@@ -12,8 +13,10 @@ import PageFooter from "./PageFooter";
 
 const TIPS_ID = "dicas-rapidas";
 
-export default function RecifeGuideView({ guide }: { guide: RecifeGuide | null }) {
-  const { t } = useLanguage();
+export default function RecifeGuideView() {
+  const { t, language } = useLanguage();
+  // O texto vem da API já no idioma escolhido; trocar o idioma refaz a busca.
+  const state = useApi(getRecifeGuide, language);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -36,11 +39,12 @@ export default function RecifeGuideView({ guide }: { guide: RecifeGuide | null }
           <HeroBanner title={t.guide.heroTitle} subtitle={t.guide.heroSubtitle} />
         </div>
 
-        {guide ? (
+        {state.status === "loading" && <p role="status" className="mt-6 text-sm text-slate-600">{t.common.loading}</p>}
+        {state.status === "ready" && (
           <>
             <div className="mt-6 grid gap-x-5 gap-y-10 lg:grid-cols-2">
-              {guide.spots.map((spot) => (
-                <GuideCard key={spot.id} spot={spot} />
+              {state.data.spots.map((spot) => (
+                <GuideCard key={spot.slug} spot={spot} />
               ))}
             </div>
             <GuideTipsSection
@@ -48,13 +52,14 @@ export default function RecifeGuideView({ guide }: { guide: RecifeGuide | null }
               title={t.guide.tipsTitle}
               subtitle={t.guide.tipsSubtitle}
               partnerships={t.guide.partnerships}
-              tips={guide.tips}
-              support={guide.support}
+              tips={state.data.tips}
+              support={state.data.support}
             />
           </>
-        ) : (
+        )}
+        {state.status === "error" && (
           <div className="mt-6">
-            <GuideLoadError />
+            <GuideLoadError onRetry={state.retry} />
           </div>
         )}
 

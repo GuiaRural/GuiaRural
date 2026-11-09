@@ -20,7 +20,7 @@ Requisitos funcionais: RF01 mapa · RF02 rotas · RF03 catálogo de serviços ·
 | Camada | Tecnologia |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript (strict), Tailwind CSS 4, React Compiler ligado |
-| Backend | Java 21, Spring Boot 4.1 (webmvc, validation, actuator, data-jpa), Maven Wrapper |
+| Backend | Java 21, Spring Boot 4.1 (webmvc, validation, actuator, data-jpa, security), Maven Wrapper |
 | Dados | PostgreSQL no Supabase; schema versionado com o Supabase CLI em `supabase/migrations/` |
 | Mapas | Leaflet 1.9.4 + react-leaflet 5.0.0 + OpenStreetMap (integrado na Home; só cliente, via `dynamic`) |
 | Infra | Docker, GitHub Actions (CI/CD), 4 ambientes: dev, teste, homologação, produção — **planejado: ainda não há Dockerfile nem workflow no repositório** |
@@ -30,9 +30,9 @@ Requisitos funcionais: RF01 mapa · RF02 rotas · RF03 catálogo de serviços ·
 ## 4. Arquitetura
 - Cliente-servidor em camadas. Backend monolítico, sem microsserviços.
 - Backend: **Controller → Service → Repository** (API REST, DTOs nas bordas). Pacotes em `br.com.guiarural.backend`:
-  - com código: `core` (`exception`), `courses` (departamentos, cursos e matriz), `map` (locais e busca), `msg`, `notices` (avisos), `services`;
-  - ainda só placeholders (`temp.txt`): `contacts`, `info`, `login`, `core/config`, `core/security`.
-- Erros: lance `ResourceNotFoundException` (vira 404); o `GlobalExceptionHandler` devolve `ProblemDetail` (404, 400 de validação, JSON malformado e ID inválido). `services`, `notices` e `msg` ainda lançam `IllegalArgumentException`/`RuntimeException` e respondem 500 nesses casos.
+  - com código: `core` (`exception`, `security`, `audit`), `login` (autenticação do painel), `courses` (departamentos, cursos e matriz), `map` (locais e busca), `info` (guia de acolhimento e Guia de Recife), `msg`, `notices` (avisos), `services`;
+  - ainda só placeholders (`temp.txt`): `contacts`.
+- Erros: lance `ResourceNotFoundException` (vira 404); o `GlobalExceptionHandler` devolve `ProblemDetail` (404, 400 de validação, JSON malformado e ID inválido). `BadRequestException` vira 400 e `ConflictException`, 409. `msg` ainda lança `IllegalArgumentException`/`RuntimeException` e responde 500 nesses casos.
 - Frontend: componentes React tipados, separação apresentação / regra / dados.
 - APIs externas (mapas, rotas) **sempre atrás de uma Facade**, expondo só os métodos usados, para permitir trocar de provedor (RNF08).
 - Padrões previstos: Facade, Flyweight (reduzir memória no cliente), MVC.
@@ -62,12 +62,13 @@ Mantenha os arquivos nessas pastas. Não crie estruturas paralelas (ex.: um segu
 ## 7. Multilíngue (RF04)
 - Idiomas hoje: **PT, EN, ES**. Francês aparece na Visão e na Arquitetura, mas não no Plano de Projeto: decisão pendente com o PO, não implementar sem confirmação.
 - Todo texto de interface vem de `t.<seção>.<chave>` (`useLanguage()`), com entrada nos três idiomas em `i18n/dictionaries.ts`. EN e ES precisam de revisão humana.
-- Conteúdo vindo da API (locais, departamentos, cursos) ainda não tem modelo de tradução definido e hoje está só em português. Não inventar; perguntar.
+- **Guia de acolhimento e Guia de Recife** têm tradução no banco (colunas `_pt/_en/_es`, jsonb por idioma nos blocos) e `/api/guide` resolve o idioma no servidor (`?lang=`, fallback para PT). `machine_translated_langs` marca o que foi traduzido automaticamente e espera revisão humana (Guia de Recife); `fully_translated_langs` diz em quais idiomas um tópico está 100% traduzido.
+- Conteúdo de locais, departamentos e cursos: as colunas `_en/_es` já existem no banco, mas a API ainda devolve só português. Não inventar tradução; perguntar.
 
 ## 8. Requisitos não funcionais que afetam o código
 - **Desempenho (RNF01):** usuários em 3G/4G e aparelhos modestos. Imagens leves (JPG/PNG até 5 MB), requisições de mapa limitadas, nada de dependências pesadas sem necessidade.
 - **Disponibilidade (RNF03):** cache local no navegador para pontos de interesse prioritários. Hoje só há cache em memória por sessão (`placesService`); o cache persistente ainda não existe.
-- **Segurança (RNF02):** chamadas externas por HTTPS; criar/alterar/excluir dados só pelo painel admin autenticado, com permissões validadas **no backend**.
+- **Segurança (RNF02):** chamadas externas por HTTPS; criar/alterar/excluir dados só pelo painel admin autenticado, com permissões validadas **no backend**. Implementado com Spring Security: **nega por padrão** (`core/security/SecurityConfig`: só as leituras listadas lá são públicas), sessão por cookie `GUIARURAL_SESSION` HttpOnly + SameSite=Strict (em HTTPS defina `SESSION_COOKIE_SECURE=true`), CSRF por cookie `XSRF-TOKEN` + cabeçalho `X-XSRF-TOKEN`, senha BCrypt em `admins.password_hash` e limite de 5 erros de senha por e-mail em 15 min. Escrever exige perfil `geral` ou `editor`; `leitura` só consulta. Toda rota nova nasce protegida: liberar uma leitura pública é decisão explícita no `SecurityConfig`.
 - **Privacidade (RNF04):** nada de rastreamento do usuário final. "Últimos acessos" e locais salvos ficam só no navegador (`localStorage`, sempre com `try/catch`).
 - **Usabilidade/Portabilidade (RNF05, RNF10):** responsivo, mobile primeiro, identidade visual da UFRPE, acessível por teclado, com `aria-label` e contraste adequado.
 - **Auditabilidade (RNF06):** alterações feitas no admin devem gerar log de auditoria no PostgreSQL.
@@ -103,7 +104,7 @@ Toda tabela, view, função e tela nova deve seguir **antes do commit**:
 ```bash
 # Backend (porta 8080, saúde em /actuator/health)
 cd backend && ./mvnw spring-boot:run
-cd backend && ./mvnw test            # BackendApplicationTests precisa do banco; os demais são unitários
+cd backend && ./mvnw test            # usa H2 em memória (src/test/resources/application.properties): não precisa de banco nem de .env
 
 # Frontend (porta 3000)
 cd frontend && npm install && npm run dev
@@ -117,12 +118,12 @@ O backend lê `backend/.env` com `DB_URL` (`jdbc:postgresql://HOST:PORTA/postgre
 Se o `tsc` falhar em `frontend/.next/dev/types/validator.ts`, é um arquivo gerado e ignorado pelo Git que ficou corrompido; ele é recriado pelo `next dev`/`next build`.
 
 ## 12. Estado atual (atualize ao mudar)
-- **Já vem do banco (via `/api`):** mapa, busca, cartão e página do local (`/api/places`; 31 locais no banco, 29 publicados, coordenadas do Google Places ainda sem conferência em campo); origem padrão das distâncias = Prédio Central (`reitoria`); `?local=<slug>` na URL com voltar/avançar; atalho Ctrl/⌘+K; sugestões de departamentos e cursos na busca (UC38); páginas `/cursos`, `/cursos/[id]` e `/departamentos/[id]` (UC37, somente leitura).
-- **Backend:** `GET` de locais, departamentos, cursos e busca; CRUD de `services`, `notices` (avisos) e `msg` (mensagens). Avisos têm tela (`/avisos` e `/admin/avisos`), mas ela ainda usa mock e não chama `/api/avisos`; `services` e `msg` não têm tela. Migrations aplicadas: RLS das tabelas, cursos/departamentos/matriz, locais e carga inicial.
-- **Dados:** 9 departamentos (só nome, sigla e o local onde funcionam, tirados dos documentos). **Nenhum curso, matriz ou coordenador** — não há fonte oficial no repositório. Locais sem horário, acessibilidade, foto, telefone e endereço; sem portarias nem RU. CEU e Casa Samyr Pessoa são rascunho (sem coordenada).
-- **Painel admin (`/admin`, tudo mock):** login (UC12), administradores (UC13), locais (UC14), avisos, cardápio do RU (UC25), edição dos tópicos de acolhimento em PT/EN/ES (exceto Guia de Recife), histórico de mudanças com desfazer (UC23) e logout com aviso de alterações não salvas (UC24). Os dados ficam na memória da aba: recarregar a página desfaz as edições.
-- **Ainda mock (`data/` + `services/`):** login e administradores (a senha é conferida no navegador), auditoria, cardápio, avisos, guias de acolhimento e Guia de Recife, CRUD de locais do painel admin (diverge do banco), rota em linha reta (`routeService`).
-- **Não existe ainda:** autenticação real no backend — os endpoints de escrita de `/api/services`, `/api/avisos` e `/api/messages` estão abertos, e `GET /api/messages` devolve nome, e-mail e telefone; UC35/UC36 (editar e excluir curso, dependem do login); telas `/servicos`, `/contato`, `/acessibilidade`, `/portarias-e-paradas`, `/onde-comer` e `/espacos-de-estudo` (os links da sidebar dão 404); GPS no botão da busca (FA-38.02); cache offline persistente (RNF03); rota pela malha viária; Dockerfile e CI/CD; testes automatizados no frontend.
+- **Já vem do banco (via `/api`):** mapa, busca, cartão e página do local (`/api/places`; 31 locais no banco, 29 publicados, coordenadas do Google Places ainda sem conferência em campo); origem padrão das distâncias = Prédio Central (`reitoria`); `?local=<slug>` na URL com voltar/avançar; atalho Ctrl/⌘+K; sugestões de departamentos e cursos na busca (UC38); páginas `/cursos`, `/cursos/[id]` e `/departamentos/[id]` (UC37, somente leitura); guia de acolhimento (`/acolhimento/[secao]`, com busca no servidor), Guia de Recife (`/acolhimento/recife`) e avisos (`/avisos`, `/admin/avisos`), todos via `/api/guide` e `/api/avisos`.
+- **Backend:** `GET` de locais, departamentos, cursos e busca; CRUD de `services` (`GET /api/services` devolve só os ativos; `GET /api/admin/services`, todos, exige login; campos: categoria, setor, passos, requisitos, link HTTPS, prazo), `notices` (avisos) e `msg` (mensagens); `GET /api/guide/{topics, topics/{slug}, search, recife, resources, translations/topics}` (módulo `info`), `POST/PUT/DELETE /api/guide/topics` (exigem login), `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`, `GET /api/admin/audit-logs` e `POST /api/admin/audit-logs/{id}/restore`. Escritas de `services`, `notices` e `guide` gravam o histórico no servidor (`audit_logs`, mesma transação, RNF06); `msg` não é auditada. `GET /api/messages` e `/api/contacts` exigem login. `msg` não tem tela; `services` tem só a tela do painel: não existe a página pública `/servicos`. Migrations aplicadas: RLS das tabelas, cursos/departamentos/matriz, locais e carga inicial, tabelas de admin/auditoria/cardápio/guia, colunas de tradução, contatos/downloads/aviso de apoio, seed do guia `fully_translated_langs`, `admins.password_hash` e as regras de `services` (migrations de 09/11 ainda dependem de aplicação no banco; confira com `supabase migration list`).
+- **Dados:** 9 departamentos (só nome, sigla e o local onde funcionam, tirados dos documentos). **Nenhum curso, matriz ou coordenador** — não há fonte oficial no repositório. Locais sem horário, acessibilidade, foto, telefone e endereço; sem portarias nem RU. CEU e Casa Samyr Pessoa são rascunho (sem coordenada). Guia: 20 tópicos, 10 locais e 3 dicas do Guia de Recife, contatos, cartilhas e aviso de apoio, vindos dos antigos mocks; EN/ES precisam de revisão humana e o Guia de Recife está com tradução automática marcada. Os tópicos `beneficios` e `chegada-transporte` ficaram sem local (`ru` e `portaria-principal` não existem em `places`). **Avisos: tabela vazia** (os do protótipo eram fictícios); quem publica é o painel (`/admin/avisos`, botão Novo aviso).
+- **Painel admin (`/admin`):** **de verdade (API):** login (UC12) e logout (UC24), edição dos tópicos de acolhimento em PT/EN/ES (exceto Guia de Recife), lista, publicação, edição e exclusão de avisos, lista, cadastro, edição (inclui despublicar) e exclusão de serviços (UC19 a UC21) e o histórico (UC23) das mudanças feitas nesses quatro, com desfazer só para acolhimento. **Ainda mock, na memória da aba (recarregar desfaz):** administradores (UC13), locais (UC14), cardápio do RU (UC25) e o histórico dessas telas. O primeiro administrador é inserido à mão no banco (a senha nunca vai para código, migration ou chat); UC13 ainda não cria contas reais.
+- **Ainda mock (`data/` + `services/`):** administradores (UC13), auditoria das telas ainda mock, cardápio, CRUD de locais do painel admin (diverge do banco), rota em linha reta (`routeService`).
+- **Não existe ainda:** cadastro de administradores no backend (UC13) e senha provisória/redefinição; "manter conectado" só alonga a inatividade da sessão no servidor (o cookie não persiste após fechar o navegador); desfazer de avisos e serviços; UC35/UC36 (editar e excluir curso; o login já existe); telas `/servicos`, `/contato`, `/acessibilidade`, `/portarias-e-paradas`, `/onde-comer` e `/espacos-de-estudo` (os links da sidebar dão 404); GPS no botão da busca (FA-38.02); cache offline persistente (RNF03); rota pela malha viária; Dockerfile e CI/CD; testes automatizados no frontend.
 - Plano detalhado: `docs/plano-implementacao-home.md` (parcialmente desatualizado: foi escrito antes da integração com o banco).
 
 ## 13. Modelo de prompt para a tarefa

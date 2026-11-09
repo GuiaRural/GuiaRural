@@ -1,4 +1,4 @@
-import type { GuideSection, GuideStage } from "../data/mockGuides";
+import type { GuideSection, GuideStage } from "../services/guidesService";
 import type { AccessibilityFeature, PlaceCategory } from "../data/mockPlaces";
 import type { CourseType } from "../services/coursesService";
 

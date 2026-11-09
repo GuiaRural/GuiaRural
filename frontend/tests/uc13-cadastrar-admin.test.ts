@@ -1,9 +1,9 @@
-// UC13 — Cadastrar Administrador (regras do adminsService).
+// UC13 — Cadastrar Administrador (regras do adminsService). O cadastro ainda é de demonstração (memória do navegador);
+// quem entra no painel é decidido pelo servidor: só conta "ativo" faz login (AuthServiceTest).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { IT_SECTOR } from "../src/app/data/mockAdmins";
 import { AdminValidationError, createAdmin, isInstitutionalEmail, type NewAdmin } from "../src/app/services/adminsService";
-import { login } from "../src/app/services/authService";
 
 function input(email: string): NewAdmin {
   return { name: "Servidora de Teste", email, sector: "Biblioteca", permission: "editor", password: "provisoria123", sendCredentials: true };
@@ -17,17 +17,14 @@ test("isInstitutionalEmail aceita só o domínio @ufrpe.br", () => {
   assert.equal(isInstitutionalEmail("nome@ufrpe.br.exemplo.com"), false);
 });
 
-test("fluxo principal: cadastro pela Coordenação de TI já nasce ativo e consegue entrar", async () => {
+test("fluxo principal: cadastro pela Coordenação de TI já nasce ativo", async () => {
   const admin = await createAdmin(input("ativo.teste@ufrpe.br"), "Coordenação de TI", IT_SECTOR);
   assert.equal(admin.status, "ativo");
-  const result = await login("ativo.teste@ufrpe.br", "provisoria123", false);
-  assert.equal(result.ok, true);
 });
 
 test("RN-UC13.01: cadastro feito por outro setor fica aguardando aprovação", async () => {
   const admin = await createAdmin(input("aguardando.teste@ufrpe.br"), "PROAC", "Pró-Reitoria de Assuntos Comunitários");
   assert.equal(admin.status, "aguardando");
-  assert.deepEqual(await login("aguardando.teste@ufrpe.br", "provisoria123", false), { ok: false, reason: "blocked" });
 });
 
 test("o e-mail é guardado em minúsculas e sem espaços", async () => {

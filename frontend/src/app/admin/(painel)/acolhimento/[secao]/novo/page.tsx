@@ -2,7 +2,7 @@
 
 import { notFound, useParams } from "next/navigation";
 import GuideTopicEditor, { emptyTopic } from "../../../../../components/admin/GuideTopicEditor";
-import { EDITABLE_SECTIONS } from "../../../../../services/guidesService";
+import { EDITABLE_SECTIONS } from "../../../../../services/guidesAdminService";
 
 export default function NewGuideTopicPage() {
   const { secao } = useParams<{ secao: string }>();

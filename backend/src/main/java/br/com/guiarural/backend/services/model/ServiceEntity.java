@@ -5,6 +5,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "services")
@@ -17,6 +19,17 @@ public class ServiceEntity {
     private String description;
     private String locationReference;
     private Boolean active;
+    // Texto livre por decisão do time, até existir uma lista oficial de categorias.
+    private String category;
+    // Setor responsável pelo serviço.
+    private String sector;
+    // "Como solicitar": passos na ordem em que o estudante deve seguir.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private String[] steps = new String[0];
+    private String requirements;
+    private String url;
+    // Só para serviços disponíveis por um período (ex.: "Inscrições até 28/02").
+    private String deadline;
 
     public ServiceEntity() {
     }
@@ -67,5 +80,53 @@ public class ServiceEntity {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getSector() {
+        return sector;
+    }
+
+    public void setSector(String sector) {
+        this.sector = sector;
+    }
+
+    public String[] getSteps() {
+        return steps;
+    }
+
+    public void setSteps(String[] steps) {
+        this.steps = steps;
+    }
+
+    public String getRequirements() {
+        return requirements;
+    }
+
+    public void setRequirements(String requirements) {
+        this.requirements = requirements;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(String deadline) {
+        this.deadline = deadline;
     }
 }

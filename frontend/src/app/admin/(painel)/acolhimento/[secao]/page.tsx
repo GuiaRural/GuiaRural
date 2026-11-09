@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAdmin } from "../../../../components/admin/AdminShell";
+import ApiFailure from "../../../../components/courses/ApiFailure";
 import PageHeader, { ctaButton, secondaryButton } from "../../../../components/admin/PageHeader";
 import { ConfirmModal } from "../../../../components/ui/Modal";
-import type { GuideTopic } from "../../../../data/mockGuides";
 import { dictionaries } from "../../../../i18n/dictionaries";
 import { takeFlash } from "../../../../lib/flash";
-import { EDITABLE_SECTIONS, deleteGuideTopic, getGuideTopics, isFullyTranslated } from "../../../../services/guidesService";
+import { EDITABLE_SECTIONS, deleteGuideTopic, getGuideTopics } from "../../../../services/guidesAdminService";
+import { isFullyTranslated, type GuideTopic } from "../../../../services/guidesService";
 
 type Section = (typeof EDITABLE_SECTIONS)[number];
 const sections = dictionaries.pt.guides.sections;
@@ -26,20 +26,23 @@ export default function GuideSectionAdminPage() {
 }
 
 function SectionTopics({ section }: { section: Section }) {
-  const { session } = useAdmin();
   const [topics, setTopics] = useState<GuideTopic[] | null>(null);
   const [toDelete, setToDelete] = useState<GuideTopic | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   function reload() {
-    getGuideTopics(section).then(setTopics);
+    setFailed(false);
+    getGuideTopics(section).then(setTopics).catch(() => setFailed(true));
   }
   useEffect(() => {
     const flash = takeFlash();
-    getGuideTopics(section).then((all) => {
-      setTopics(all);
-      if (flash) setMessage(flash);
-    });
+    getGuideTopics(section)
+      .then((all) => {
+        setTopics(all);
+        if (flash) setMessage(flash);
+      })
+      .catch(() => setFailed(true));
   }, [section]);
 
   return (
@@ -78,6 +81,8 @@ function SectionTopics({ section }: { section: Section }) {
         </p>
       )}
 
+      {failed && <ApiFailure error={null} onRetry={reload} />}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[680px] text-sm">
           <thead className="text-left text-[11px] uppercase tracking-wide text-slate-500">
@@ -89,7 +94,7 @@ function SectionTopics({ section }: { section: Section }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {!topics && (
+            {!topics && !failed && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
                   Carregando...
@@ -154,7 +159,7 @@ function SectionTopics({ section }: { section: Section }) {
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (!toDelete) return;
-          await deleteGuideTopic(toDelete.id, session.name);
+          await deleteGuideTopic(toDelete.id);
           setMessage(`"${toDelete.title.pt}" foi excluído.`);
           setToDelete(null);
           reload();
