@@ -5,6 +5,8 @@ export class ApiError extends Error {
     readonly detail?: string,
     // Motivo estruturado (login: domain | invalid | blocked | rate_limited).
     readonly reason?: string,
+    // Erros de validação por campo (400): { campo: mensagem }.
+    readonly fields?: Record<string, string>,
   ) {
     super(`HTTP ${status}`);
   }
@@ -25,12 +27,14 @@ function csrfToken(): string | null {
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 
-async function problemOf(response: Response): Promise<{ detail?: string; reason?: string }> {
+async function problemOf(response: Response): Promise<{ detail?: string; reason?: string; fields?: Record<string, string> }> {
   try {
-    const body = (await response.json()) as { detail?: unknown; reason?: unknown };
+    const body = (await response.json()) as { detail?: unknown; reason?: unknown; fields?: unknown };
+    const fields = body.fields && typeof body.fields === "object" ? (body.fields as Record<string, string>) : undefined;
     return {
       detail: typeof body.detail === "string" ? body.detail : undefined,
       reason: typeof body.reason === "string" ? body.reason : undefined,
+      fields,
     };
   } catch {
     return {};
@@ -59,8 +63,8 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     if (response.status === 401 && path !== "/auth/login" && typeof window !== "undefined") {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
-    const { detail, reason } = await problemOf(response);
-    throw new ApiError(response.status, detail, reason);
+    const { detail, reason, fields } = await problemOf(response);
+    throw new ApiError(response.status, detail, reason, fields);
   }
   // 204 (excluir, logout) não tem corpo.
   if (response.status === 204) return undefined as T;

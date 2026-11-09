@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
+import { ApiError } from "../../lib/api";
 import {
   NAME_MAX_LENGTH,
   ServicoValidationError,
@@ -44,12 +45,10 @@ type Step = { key: number; text: string };
 // UC19 — Adicionar Serviço. Fechar o modal descarta o que foi digitado (FA-19.01).
 export default function NewServiceModal({
   open,
-  author,
   onCancel,
   onCreated,
 }: {
   open: boolean;
-  author: string;
   onCancel: () => void;
   onCreated: (servico: Servico) => void;
 }) {
@@ -62,12 +61,12 @@ export default function NewServiceModal({
       size="lg"
       icon={<Icon name="plus" className="size-5" />}
     >
-      <NewServiceForm author={author} onCancel={onCancel} onCreated={onCreated} />
+      <NewServiceForm onCancel={onCancel} onCreated={onCreated} />
     </Modal>
   );
 }
 
-function NewServiceForm({ author, onCancel, onCreated }: { author: string; onCancel: () => void; onCreated: (servico: Servico) => void }) {
+function NewServiceForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (servico: Servico) => void }) {
   const [category, setCategory] = useState("");
   const [name, setName] = useState("");
   const [sector, setSector] = useState("");
@@ -125,10 +124,11 @@ function NewServiceForm({ author, onCancel, onCreated }: { author: string; onCan
     setSummary(null);
     setSaving(true);
     try {
-      onCreated(await createServico(input, author));
+      onCreated(await createServico(input));
     } catch (err) {
       if (err instanceof ServicoValidationError) showErrors(err.errors);
       // FE-19.02: o formulário continua aberto e preenchido.
+      else if (err instanceof ApiError && err.status === 403) setSummary("Seu perfil não tem permissão para cadastrar serviços.");
       else setSummary("Não foi possível concluir o cadastro do serviço. Tente novamente.");
     } finally {
       setSaving(false);

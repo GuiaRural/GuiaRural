@@ -135,7 +135,6 @@ export default function AdminServicosPage() {
 
       <NewServiceModal
         open={creating}
-        author={session.name}
         onCancel={() => setCreating(false)}
         onCreated={handleCreated}
       />

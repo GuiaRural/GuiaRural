@@ -1,11 +1,7 @@
-import { MOCK_SERVICOS } from "../data/mockServicos";
-import { delay } from "../lib/storage";
-import { recordChange, snapshot } from "./auditService";
+import { ApiError, apiGet, apiPost } from "../lib/api";
 
-// Ponto único de acesso aos serviços estudantis (UC19 a UC21, UC11).
-// O backend (/api/services) ainda só guarda nome, descrição, referência do local e ativo; os demais
-// campos do formulário não têm onde ser salvos. Por isso os dados vêm do mock, em memória (voltam ao
-// original ao recarregar a página). Com o backend ampliado, troque cada função pela chamada indicada.
+// Ponto único de acesso aos serviços estudantis (UC19 a UC21, UC11). Os tipos espelham os DTOs de /api/services.
+// Cadastrar exige login (a API recusa sem sessão); o autor e o histórico ficam por conta do servidor.
 
 export type Servico = {
   id: number;
@@ -34,6 +30,7 @@ export type ServicoFieldError = "required" | "tooLong" | "invalidUrl";
 export const NAME_MAX_LENGTH = 100;
 
 const REQUIRED: ServicoField[] = ["category", "name", "sector", "description"];
+const FIELDS: ServicoField[] = ["category", "name", "sector", "description", "steps", "requirements", "url", "deadline"];
 
 export class ServicoValidationError extends Error {
   constructor(readonly errors: Partial<Record<ServicoField, ServicoFieldError>>) {
@@ -55,43 +52,73 @@ export function validateServico(input: ServicoInput): Partial<Record<ServicoFiel
   return errors;
 }
 
-let servicos: Servico[] = [...MOCK_SERVICOS];
-let nextId = MOCK_SERVICOS.length + 1;
+// Espelha ServiceResponseDTO: campos opcionais vazios chegam nulos.
+type ServicoDto = {
+  id: number;
+  category: string;
+  name: string;
+  sector: string;
+  description: string;
+  steps: string[];
+  requirements: string | null;
+  url: string | null;
+  deadline: string | null;
+  active: boolean;
+};
 
-// API: apiGet<Servico[]>("/services")
-export async function listServicos(): Promise<Servico[]> {
-  await delay();
-  return [...servicos];
+function fromDto(dto: ServicoDto): Servico {
+  return {
+    id: dto.id,
+    category: dto.category,
+    name: dto.name,
+    sector: dto.sector,
+    description: dto.description,
+    steps: dto.steps,
+    requirements: dto.requirements ?? undefined,
+    url: dto.url ?? undefined,
+    deadline: dto.deadline ?? undefined,
+    active: dto.active,
+  };
 }
 
-// API: apiPost<Servico>("/services", input)
-export async function createServico(input: ServicoInput, author: string): Promise<Servico> {
-  await delay(400);
+// O painel lista todos os serviços, inclusive os despublicados (a lista pública, /api/services, mostra só os ativos).
+export async function listServicos(): Promise<Servico[]> {
+  return (await apiGet<ServicoDto[]>("/admin/services")).map(fromDto);
+}
+
+// O servidor valida de novo; os erros por campo voltam em `fields` (ex.: "steps", "url", "steps[0]").
+function fieldErrorsOf(error: ApiError): Partial<Record<ServicoField, ServicoFieldError>> {
+  const errors: Partial<Record<ServicoField, ServicoFieldError>> = {};
+  for (const [key, message] of Object.entries(error.fields ?? {})) {
+    const field = key.replace(/\[\d+\]$/, "") as ServicoField;
+    if (!FIELDS.includes(field)) continue;
+    errors[field] = field === "url" ? "invalidUrl" : /caracteres|no máximo/.test(message) ? "tooLong" : "required";
+  }
+  return errors;
+}
+
+export async function createServico(input: ServicoInput): Promise<Servico> {
   const errors = validateServico(input);
   if (Object.keys(errors).length) throw new ServicoValidationError(errors);
 
   const optional = (value?: string) => value?.trim() || undefined;
-  const servico: Servico = {
-    id: nextId++,
-    category: input.category.trim(),
-    name: input.name.trim(),
-    sector: input.sector.trim(),
-    description: input.description.trim(),
-    steps: input.steps.map((s) => s.trim()).filter(Boolean),
-    requirements: optional(input.requirements),
-    url: optional(input.url),
-    deadline: optional(input.deadline),
-    active: true,
-  };
-  servicos = [...servicos, servico];
-  recordChange({
-    author,
-    entity: "Serviço",
-    entityId: String(servico.id),
-    entityName: servico.name,
-    action: "criado",
-    before: null,
-    after: snapshot(servico),
-  });
-  return servico;
+  try {
+    const created = await apiPost<ServicoDto>("/services", {
+      category: input.category.trim(),
+      name: input.name.trim(),
+      sector: input.sector.trim(),
+      description: input.description.trim(),
+      steps: input.steps.map((s) => s.trim()).filter(Boolean),
+      requirements: optional(input.requirements),
+      url: optional(input.url),
+      deadline: optional(input.deadline),
+    });
+    return fromDto(created);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 400) {
+      const fieldErrors = fieldErrorsOf(error);
+      if (Object.keys(fieldErrors).length) throw new ServicoValidationError(fieldErrors);
+    }
+    throw error;
+  }
 }
