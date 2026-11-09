@@ -4,34 +4,40 @@ import { useState } from "react";
 import { useAdmin } from "../../../components/admin/AdminShell";
 import Icon from "../../../components/common/Icon";
 import ApiFailure from "../../../components/courses/ApiFailure";
-import NewServiceModal from "../../../components/services/NewServiceModal";
+import { ConfirmModal } from "../../../components/ui/Modal";
+import ServiceFormModal from "../../../components/services/ServiceFormModal";
 import ServiceCard from "../../../components/services/ServiceCard";
 import { useApi } from "../../../hooks/useApi";
-import { listServicos, type Servico } from "../../../services/servicosService";
+import { deleteServico, listServicos, type Servico } from "../../../services/servicosService";
 
 const noArg = null;
 
 const actionButton = "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold";
 
-// Editar (UC20) e Deletar (UC21) são outros casos de uso, ainda não implementados.
-function ServiceActions({ servico }: { servico: Servico }) {
+// Serviço despublicado não aparece para os estudantes (só aqui no painel).
+function UnpublishedBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-900">Despublicado</span>
+  );
+}
+
+function ServiceActions({ servico, onEdit, onDelete }: { servico: Servico; onEdit: () => void; onDelete: () => void }) {
   return (
     <>
+      {!servico.active && <UnpublishedBadge />}
       <button
         type="button"
-        disabled
-        title="Edição de serviços ainda não disponível"
+        onClick={onEdit}
         aria-label={`Editar serviço: ${servico.name}`}
-        className={`${actionButton} cursor-not-allowed bg-slate-100 text-navy-700`}
+        className={`${actionButton} bg-slate-100 text-navy-700 hover:bg-slate-200`}
       >
         <Icon name="pencil" className="size-3.5" /> Editar
       </button>
       <button
         type="button"
-        disabled
-        title="Exclusão de serviços ainda não disponível"
+        onClick={onDelete}
         aria-label={`Deletar serviço: ${servico.name}`}
-        className={`${actionButton} cursor-not-allowed bg-red-50 text-red-700`}
+        className={`${actionButton} bg-red-50 text-red-700 hover:bg-red-100`}
       >
         <Icon name="trash" className="size-3.5" /> Deletar
       </button>
@@ -49,13 +55,63 @@ export default function AdminServicosPage() {
   // Serviços criados nesta visita: entram no topo da lista na hora, sem recarregar, e recebem o selo "Novo".
   const [added, setAdded] = useState<Servico[]>([]);
   const [success, setSuccess] = useState<Servico | null>(null);
+  const [editing, setEditing] = useState<Servico | null>(null);
+  // Serviços editados ou excluídos nesta visita valem sobre a lista que veio do servidor, sem recarregar.
+  const [edits, setEdits] = useState<Record<number, Servico>>({});
+  const [deletedIds, setDeletedIds] = useState<number[]>([]);
+  const [toDelete, setToDelete] = useState<Servico | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const servicos =
-    state.status === "ready" ? [...added, ...state.data.filter((s) => !added.some((a) => a.id === s.id))] : null;
+    state.status === "ready"
+      ? [...added, ...state.data.filter((s) => !added.some((a) => a.id === s.id))]
+          .map((s) => edits[s.id] ?? s)
+          .filter((s) => !deletedIds.includes(s.id))
+      : null;
 
   function handleCreated(servico: Servico) {
     setCreating(false);
     setAdded((list) => [servico, ...list]);
+    setFlash(null);
     setSuccess(servico);
+  }
+
+  function handleEdited(servico: Servico) {
+    setEditing(null);
+    setEdits((map) => ({ ...map, [servico.id]: servico }));
+    setSuccess(null);
+    setFlash(`Serviço "${servico.name}" atualizado com sucesso.${servico.active ? "" : " Ele está despublicado e não aparece para os estudantes."}`);
+  }
+
+  function openEdit(servico: Servico) {
+    setSuccess(null);
+    setFlash(null);
+    setEditing(servico);
+  }
+
+  function openDelete(servico: Servico) {
+    setSuccess(null);
+    setFlash(null);
+    setDeleteError(null);
+    setToDelete(servico);
+  }
+
+  async function confirmDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteServico(toDelete.id);
+      setDeletedIds((ids) => [...ids, toDelete.id]);
+      setFlash(`Serviço "${toDelete.name}" excluído. A exclusão fica registrada no histórico de mudanças.`);
+      setToDelete(null);
+    } catch {
+      // O modal continua aberto para nova tentativa.
+      setDeleteError("Não foi possível excluir o serviço. Tente novamente.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -114,6 +170,15 @@ export default function AdminServicosPage() {
         </div>
       )}
 
+      {flash && (
+        <p role="status" className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
+          <span>{flash}</span>
+          <button type="button" onClick={() => setFlash(null)} aria-label="Fechar mensagem" className="shrink-0 text-emerald-700 hover:text-emerald-900">
+            ✕
+          </button>
+        </p>
+      )}
+
       {state.status === "loading" && <p className="text-sm text-slate-600">Carregando serviços...</p>}
       {state.status === "error" && <ApiFailure error={state.error} onRetry={state.retry} />}
       {servicos?.length === 0 && (
@@ -126,17 +191,42 @@ export default function AdminServicosPage() {
               <ServiceCard
                 servico={servico}
                 isNew={added.some((a) => a.id === servico.id)}
-                actions={canManage && <ServiceActions servico={servico} />}
+                actions={
+                  canManage ? (
+                    <ServiceActions servico={servico} onEdit={() => openEdit(servico)} onDelete={() => openDelete(servico)} />
+                  ) : !servico.active ? (
+                    <UnpublishedBadge />
+                  ) : undefined
+                }
               />
             </li>
           ))}
         </ul>
       )}
 
-      <NewServiceModal
-        open={creating}
-        onCancel={() => setCreating(false)}
-        onCreated={handleCreated}
+      <ServiceFormModal open={creating} onCancel={() => setCreating(false)} onSaved={handleCreated} />
+      <ServiceFormModal open={editing !== null} servico={editing} onCancel={() => setEditing(null)} onSaved={handleEdited} />
+      <ConfirmModal
+        open={toDelete !== null}
+        title="Excluir serviço"
+        danger
+        busy={deleting}
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        message={
+          <>
+            <p>
+              &quot;{toDelete?.name}&quot; deixará de existir para os estudantes. A exclusão não pode ser desfeita por aqui, mas fica no histórico de mudanças.
+            </p>
+            {deleteError && (
+              <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700">
+                {deleteError}
+              </p>
+            )}
+          </>
+        }
+        onCancel={() => setToDelete(null)}
+        onConfirm={confirmDelete}
       />
     </div>
   );

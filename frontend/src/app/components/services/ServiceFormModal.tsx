@@ -6,6 +6,7 @@ import {
   NAME_MAX_LENGTH,
   ServicoValidationError,
   createServico,
+  updateServico,
   validateServico,
   type Servico,
   type ServicoField,
@@ -42,40 +43,50 @@ const fieldClass =
 
 type Step = { key: number; text: string };
 
-// UC19 — Adicionar Serviço. Fechar o modal descarta o que foi digitado (FA-19.01).
-export default function NewServiceModal({
+// UC19 — Adicionar Serviço e UC20 — Editar Serviço. Fechar o modal descarta o que foi digitado (FA-19.01).
+export default function ServiceFormModal({
   open,
+  servico,
   onCancel,
-  onCreated,
+  onSaved,
 }: {
   open: boolean;
+  // Serviço a editar; ausente = novo serviço.
+  servico?: Servico | null;
   onCancel: () => void;
-  onCreated: (servico: Servico) => void;
+  onSaved: (servico: Servico) => void;
 }) {
+  const editing = !!servico;
   return (
     <Modal
       open={open}
       onClose={onCancel}
-      title="Cadastrar Novo Serviço"
-      description="Preencha as informações, o passo a passo e os canais de atendimento para exibição pública"
+      title={editing ? "Editar Serviço" : "Cadastrar Novo Serviço"}
+      description={
+        editing
+          ? "Atualize as informações, o passo a passo e os canais de atendimento exibidos aos estudantes"
+          : "Preencha as informações, o passo a passo e os canais de atendimento para exibição pública"
+      }
       size="lg"
       icon={<Icon name="plus" className="size-5" />}
     >
-      <NewServiceForm onCancel={onCancel} onCreated={onCreated} />
+      <ServiceForm servico={servico ?? null} onCancel={onCancel} onSaved={onSaved} />
     </Modal>
   );
 }
 
-function NewServiceForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (servico: Servico) => void }) {
-  const [category, setCategory] = useState("");
-  const [name, setName] = useState("");
-  const [sector, setSector] = useState("");
-  const [description, setDescription] = useState("");
-  const [steps, setSteps] = useState<Step[]>([{ key: 0, text: "" }]);
-  const [nextStepKey, setNextStepKey] = useState(1);
-  const [requirements, setRequirements] = useState("");
-  const [url, setUrl] = useState("");
-  const [deadline, setDeadline] = useState("");
+function ServiceForm({ servico, onCancel, onSaved }: { servico: Servico | null; onCancel: () => void; onSaved: (servico: Servico) => void }) {
+  const [category, setCategory] = useState(servico?.category ?? "");
+  const [name, setName] = useState(servico?.name ?? "");
+  const [sector, setSector] = useState(servico?.sector ?? "");
+  const [description, setDescription] = useState(servico?.description ?? "");
+  const [steps, setSteps] = useState<Step[]>(servico?.steps.length ? servico.steps.map((text, key) => ({ key, text })) : [{ key: 0, text: "" }]);
+  const [nextStepKey, setNextStepKey] = useState(servico?.steps.length || 1);
+  const [requirements, setRequirements] = useState(servico?.requirements ?? "");
+  const [url, setUrl] = useState(servico?.url ?? "");
+  const [deadline, setDeadline] = useState(servico?.deadline ?? "");
+  // Só na edição: despublicar tira o serviço da lista dos estudantes, sem excluí-lo.
+  const [active, setActive] = useState(servico?.active ?? true);
   const [errors, setErrors] = useState<Errors>({});
   const [summary, setSummary] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -124,12 +135,13 @@ function NewServiceForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
     setSummary(null);
     setSaving(true);
     try {
-      onCreated(await createServico(input));
+      onSaved(servico ? await updateServico(servico.id, input, active) : await createServico(input));
     } catch (err) {
       if (err instanceof ServicoValidationError) showErrors(err.errors);
       // FE-19.02: o formulário continua aberto e preenchido.
-      else if (err instanceof ApiError && err.status === 403) setSummary("Seu perfil não tem permissão para cadastrar serviços.");
-      else setSummary("Não foi possível concluir o cadastro do serviço. Tente novamente.");
+      else if (err instanceof ApiError && err.status === 403) setSummary("Seu perfil não tem permissão para alterar serviços.");
+      else if (err instanceof ApiError && err.status === 404) setSummary("Este serviço não existe mais. Feche e atualize a página.");
+      else setSummary(servico ? "Não foi possível salvar o serviço. Tente novamente." : "Não foi possível concluir o cadastro do serviço. Tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -234,9 +246,16 @@ function NewServiceForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-5">
-        <p className="mr-auto flex items-center gap-1.5 text-xs text-slate-600">
-          <span aria-hidden className="text-emerald-600">✓</span> O serviço ficará disponível para os alunos assim que for salvo.
-        </p>
+        {servico ? (
+          <label className="mr-auto flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="size-4 accent-navy-900" />
+            Publicado para os estudantes
+          </label>
+        ) : (
+          <p className="mr-auto flex items-center gap-1.5 text-xs text-slate-600">
+            <span aria-hidden className="text-emerald-600">✓</span> O serviço ficará disponível para os alunos assim que for salvo.
+          </p>
+        )}
         {/* FA-19.01 */}
         <button type="button" disabled={saving} onClick={onCancel} className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60">
           Cancelar
@@ -247,7 +266,7 @@ function NewServiceForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-60"
         >
           <span aria-hidden>✓</span>
-          {saving ? "Salvando..." : "Salvar Serviço"}
+          {saving ? "Salvando..." : servico ? "Salvar alterações" : "Salvar Serviço"}
         </button>
       </div>
     </form>

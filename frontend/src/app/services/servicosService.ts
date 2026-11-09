@@ -1,4 +1,4 @@
-import { ApiError, apiGet, apiPost } from "../lib/api";
+import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 
 // Ponto único de acesso aos serviços estudantis (UC19 a UC21, UC11). Os tipos espelham os DTOs de /api/services.
 // Cadastrar exige login (a API recusa sem sessão); o autor e o histórico ficam por conta do servidor.
@@ -97,28 +97,51 @@ function fieldErrorsOf(error: ApiError): Partial<Record<ServicoField, ServicoFie
   return errors;
 }
 
-export async function createServico(input: ServicoInput): Promise<Servico> {
+// Campos limpos, sem passos em branco; opcionais vazios ficam de fora.
+function payloadOf(input: ServicoInput) {
+  const optional = (value?: string) => value?.trim() || undefined;
+  return {
+    category: input.category.trim(),
+    name: input.name.trim(),
+    sector: input.sector.trim(),
+    description: input.description.trim(),
+    steps: input.steps.map((s) => s.trim()).filter(Boolean),
+    requirements: optional(input.requirements),
+    url: optional(input.url),
+    deadline: optional(input.deadline),
+  };
+}
+
+// Valida no cliente e, se o servidor recusar por campo, devolve o erro no campo certo.
+async function send(input: ServicoInput, request: () => Promise<ServicoDto>): Promise<Servico> {
   const errors = validateServico(input);
   if (Object.keys(errors).length) throw new ServicoValidationError(errors);
-
-  const optional = (value?: string) => value?.trim() || undefined;
   try {
-    const created = await apiPost<ServicoDto>("/services", {
-      category: input.category.trim(),
-      name: input.name.trim(),
-      sector: input.sector.trim(),
-      description: input.description.trim(),
-      steps: input.steps.map((s) => s.trim()).filter(Boolean),
-      requirements: optional(input.requirements),
-      url: optional(input.url),
-      deadline: optional(input.deadline),
-    });
-    return fromDto(created);
+    return fromDto(await request());
   } catch (error) {
     if (error instanceof ApiError && error.status === 400) {
       const fieldErrors = fieldErrorsOf(error);
       if (Object.keys(fieldErrors).length) throw new ServicoValidationError(fieldErrors);
     }
     throw error;
+  }
+}
+
+// RN-19.02: o servidor publica o serviço novo.
+export function createServico(input: ServicoInput): Promise<Servico> {
+  return send(input, () => apiPost<ServicoDto>("/services", payloadOf(input)));
+}
+
+// UC20 — Editar Serviço. `active` publica ou despublica; o servidor registra antes e depois no histórico.
+export function updateServico(id: number, input: ServicoInput, active: boolean): Promise<Servico> {
+  return send(input, () => apiPut<ServicoDto>(`/services/${id}`, { ...payloadOf(input), active }));
+}
+
+// UC21 — Deletar Serviço. Já excluído em outra aba (404) é tratado como sucesso: o resultado desejado já existe.
+export async function deleteServico(id: number): Promise<void> {
+  try {
+    await apiDelete(`/services/${id}`);
+  } catch (error) {
+    if (!(error instanceof ApiError && error.status === 404)) throw error;
   }
 }

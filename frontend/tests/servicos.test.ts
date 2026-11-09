@@ -6,7 +6,9 @@ import { ApiError } from "../src/app/lib/api";
 import {
   ServicoValidationError,
   createServico,
+  deleteServico,
   listServicos,
+  updateServico,
   validateServico,
   type ServicoInput,
 } from "../src/app/services/servicosService";
@@ -116,4 +118,47 @@ test("a lista do painel vem de /api/admin/services (inclui despublicados) e conv
   assert.equal(lista[1].active, false);
   assert.equal(lista[1].requirements, "Documento");
   assert.equal(lista[1].deadline, "Até 10/02");
+});
+
+test("UC20: editar envia PUT com os campos limpos e o status de publicação", async () => {
+  respond(200, { ...CREATED, active: false });
+  const servico = await updateServico(5, INPUT, false);
+
+  assert.equal(calls[0].url, "/api/services/5");
+  assert.equal(calls[0].init.method, "PUT");
+  assert.deepEqual(JSON.parse(String(calls[0].init.body)), {
+    category: "Documentos",
+    name: "Carteira de Estudante",
+    sector: "DCE",
+    description: "Identificação estudantil",
+    steps: ["Separe os documentos.", "Solicite."],
+    active: false,
+  });
+  assert.equal(servico.active, false);
+});
+
+test("UC20: editar com dado inválido não chama a API e o erro do servidor vai para o campo", async () => {
+  respond(200, CREATED);
+  await assert.rejects(updateServico(5, { ...INPUT, steps: ["  "] }, true), ServicoValidationError);
+  assert.equal(calls.length, 0);
+
+  respond(400, { fields: { url: "O link deve começar com https://." } });
+  await assert.rejects(updateServico(5, INPUT, true), (error) => error instanceof ServicoValidationError && error.errors.url === "invalidUrl");
+});
+
+test("UC21: excluir envia DELETE, e serviço que já não existe (404) conta como excluído", async () => {
+  respond(204);
+  await deleteServico(5);
+  assert.equal(calls[0].url, "/api/services/5");
+  assert.equal(calls[0].init.method, "DELETE");
+
+  respond(404, { detail: "Serviço não encontrado com ID: 5" });
+  await deleteServico(5);
+});
+
+test("UC21: excluir sem permissão (403) ou com o servidor fora (500) falha para a tela avisar", async () => {
+  respond(403, { detail: "Sem permissão para esta ação." });
+  await assert.rejects(deleteServico(5), (error) => error instanceof ApiError && error.status === 403);
+  respond(500);
+  await assert.rejects(deleteServico(5), (error) => error instanceof ApiError && error.status === 500);
 });
