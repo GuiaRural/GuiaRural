@@ -6,6 +6,7 @@ import Icon from "../../../components/common/Icon";
 import ApiFailure from "../../../components/courses/ApiFailure";
 import AvisoCard from "../../../components/notices/AvisoCard";
 import DeleteAvisoModal from "../../../components/notices/DeleteAvisoModal";
+import NewAvisoModal from "../../../components/notices/NewAvisoModal";
 import { useApi } from "../../../hooks/useApi";
 import { deleteAviso, listAvisos, type Aviso } from "../../../services/avisosService";
 
@@ -44,12 +45,27 @@ export default function AdminAvisosPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletedIds, setDeletedIds] = useState<number[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [creating, setCreating] = useState(false);
+  // Avisos publicados nesta visita entram no topo da lista na hora, sem recarregar.
+  const [added, setAdded] = useState<Aviso[]>([]);
+  const [created, setCreated] = useState<Aviso | null>(null);
   // RN-18.02: o aviso excluído sai da lista na hora, sem recarregar.
-  const avisos = state.status === "ready" ? state.data.filter((a) => !deletedIds.includes(a.id)) : null;
+  const avisos =
+    state.status === "ready"
+      ? [...added, ...state.data.filter((a) => !added.some((n) => n.id === a.id))].filter((a) => !deletedIds.includes(a.id))
+      : null;
   const latest = avisos?.[0];
+
+  function handleCreated(aviso: Aviso) {
+    setCreating(false);
+    setAdded((list) => [aviso, ...list]);
+    setShowSuccess(false);
+    setCreated(aviso);
+  }
 
   function openDelete(aviso: Aviso) {
     setShowSuccess(false);
+    setCreated(null);
     setDeleteError(null);
     setToDelete(aviso);
   }
@@ -78,6 +94,30 @@ export default function AdminAvisosPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
+      {created && (
+        <div ref={(el) => el?.scrollIntoView({ block: "nearest" })} role="status" className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+          <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-600">
+            <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m5 12 5 5 9-10" />
+            </svg>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">Aviso &quot;{created.nome}&quot; publicado com sucesso!</p>
+            <p className="mt-0.5 text-sm text-emerald-800">Já está visível para os estudantes na página de avisos.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCreated(null)}
+            aria-label="Fechar mensagem"
+            className="grid size-8 shrink-0 place-items-center rounded-md text-emerald-700 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-emerald-700"
+          >
+            <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {showSuccess && (
         // Com muitos avisos a lista rola; traz a mensagem para a tela ao aparecer.
         <div ref={(el) => el?.scrollIntoView({ block: "nearest" })} role="status" className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
@@ -114,6 +154,19 @@ export default function AdminAvisosPage() {
             Informações importantes sobre serviços, horários e atividades do Campus Dois Irmãos.
           </p>
         </div>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowSuccess(false);
+              setCreated(null);
+              setCreating(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+          >
+            <Icon name="plus" className="size-4" /> Novo aviso
+          </button>
+        )}
         {avisos && (
           <p className="rounded-lg border border-slate-200 bg-sand-100 px-4 py-2 text-xs text-slate-600">
             <strong className="block text-navy-900">
@@ -148,6 +201,7 @@ export default function AdminAvisosPage() {
         </>
       )}
 
+      <NewAvisoModal open={creating} onCancel={() => setCreating(false)} onCreated={handleCreated} />
       <DeleteAvisoModal aviso={toDelete} busy={deleting} error={deleteError} onCancel={cancelDelete} onConfirm={confirmDelete} />
     </div>
   );
