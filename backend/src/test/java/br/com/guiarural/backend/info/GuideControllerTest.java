@@ -13,6 +13,7 @@ import br.com.guiarural.backend.info.dto.RecifeGuideDTO;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.info.service.GuideResourceService;
 import br.com.guiarural.backend.info.service.GuideTopicService;
+import br.com.guiarural.backend.info.service.GuideTopicWriteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,12 +39,15 @@ class GuideControllerTest {
     @Mock
     private GuideResourceService resourceService;
 
+    @Mock
+    private GuideTopicWriteService writeService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new GuideController(topicService, resourceService))
+                .standaloneSetup(new GuideController(topicService, resourceService, writeService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }

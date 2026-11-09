@@ -116,7 +116,7 @@ public class GuideTopicService {
         );
     }
 
-    private GuideTopicTranslationsDTO toTranslations(GuideTopicEntity topic) {
+    GuideTopicTranslationsDTO toTranslations(GuideTopicEntity topic) {
         return new GuideTopicTranslationsDTO(
                 topic.getSlug(),
                 topic.getSection(),
