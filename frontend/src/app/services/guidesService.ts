@@ -1,76 +1,110 @@
-import { MOCK_GUIDES, type GuideBlock, type GuideSection, type GuideTopic, type Translated } from "../data/mockGuides";
 import type { Language } from "../i18n/dictionaries";
-import { delay, readJson, writeJson } from "../lib/storage";
-import { recordChange, snapshot } from "./auditService";
+import { apiGet } from "../lib/api";
+import { readJson, writeJson } from "../lib/storage";
 
-// Tópicos editados pelo painel (área do administrador); a página pública lê a mesma lista.
-let guides: GuideTopic[] = [...MOCK_GUIDES];
+// Guia de acolhimento (RF05). A página pública lê /api/guide, que já devolve o texto no idioma pedido (com
+// fallback para o português no servidor). O painel administrativo trabalha com os três idiomas lado a lado:
+// veja guidesAdminService.
 
-// Recife tem tela própria (UC40) e não é editado por aqui.
-export const EDITABLE_SECTIONS = ["cultura", "documentos", "calouro"] as const satisfies readonly GuideSection[];
+// Português é obrigatório; EN/ES podem faltar e caem no texto em português (FE01 do UC09).
+export type Translated = { pt: string; en?: string; es?: string };
 
-export async function getGuideTopics(section: GuideSection): Promise<GuideTopic[]> {
-  await delay(150);
-  return guides.filter((g) => g.section === section);
+export const GUIDE_SECTIONS = ["cultura", "documentos", "calouro", "recife"] as const;
+export type GuideSection = (typeof GUIDE_SECTIONS)[number];
+
+// Etapa da jornada do estudante internacional, usada na linha do tempo de documentos.
+export type GuideStage = "antes" | "chegada" | "primeiras-semanas" | "mobilidade";
+
+// Os blocos têm a mesma forma nas duas visões: com texto simples (T = string, o que a página pública recebe
+// da API) ou com os três idiomas (T = Translated, o que o painel edita).
+export type GuideBlockOf<T> =
+  | { type: "heading"; text: T }
+  | { type: "p"; text: T }
+  | { type: "list"; items: T[] }
+  | { type: "steps"; items: { title: T; text?: T }[] }
+  // Lista de documentos que o usuário pode marcar (progresso salvo no navegador).
+  | { type: "checklist"; id: string; title: T; items: T[] }
+  | { type: "callout"; tone: "info" | "tip" | "warning"; title?: T; text: T }
+  | { type: "facts"; items: { label: T; value: T }[] }
+  | { type: "video"; title: T; credit: string; driveId: string }
+  // embed: a pasta precisa ser pública para aparecer dentro da página; senão, só o link é exibido.
+  | { type: "gallery"; title: T; credit: string; folderId: string; url: string; embed: boolean };
+
+export type GuideBlock = GuideBlockOf<Translated>;
+export type ResolvedGuideBlock = GuideBlockOf<string>;
+
+export type GuideLink = { label: Translated; url: string };
+export type ResolvedGuideLink = { label: string; url: string };
+
+// Tópico como o painel edita: textos nos três idiomas.
+export type GuideTopic = {
+  id: string;
+  section: GuideSection;
+  stage?: GuideStage;
+  title: Translated;
+  summary: Translated;
+  blocks: GuideBlock[];
+  links: GuideLink[];
+  // Local do campus relacionado, aberto em /locais/[id].
+  placeId?: string;
+  source: Translated;
+};
+
+// Espelham os DTOs de /api/guide/topics (GuideTopicSummaryDTO e GuideTopicDetailDTO).
+export type GuideTopicSummary = {
+  slug: string;
+  section: GuideSection;
+  stage: GuideStage | null;
+  title: string;
+  summary: string;
+  placeSlug: string | null;
+  // false quando algum texto do tópico caiu no português por falta de tradução.
+  fullyTranslated: boolean;
+};
+
+export type GuideTopicDetail = GuideTopicSummary & {
+  // Idioma em que o título de fato veio (pt quando faltou a tradução), para o atributo lang.
+  titleLang: Language;
+  blocks: ResolvedGuideBlock[];
+  links: ResolvedGuideLink[];
+  source: string | null;
+};
+
+// Espelham GuideResourcesDTO (/api/guide/resources).
+export type GuideContact = { label: string; value: string; href: string };
+export type GuideDownload = { label: string; language: string; href: string };
+export type GuideResources = { support: GuideContact[]; emergency: GuideContact[]; downloads: GuideDownload[] };
+
+// useApi recebe um único argumento estável (string): cada chave junta os parâmetros da chamada.
+export type TopicsKey = `${GuideSection}:${Language}`;
+export type TopicKey = `${string}:${Language}`;
+
+export function loadGuideTopics(key: TopicsKey): Promise<GuideTopicSummary[]> {
+  const [section, language] = key.split(":");
+  return apiGet(`/guide/topics?section=${section}&lang=${language}`);
 }
 
-export async function getGuideTopic(id: string): Promise<GuideTopic | null> {
-  await delay(150);
-  return guides.find((g) => g.id === id) ?? null;
+export function loadGuideTopic(key: TopicKey): Promise<GuideTopicDetail> {
+  const separator = key.lastIndexOf(":");
+  const slug = key.slice(0, separator);
+  const language = key.slice(separator + 1);
+  return apiGet(`/guide/topics/${encodeURIComponent(slug)}?lang=${language}`);
 }
 
-export class GuideValidationError extends Error {}
-
-function validateTopic(topic: GuideTopic) {
-  // Português é obrigatório: é o texto exibido quando falta tradução (RN-03 do UC09).
-  if (!topic.title.pt.trim() || !topic.summary.pt.trim()) {
-    throw new GuideValidationError("Título e resumo em português são obrigatórios.");
-  }
+// A chave é "<idioma>:<termo>"; o termo pode conter ":".
+export function loadGuideSearch(key: string): Promise<GuideTopicSummary[]> {
+  const separator = key.indexOf(":");
+  const language = key.slice(0, separator);
+  const query = key.slice(separator + 1).trim();
+  // Abaixo de 2 caracteres o servidor devolve vazio: nem chamamos.
+  if (query.length < MIN_SEARCH_LENGTH) return Promise.resolve([]);
+  return apiGet(`/guide/search?q=${encodeURIComponent(query)}&lang=${language}`);
 }
 
-function slugify(text: string) {
-  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
+export const MIN_SEARCH_LENGTH = 2;
 
-export async function saveGuideTopic(topic: GuideTopic, author: string): Promise<GuideTopic> {
-  await delay(400);
-  validateTopic(topic);
-  const current = guides.find((g) => g.id === topic.id);
-  if (current) {
-    guides = guides.map((g) => (g.id === topic.id ? topic : g));
-  } else {
-    let id = slugify(topic.title.pt) || `topico-${Date.now()}`;
-    if (guides.some((g) => g.id === id)) id = `${id}-${Date.now()}`;
-    topic = { ...topic, id };
-    guides = [...guides, topic];
-  }
-  recordChange({
-    author,
-    entity: "Acolhimento",
-    entityId: topic.id,
-    entityName: topic.title.pt,
-    action: current ? "editado" : "criado",
-    before: snapshot(current),
-    after: snapshot(topic),
-  });
-  return topic;
-}
-
-export async function deleteGuideTopic(id: string, author: string): Promise<void> {
-  await delay(300);
-  const current = guides.find((g) => g.id === id);
-  if (!current) return;
-  guides = guides.filter((g) => g.id !== id);
-  recordChange({ author, entity: "Acolhimento", entityId: id, entityName: current.title.pt, action: "deletado", before: snapshot(current), after: null });
-}
-
-export function restoreGuideTopic(id: string, previous: Record<string, unknown> | null) {
-  if (!previous) {
-    guides = guides.filter((g) => g.id !== id);
-    return;
-  }
-  const restored = previous as GuideTopic;
-  guides = guides.some((g) => g.id === id) ? guides.map((g) => (g.id === id ? restored : g)) : [...guides, restored];
+export function loadGuideResources(language: Language): Promise<GuideResources> {
+  return apiGet(`/guide/resources?lang=${language}`);
 }
 
 // Sem tradução no idioma ativo, devolve o português e sinaliza o fallback (Objeto Nulo seguro, FE01 do UC09).
@@ -107,17 +141,6 @@ function topicTexts(topic: GuideTopic): Translated[] {
 export function isFullyTranslated(topic: GuideTopic, language: Language): boolean {
   if (language === "pt") return true;
   return topicTexts(topic).every((t) => Boolean(t[language]));
-}
-
-const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
-// Busca em todas as cartilhas, no idioma ativo e em português (para achar conteúdo ainda sem tradução).
-export function searchGuides(query: string, language: Language): GuideTopic[] {
-  const q = normalize(query.trim());
-  if (q.length < 2) return [];
-  return guides.filter((topic) =>
-    topicTexts(topic).some((t) => normalize(t.pt).includes(q) || normalize(t[language] ?? "").includes(q)),
-  );
 }
 
 // Progresso das listas de documentos fica no navegador; não há conta de usuário na área pública.

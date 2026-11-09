@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import type { GuideBlock, GuideSection, GuideStage, GuideTopic, Translated } from "../../data/mockGuides";
+import type { GuideBlock, GuideSection, GuideStage, GuideTopic, Translated } from "../../services/guidesService";
 import { dictionaries, type Language } from "../../i18n/dictionaries";
 import { setFlash } from "../../lib/flash";
-import { GuideValidationError, isFullyTranslated, saveGuideTopic } from "../../services/guidesService";
+import { GuideValidationError, saveGuideTopic } from "../../services/guidesAdminService";
+import { isFullyTranslated } from "../../services/guidesService";
 import { primaryButton, secondaryButton } from "./PageHeader";
 import { useAdmin } from "./AdminShell";
 
