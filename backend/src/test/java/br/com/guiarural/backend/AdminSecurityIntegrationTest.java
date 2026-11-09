@@ -351,4 +351,23 @@ class AdminSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
         assertEquals(0, count("select count(*) from services"));
     }
+
+    @Test
+    @DisplayName("Aviso: título ou descrição acima do limite e em branco são recusados com o erro no campo")
+    void avisoRejectsOversizedAndBlankFields() throws Exception {
+        Auth editor = login("editora@ufrpe.br");
+
+        mvc.perform(editor.write(post("/api/avisos")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"" + "x".repeat(256) + "\",\"descricao\":\"texto\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.nome").exists());
+        mvc.perform(editor.write(post("/api/avisos")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Título\",\"descricao\":\"" + "y".repeat(2001) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.descricao").exists());
+        mvc.perform(editor.write(post("/api/avisos")).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"  \",\"descricao\":\"texto\"}"))
+                .andExpect(status().isBadRequest());
+        assertEquals(0, count("select count(*) from avisos"));
+    }
 }
