@@ -8,8 +8,15 @@ import br.com.guiarural.backend.courses.service.CourseService;
 import br.com.guiarural.backend.courses.service.DepartmentService;
 import br.com.guiarural.backend.map.dto.PlaceResponseDTO;
 import br.com.guiarural.backend.map.model.PlaceEntity;
+import br.com.guiarural.backend.contacts.model.ContactEntity;
+import br.com.guiarural.backend.contacts.repository.ContactRepository;
+import br.com.guiarural.backend.courses.repository.CourseRepository;
+import br.com.guiarural.backend.map.repository.PlacePhotoRepository;
 import br.com.guiarural.backend.map.repository.PlaceRepository;
+import br.com.guiarural.backend.map.service.PlaceAssembler;
 import br.com.guiarural.backend.map.service.PlaceService;
+import br.com.guiarural.backend.services.model.ServiceEntity;
+import br.com.guiarural.backend.services.repository.ServiceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
@@ -33,6 +41,23 @@ class PlaceServiceTest {
 
     @Mock
     private CourseService courseService;
+
+    @Mock
+    private ContactRepository contactRepository;
+
+    @Mock
+    private ServiceRepository serviceRepository;
+
+    @Mock
+    private CourseRepository courseRepository;
+
+    @Mock
+    private PlacePhotoRepository photoRepository;
+
+    private PlaceService placeService() {
+        return new PlaceService(placeRepository, photoRepository,
+                new PlaceAssembler(contactRepository, serviceRepository, courseRepository, photoRepository));
+    }
 
     private PlaceEntity place(Long id, String slug, String status) {
         PlaceEntity place = new PlaceEntity();
@@ -51,7 +76,7 @@ class PlaceServiceTest {
     void shouldListPublishedPlaces() {
         when(placeRepository.findByStatusOrderByNameAsc("publicado")).thenReturn(List.of(place(1L, "reitoria", "publicado")));
 
-        List<PlaceResponseDTO> result = new PlaceService(placeRepository).findPublished();
+        List<PlaceResponseDTO> result = placeService().findPublished();
 
         assertEquals(1, result.size());
         assertEquals("reitoria", result.get(0).slug());
@@ -63,7 +88,7 @@ class PlaceServiceTest {
     void shouldThrowWhenPlaceIsNotPublished() {
         when(placeRepository.findBySlugAndStatus("ceu", "publicado")).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> new PlaceService(placeRepository).findBySlug("ceu"));
+        assertThrows(ResourceNotFoundException.class, () -> placeService().findBySlug("ceu"));
     }
 
     @Test
@@ -89,5 +114,57 @@ class PlaceServiceTest {
         assertEquals("dc", result.get(0).placeSlug());
         assertNull(result.get(1).placeSlug());
         assertNull(result.get(2).placeSlug());
+    }
+
+    private ServiceEntity service(Long id, String name, boolean active) {
+        ServiceEntity service = new ServiceEntity();
+        service.setId(id);
+        service.setName(name);
+        service.setActive(active);
+        return service;
+    }
+
+    @Test
+    @DisplayName("Deve montar responsável, serviços ativos em ordem alfabética e a URL versionada da foto")
+    void shouldAssembleContactsServicesAndPhoto() {
+        PlaceEntity reitoria = place(1L, "reitoria", "publicado");
+        reitoria.setServiceIds(new java.util.LinkedHashSet<>(List.of(20L, 10L, 30L)));
+        when(placeRepository.findByStatusOrderByNameAsc("publicado")).thenReturn(List.of(reitoria));
+        when(serviceRepository.findAllById(any())).thenReturn(List.of(
+                service(10L, "Protocolo", true), service(20L, "Atendimento", true), service(30L, "Despublicado", false)));
+        when(contactRepository.findByPlaceIdInOrderByIdAsc(any()))
+                .thenReturn(List.of(new ContactEntity("Maria", "maria@ufrpe.br", null, 1L)));
+        PlacePhotoRepository.PhotoVersion version = mock(PlacePhotoRepository.PhotoVersion.class);
+        when(version.getPlaceId()).thenReturn(1L);
+        when(version.getUpdatedAt()).thenReturn(java.time.Instant.ofEpochMilli(1234L));
+        when(photoRepository.findVersionsByPlaceIds(any())).thenReturn(List.of(version));
+
+        PlaceResponseDTO dto = placeService().findPublished().get(0);
+
+        assertEquals(List.of("Atendimento", "Protocolo"), dto.services().stream().map(l -> l.name()).toList());
+        assertEquals("maria@ufrpe.br", dto.contacts().get(0).email());
+        assertEquals("/api/places/reitoria/photo?v=1234", dto.photoUrl());
+    }
+
+    @Test
+    @DisplayName("No painel, serviço despublicado continua aparecendo no vínculo do local")
+    void shouldKeepInactiveServicesInAdminView() {
+        PlaceEntity reitoria = place(1L, "reitoria", "rascunho");
+        reitoria.setServiceIds(new java.util.LinkedHashSet<>(List.of(30L)));
+        when(placeRepository.findAllByOrderByNameAsc()).thenReturn(List.of(reitoria));
+        when(serviceRepository.findAllById(any())).thenReturn(List.of(service(30L, "Despublicado", false)));
+
+        PlaceResponseDTO dto = placeService().findAllForAdmin().get(0);
+
+        assertEquals(1, dto.services().size());
+        assertNull(dto.photoUrl());
+    }
+
+    @Test
+    @DisplayName("Foto de local que não está publicado dá 404 na rota pública")
+    void shouldNotServePhotoOfUnpublishedPlace() {
+        when(placeRepository.findBySlugAndStatus("ceu", "publicado")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> placeService().findPublishedPhoto("ceu"));
     }
 }

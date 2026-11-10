@@ -1,6 +1,10 @@
 package br.com.guiarural.backend.map.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "places")
@@ -23,7 +27,38 @@ public class PlaceEntity {
     private String phone;
     private String email;
 
+    // Serviços do catálogo (/servicos) prestados neste local (decisão D11 do plano de integração).
+    // A tabela place_service tem id próprio gerado pelo banco; aqui só importam as duas pontas do vínculo.
+    @ElementCollection
+    @CollectionTable(name = "place_service", joinColumns = @JoinColumn(name = "place_id"))
+    @Column(name = "service_id")
+    @BatchSize(size = 50)
+    private Set<Long> serviceIds = new LinkedHashSet<>();
+
+    // Cursos vinculados ao local (escolhidos no formulário do painel).
+    @ElementCollection
+    @CollectionTable(name = "place_courses", joinColumns = @JoinColumn(name = "place_id"))
+    @Column(name = "course_id")
+    @BatchSize(size = 50)
+    private Set<Long> courseIds = new LinkedHashSet<>();
+
     public PlaceEntity() {
+    }
+
+    public Set<Long> getServiceIds() {
+        return serviceIds;
+    }
+
+    public void setServiceIds(Set<Long> serviceIds) {
+        this.serviceIds = serviceIds;
+    }
+
+    public Set<Long> getCourseIds() {
+        return courseIds;
+    }
+
+    public void setCourseIds(Set<Long> courseIds) {
+        this.courseIds = courseIds;
     }
 
     public Long getId() {

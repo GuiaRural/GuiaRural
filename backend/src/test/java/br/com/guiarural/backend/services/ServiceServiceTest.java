@@ -3,6 +3,7 @@ package br.com.guiarural.backend.services;
 import br.com.guiarural.backend.core.audit.AuditService;
 import br.com.guiarural.backend.core.exception.BadRequestException;
 import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
+import br.com.guiarural.backend.map.repository.PlaceRepository;
 import br.com.guiarural.backend.services.dto.ServiceRequestDTO;
 import br.com.guiarural.backend.services.dto.ServiceResponseDTO;
 import br.com.guiarural.backend.services.model.ServiceEntity;
@@ -39,6 +40,10 @@ class ServiceServiceTest {
 
     @Mock
     private AuditService auditService;
+
+    // Os locais do serviço vêm daqui; sem stub, a consulta devolve lista vazia (serviço sem local).
+    @Mock
+    private PlaceRepository placeRepository;
 
     @InjectMocks
     private ServiceService service;
