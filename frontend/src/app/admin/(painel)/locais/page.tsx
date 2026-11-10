@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAdmin } from "../../../components/admin/AdminShell";
 import PageHeader, { ctaButton } from "../../../components/admin/PageHeader";
 import { ConfirmModal } from "../../../components/ui/Modal";
-import type { Place, PlaceStatus } from "../../../data/mockPlaces";
 import { dictionaries } from "../../../i18n/dictionaries";
 import { takeFlash } from "../../../lib/flash";
 import { formatCoord } from "../../../lib/geo";
-import { PlaceValidationError, deletePlace, listAllPlaces, setPlaceStatus } from "../../../services/placesService";
+import { PlaceValidationError, deletePlace, listAllPlaces, setPlaceStatus, type Place, type PlaceStatus } from "../../../services/placesService";
 
 const PAGE_SIZE = 6;
 const FILTERS = [
@@ -29,7 +27,6 @@ const STATUS: Record<PlaceStatus, [string, string]> = {
 const categories = dictionaries.pt.categories;
 
 export default function PlacesAdminPage() {
-  const { session } = useAdmin();
   const [places, setPlaces] = useState<Place[] | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
   const [page, setPage] = useState(1);
@@ -37,15 +34,22 @@ export default function PlacesAdminPage() {
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   function reload() {
-    listAllPlaces().then(setPlaces);
+    listAllPlaces()
+      .then(setPlaces)
+      .catch(() => setMessage({ kind: "error", text: "Não foi possível carregar a lista de locais. Tente novamente." }));
   }
   // Ao abrir, mostra a mensagem deixada pelo cadastro ao salvar (UC14).
   useEffect(() => {
     const flash = takeFlash();
-    listAllPlaces().then((all) => {
-      setPlaces(all);
-      if (flash) setMessage({ kind: "ok", text: flash });
-    });
+    listAllPlaces()
+      .then((all) => {
+        setPlaces(all);
+        if (flash) setMessage({ kind: "ok", text: flash });
+      })
+      .catch(() => {
+        setPlaces([]);
+        setMessage({ kind: "error", text: "Não foi possível carregar a lista de locais. Tente novamente." });
+      });
   }, []);
 
   const filtered = (places ?? []).filter((p) => filter === "todos" || p.status === filter);
@@ -56,7 +60,7 @@ export default function PlacesAdminPage() {
   async function toggleStatus(place: Place) {
     try {
       const next: PlaceStatus = place.status === "publicado" ? "inativo" : "publicado";
-      await setPlaceStatus(place.id, next, session.name);
+      await setPlaceStatus(place.id, next);
       setMessage({ kind: "ok", text: `${place.name} agora está ${STATUS[next][0].toLowerCase()}.` });
       reload();
     } catch (err) {
@@ -110,7 +114,7 @@ export default function PlacesAdminPage() {
               <th className="px-4 py-3 font-semibold">Local</th>
               <th className="px-4 py-3 font-semibold">Categoria</th>
               <th className="px-4 py-3 font-semibold">Horário</th>
-              <th className="px-4 py-3 font-semibold">Informações</th>
+              <th className="px-4 py-3 font-semibold">Vínculos</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 text-right font-semibold">Ações</th>
             </tr>
@@ -143,7 +147,9 @@ export default function PlacesAdminPage() {
                   <td className="px-4 py-3 text-slate-700">{categories[p.category]}</td>
                   <td className="px-4 py-3 text-slate-700">{p.hours.replaceAll("-", "–")}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{p.services.length} itens</span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                      {p.services.length} serviços · {p.courses.length} cursos
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS[p.status][1]}`}>{STATUS[p.status][0]}</span>
@@ -200,14 +206,18 @@ export default function PlacesAdminPage() {
         danger
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
-        message={`"${toDelete?.name}" deixará de aparecer no mapa e na busca. A exclusão pode ser desfeita pelo histórico de mudanças.`}
+        message={`"${toDelete?.name}" deixará de aparecer no mapa e na busca. A exclusão fica registrada no histórico de mudanças, mas ainda não pode ser desfeita por lá.`}
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (!toDelete) return;
-          await deletePlace(toDelete.id, session.name);
-          setMessage({ kind: "ok", text: `${toDelete.name} foi excluído.` });
+          try {
+            await deletePlace(toDelete.id);
+            setMessage({ kind: "ok", text: `${toDelete.name} foi excluído.` });
+            reload();
+          } catch {
+            setMessage({ kind: "error", text: `Não foi possível excluir ${toDelete.name}. Tente novamente.` });
+          }
           setToDelete(null);
-          reload();
         }}
       />
     </div>

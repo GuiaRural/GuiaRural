@@ -45,7 +45,9 @@ async function problemOf(response: Response): Promise<{ detail?: string; reason?
 // HttpOnly vai junto sozinho (mesma origem): o JavaScript nunca o vê.
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // Upload (FormData): o navegador define o Content-Type multipart com o boundary; não pode ser fixado aqui.
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (method !== "GET") {
     const token = csrfToken();
     if (token) headers["X-XSRF-TOKEN"] = token;
@@ -55,7 +57,7 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     method,
     headers,
     credentials: "same-origin",
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -74,6 +76,8 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 export const apiGet = <T>(path: string) => request<T>("GET", path);
 export const apiPost = <T>(path: string, body: unknown) => request<T>("POST", path, body);
 export const apiPut = <T>(path: string, body: unknown) => request<T>("PUT", path, body);
+// Envio de arquivo (multipart): a foto do local.
+export const apiPutForm = <T>(path: string, form: FormData) => request<T>("PUT", path, form);
 
 // Sucesso no DELETE é 204, sem corpo para ler.
 export const apiDelete = (path: string) => request<void>("DELETE", path);
