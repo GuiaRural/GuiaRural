@@ -46,6 +46,8 @@ Registradas em 10/11/2026 com o time. Todas **fechadas**: podem ser implementada
 | D8 | Dados de coordenadores (e de cursos) | Fechada | Entram pelo **cadastro de locais e de cursos no painel**, não por carga inicial. |
 | D9 | Tradução de locais, departamentos e cursos | Fechada | **Sem francês.** O admin preenche **PT** no painel; EN e ES são traduzidos **fora do sistema pelo time**, como foi no Guia de Recife, e gravados **marcados como tradução automática** (padrão `machine_translated_langs`) à espera de revisão humana. **Sem API de tradução** (serviço externo fora da stack). |
 | D10 | Matriz curricular | Fechada | **Entra pelo formulário de curso** (tabela `curriculum_subjects`, que já existe). |
+| D11 | "Serviços do local" | Fechada (10/11/2026, substitui o desenho anterior) | **Não é uma lista própria do local.** O local é **ligado a serviços do catálogo** (`services`): o serviço aparece em `/servicos` **e** mostra a qual local pertence. Usa a tabela `place_service` (`place_id`, `service_id`), que já existe no banco mas é órfã (sem migration e sem código); a Fase 1 a coloca sob migration. O horário de cada serviço no local deixa de existir. |
+| D12 | Locais do mock no banco | Fechada, com detalhe na Fase 1 | Os locais que hoje só existem em `data/mockPlaces.ts` entram no banco. Em 10/11/2026 `places` e `departments` estavam **vazios**, embora a migration de seed conste como aplicada: a carga oficial (31 locais e 9 departamentos) também precisa voltar. |
 
 ### 2.1 Respostas às perguntas de 10/11/2026
 Q1 foto: aprovada · Q2 senha esquecida: troca manual no banco, sem endpoint · Q3 módulo `msg` e `/contato`: removidos · Q4 tradução: fora do sistema, marcada como automática · Q5 (a) sem página de acessibilidade, (b) matriz no formulário de curso, (c) `phone` fica no banco e sai do formulário.
@@ -81,9 +83,11 @@ Ordem sugerida: **0 → 1 → 2 → 3**, com 4, 5, 6 e 7 em paralelo conforme as
 
 ### Fase 0: Banco em dia (H) — P
 Pré-requisito para todas as outras.
-- [ ] Vincular o CLI (`supabase link`) e rodar `supabase migration list`; conferir se as migrations de 09/11 (`servicos_campos_do_formulario`) e 10/11 (`cardapio_vegetariano_obrigatorio`) estão aplicadas. Aplicar só com autorização.
-- [ ] Subir o backend com `-Dspring-boot.run.arguments="--spring.jpa.hibernate.ddl-auto=validate"` para achar divergência entidade × schema; corrigir o que aparecer.
-- [ ] Trocar `ddl-auto` para `validate` (ou `none`) em `application.properties`, **num PR próprio e pequeno**. Hoje `update` cria tabela sem RLS/FK/check se o backend subir antes das migrations.
+- [x] Conferir as migrations aplicadas (feito em 10/11/2026 pelo MCP do Supabase): só faltava `cardapio_vegetariano_obrigatorio`; foi testada em rollback, aplicada (versão registrada `20261110143039`) e o arquivo foi renomeado para essa versão.
+- [x] Subir o backend com `ddl-auto=validate` contra o banco real: subiu sem erro de schema.
+- [x] Trocar `ddl-auto` para `validate` em `application.properties`; `./mvnw test` continua passando (os testes usam H2 com `create-drop` próprio).
+- [ ] Abrir o PR da Fase 0 (rename da migration + `validate` + `CLAUDE.md`).
+- Achados que alimentam a Fase 1: `places` e `departments` estão vazios no banco; existe a tabela órfã `place_service`; `places` já tem as colunas `photo_url` e `accessibility` (sem uso pelo backend).
 - Pronto quando: `migration list` sem pendência, backend sobe com `validate`.
 
 ### Fase 1: Locais no painel (A, UC14 a UC16) — G
@@ -95,7 +99,7 @@ Maior divergência hoje: o que o admin edita não chega ao mapa. D1 e D2 estão 
 |---|---|---|
 | Horário | coluna `places.hours` (já existe) | |
 | Responsável | **reaproveitar a tabela `contacts`** (já tem `name`, `email`, `phone`, `place_id`, API e teste) | O local passa a devolver os contatos dentro do próprio DTO. Só nome e e-mail vão ao formulário. |
-| Serviços do local | tabela nova `place_services` (`place_id` com `on delete cascade`, `name` obrigatório, `hours`, `description`, ordem) | Mesmo formato do `PlaceService` do frontend (nome, horário, descrição). **Não confundir** com o catálogo de serviços estudantis (`services`, `/servicos`). |
+| Serviços do local (D11) | tabela **existente** `place_service` (`place_id`, `service_id`), colocada sob migration: `service_id not null`, `unique (place_id, service_id)`, FKs com `on delete cascade`, RLS e `revoke` (hoje está com 0 linhas e fora das migrations) | O local escolhe serviços do **catálogo** (`services`). O `ServiceResponseDTO` passa a devolver os locais (slug e nome, só os publicados) para `/servicos` mostrar onde o serviço é prestado. Aproveita `services.location_reference` (texto livre) como complemento. |
 | Cursos vinculados | tabela nova `place_courses` (`place_id`, `course_id`, chave composta, `cascade` nos dois lados) | O formulário atual já escolhe cursos de uma lista. Alternativa sem tabela: derivar por `departments.place_id`, mas aí o formulário não poderia escolher. |
 | Foto | tabela nova `place_photos` (ver D2) | Separada de `places` para a lista do mapa não carregar bytes. |
 
@@ -112,7 +116,7 @@ Maior divergência hoje: o que o admin edita não chega ao mapa. D1 e D2 estão 
 | Método e rota | Quem | Observação |
 |---|---|---|
 | `GET /api/admin/places` e `/{slug}` | logado | todos, inclusive `rascunho` |
-| `POST /api/places` | `geral`/`editor` | cria; slug único (409 se repetir). Recebe serviços, cursos e contatos aninhados |
+| `POST /api/places` | `geral`/`editor` | cria; slug único (409 se repetir). Recebe ids de serviços, ids de cursos e contatos aninhados |
 | `PUT /api/places/{slug}` | `geral`/`editor` | substitui as listas aninhadas; inclui publicar/despublicar |
 | `DELETE /api/places/{slug}` | `geral`/`editor` | `departments.place_id` já é `on delete set null`; o resto cai por cascade |
 | `.../photo` | ver D2 | |
