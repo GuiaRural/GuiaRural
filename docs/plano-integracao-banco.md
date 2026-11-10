@@ -137,7 +137,7 @@ Regras que o banco já impõe (devolver 400 amigável, não estourar o `check`):
 - Pronto quando: criar, editar, publicar, despublicar e excluir um local (com serviços, cursos, responsável e foto) reflete no mapa, na busca e na página do local após recarregar, e cada ação aparece no histórico.
 
 ### Fase 2: Administradores (B, UC13) — M
-Decisões fechadas (D3, D4, D5). Reaproveita `AdminEntity`/`AdminRepository` do módulo `login`.
+**Implementada** no branch `feat/admins-api`. Decisões fechadas (D3, D4, D5). A listagem (`GET`) ficou aberta a qualquer administrador logado, como a tela já mostrava; só as escritas são exclusivas de `GERAL`. Reaproveita `AdminEntity`/`AdminRepository` do módulo `login`.
 
 **Contrato proposto** (rotas exclusivas de `GERAL`, com matcher próprio no `SecurityConfig`)
 
@@ -148,12 +148,12 @@ Decisões fechadas (D3, D4, D5). Reaproveita `AdminEntity`/`AdminRepository` do 
 | `PATCH /api/admin/admins/{id}` | aprovar (`aguardando`→`ativo`), mudar perfil, revogar (`revogado`). **Não** muda senha: se alguém precisar de senha nova, o responsável pelo projeto troca direto no banco (D4) |
 
 - A linha de um administrador **nunca é apagada** (a auditoria referencia `admin_id`): "excluir" = `revogado`.
-- [ ] Senha: validação mínima de tamanho (definir a regra com o time; sugestão de 8 caracteres), BCrypt com o `PasswordEncoder` existente, nunca logar nem devolver a senha.
-- [ ] **Sem** endpoint de troca de senha, **sem** coluna de "trocar no primeiro acesso" e **sem** envio de e-mail (D3/D4).
-- [ ] Impedir revogar ou rebaixar o **último** administrador `geral`.
-- [ ] Verificar se uma conta revogada perde a sessão ativa (confirmar em `AuthService`/`AdminPrincipal`; não verifiquei).
-- [ ] Auditar com `Entity.ADMINISTRADOR`, sem hash nem senha nos snapshots.
-- [ ] Frontend: `adminsService.ts` para a API; **apagar `MOCK_PASSWORDS` e `checkPassword`**; retirar `sendCredentials` de `NewAdmin` e do formulário; mover os tipos `Admin`, `Permission`, `Sector` para fora de `data/mockAdmins.ts` (`authService.ts` importa `Permission` de lá); atualizar `admin/(painel)/administradores/page.tsx`.
+- [x] Senha: de 8 a 72 caracteres (72 bytes é o limite do BCrypt), BCrypt com o `PasswordEncoder` existente, nunca logada nem devolvida (o `toString` do DTO omite a senha).
+- [x] **Sem** endpoint de troca de senha, **sem** coluna de "trocar no primeiro acesso" e **sem** envio de e-mail (D3/D4).
+- [x] Impedir revogar ou rebaixar o **último** administrador `geral` ativo (409), e ninguém altera o próprio acesso (400).
+- [x] Conta revogada perde a sessão ativa: não perdia (o `AdminPrincipal` ficava na sessão até expirar). O `AdminSessionRefreshFilter` relê a conta a cada requisição autenticada: fora de `ativo`, encerra a sessão (401); perfil trocado vale na hora, sem novo login.
+- [x] Auditar com `Entity.ADMINISTRADOR`, sem hash nem senha nos snapshots (o snapshot é o `AdminResponseDTO`).
+- [x] Frontend: `adminsService.ts` para a API; **apagar `MOCK_PASSWORDS` e `checkPassword`**; retirar `sendCredentials` de `NewAdmin` e do formulário; mover os tipos `Admin`, `Permission`, `Sector` para fora de `data/mockAdmins.ts` (`authService.ts` importa `Permission` de lá); atualizar `admin/(painel)/administradores/page.tsx`.
 - [ ] O primeiro administrador continua sendo inserido à mão no banco (a senha nunca vai para código, migration ou chat).
 - Pronto quando: um `geral` cadastra (com senha própria), aprova e revoga contas reais, e o novo administrador consegue entrar.
 
