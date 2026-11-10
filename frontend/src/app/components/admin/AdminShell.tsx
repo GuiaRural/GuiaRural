@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { PERMISSIONS } from "../../data/mockAdmins";
+import { PERMISSIONS } from "../../services/adminsService";
 import { setFlash } from "../../lib/flash";
 import { getSession, logout, subscribeSession, verifySession, type Session } from "../../services/authService";
 import LogoutModal, { LogoutIcon } from "./LogoutModal";

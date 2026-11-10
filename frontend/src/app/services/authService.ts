@@ -1,4 +1,4 @@
-import type { Permission } from "../data/mockAdmins";
+import type { Permission } from "./adminsService";
 import { ApiError, SESSION_EXPIRED_EVENT, apiGet, apiPost } from "../lib/api";
 import { setFlash } from "../lib/flash";
 import { readJson, removeKey, writeJson } from "../lib/storage";

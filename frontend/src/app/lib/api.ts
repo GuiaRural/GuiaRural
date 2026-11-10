@@ -25,7 +25,7 @@ function csrfToken(): string | null {
   }
 }
 
-type Method = "GET" | "POST" | "PUT" | "DELETE";
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 async function problemOf(response: Response): Promise<{ detail?: string; reason?: string; fields?: Record<string, string> }> {
   try {
@@ -76,6 +76,8 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 export const apiGet = <T>(path: string) => request<T>("GET", path);
 export const apiPost = <T>(path: string, body: unknown) => request<T>("POST", path, body);
 export const apiPut = <T>(path: string, body: unknown) => request<T>("PUT", path, body);
+// Mudança parcial: aprovar, revogar ou mudar o perfil de um administrador.
+export const apiPatch = <T>(path: string, body: unknown) => request<T>("PATCH", path, body);
 // Envio de arquivo (multipart): a foto do local.
 export const apiPutForm = <T>(path: string, form: FormData) => request<T>("PUT", path, form);
 
