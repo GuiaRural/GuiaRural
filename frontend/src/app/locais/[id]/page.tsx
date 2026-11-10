@@ -10,9 +10,8 @@ import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import PlacePhoto from "../../components/places/PlacePhoto";
 import Modal from "../../components/ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
 import { isOpenNow } from "../../lib/hours";
-import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace } from "../../services/placesService";
+import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace, type Place } from "../../services/placesService";
 import { computeRoute, getCurrentCampusPosition } from "../../services/routeService";
 
 export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
@@ -150,18 +149,6 @@ function PlaceDetails({ place }: { place: Place }) {
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="font-bold text-navy-900">{t.placePage.about}</h2>
             {place.description && <p className="mt-2 text-sm text-slate-700">{place.description}</p>}
-            {place.accessibility.length > 0 && (
-              <>
-                <h3 className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">{t.accessibility.title}</h3>
-                <ul className="mt-2 flex flex-wrap gap-2">
-                  {place.accessibility.map((a) => (
-                    <li key={a} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                      {t.accessibility[a]}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
           </section>
 
           <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -171,15 +158,31 @@ function PlaceDetails({ place }: { place: Place }) {
             ) : (
               <ul className="mt-3 grid gap-3 sm:grid-cols-2">
                 {place.services.map((s) => (
-                  <li key={s.name} className="rounded-xl border border-slate-200 p-3">
-                    <p className="font-semibold text-slate-900">{s.name}</p>
-                    <p className="text-xs text-slate-600">{s.description}</p>
-                    <p className="mt-1 text-xs font-semibold text-amber-800">{s.hours.replaceAll("-", "–")}</p>
+                  <li key={s.id}>
+                    {/* O serviço fica no catálogo (/servicos), onde estão os passos e requisitos. */}
+                    <Link href="/servicos" className="block rounded-xl border border-slate-200 p-3 font-semibold text-navy-900 hover:bg-slate-50">
+                      {s.name}
+                    </Link>
                   </li>
                 ))}
               </ul>
             )}
           </section>
+
+          {place.courses.length > 0 && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="font-bold text-navy-900">{t.placePage.courses}</h2>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {place.courses.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/cursos/${c.id}`} className="block rounded-xl border border-slate-200 p-3 font-semibold text-navy-900 hover:bg-slate-50">
+                      {c.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         <aside className="space-y-4">
@@ -189,23 +192,20 @@ function PlaceDetails({ place }: { place: Place }) {
               <p className="mt-1 text-xl font-bold text-navy-900">{place.hours.replaceAll("-", "–")}</p>
             </section>
           )}
-          {(place.phone || place.email || place.officeHours) && (
+          {place.contacts.length > 0 && (
             <section className="rounded-2xl bg-white p-5 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.placePage.contact}</h2>
-              <ul className="mt-2 space-y-1 text-sm text-slate-800">
-                {place.phone && <li>{place.phone}</li>}
-                {place.email && (
-                  <li>
-                    <a href={`mailto:${place.email}`} className="text-navy-700 underline">
-                      {place.email}
-                    </a>
+              <ul className="mt-2 space-y-2 text-sm text-slate-800">
+                {place.contacts.map((c) => (
+                  <li key={`${c.name}-${c.email ?? ""}`}>
+                    <p className="font-semibold">{c.name}</p>
+                    {c.email && (
+                      <a href={`mailto:${c.email}`} className="text-navy-700 underline">
+                        {c.email}
+                      </a>
+                    )}
                   </li>
-                )}
-                {place.officeHours && (
-                  <li className="text-xs text-slate-600">
-                    {t.placePage.officeHours}: {place.officeHours}
-                  </li>
-                )}
+                ))}
               </ul>
             </section>
           )}

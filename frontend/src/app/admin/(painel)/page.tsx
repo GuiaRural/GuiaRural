@@ -21,14 +21,14 @@ const SHORTCUTS = [
 
 export default function AdminDashboard() {
   const { session } = useAdmin();
-  const [stats, setStats] = useState<{ places: number; drafts: number; menus: number | null; logs: AuditLog[] } | null>(null);
+  const [stats, setStats] = useState<{ places: number | null; drafts: number | null; menus: number | null; logs: AuditLog[] } | null>(null);
 
   useEffect(() => {
-    // Cardápios vêm da API: se ela falhar, o número fica em "—" sem derrubar o resto do painel.
-    Promise.all([listAllPlaces(), listMenus().catch(() => null), listLogs()]).then(([places, menus, logs]) =>
+    // Locais e cardápios vêm da API: se ela falhar, o número fica em "—" sem derrubar o resto do painel.
+    Promise.all([listAllPlaces().catch(() => null), listMenus().catch(() => null), listLogs()]).then(([places, menus, logs]) =>
       setStats({
-        places: places.filter((p) => p.status === "publicado").length,
-        drafts: places.filter((p) => p.status === "rascunho").length,
+        places: places ? places.filter((p) => p.status === "publicado").length : null,
+        drafts: places ? places.filter((p) => p.status === "rascunho").length : null,
         menus: menus ? menus.length : null,
         logs: logs.slice(0, 4),
       }),

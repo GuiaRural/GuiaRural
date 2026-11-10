@@ -1,5 +1,5 @@
 import type { GuideSection, GuideStage } from "../services/guidesService";
-import type { AccessibilityFeature, PlaceCategory } from "../data/mockPlaces";
+import type { PlaceCategory } from "../services/placesService";
 import type { CourseType } from "../services/coursesService";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
@@ -57,9 +57,9 @@ export type Dictionary = {
   language: { label: string; open: string };
   common: { close: string; cancel: string; loading: string; minutes: string; meters: string };
   categories: Record<PlaceCategory, string>;
-  accessibility: Record<AccessibilityFeature, string> & { title: string; none: string };
   serviceCard: {
     howToApply: string;
+    whereToFind: string;
     requirements: string;
     deadline: string;
     openLink: string;
@@ -87,10 +87,10 @@ export type Dictionary = {
     viewOnMap: string;
     hours: string;
     contact: string;
-    officeHours: string;
     about: string;
     services: string;
     noServices: string;
+    courses: string;
     share: string;
     linkCopied: string;
     address: string;
@@ -320,21 +320,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Saúde",
       auditorio: "Auditório / teatro",
       esporte: "Parque esportivo",
-      laboratorio: "Laboratório especializado",
-    },
-    accessibility: {
-      title: "Acessibilidade",
-      none: "Não informada",
-      rampa: "Rampa de acesso",
-      elevador: "Elevador",
-      piso_tatil: "Piso tátil",
-      banheiro: "Banheiro adaptado",
-      vaga: "Vaga reservada",
-      portas: "Portas com vão livre (90 cm)",
-      libras: "Intérprete de Libras",
     },
     serviceCard: {
       howToApply: "Como solicitar",
+      whereToFind: "Onde encontrar",
       requirements: "Requisitos e documentos",
       deadline: "Prazo",
       openLink: "Consultar edital ou guia",
@@ -362,10 +351,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewOnMap: "Ver no mapa",
       hours: "Horário de funcionamento",
       contact: "Contato",
-      officeHours: "Atendimento",
       about: "Sobre o local",
       services: "Serviços no local",
       noServices: "Nenhum serviço cadastrado neste local.",
+      courses: "Cursos neste local",
       share: "Compartilhar",
       linkCopied: "Link copiado",
       address: "Endereço",
@@ -599,21 +588,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Health",
       auditorio: "Auditorium",
       esporte: "Sports area",
-      laboratorio: "Specialized laboratory",
-    },
-    accessibility: {
-      title: "Accessibility",
-      none: "Not provided",
-      rampa: "Access ramp",
-      elevador: "Elevator",
-      piso_tatil: "Tactile paving",
-      banheiro: "Accessible restroom",
-      vaga: "Reserved parking",
-      portas: "Wide doorways (90 cm)",
-      libras: "Sign language interpreter",
     },
     serviceCard: {
       howToApply: "How to apply",
+      whereToFind: "Where to find it",
       requirements: "Requirements and documents",
       deadline: "Deadline",
       openLink: "View notice or guide",
@@ -641,10 +619,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewOnMap: "View on map",
       hours: "Opening hours",
       contact: "Contact",
-      officeHours: "Office hours",
       about: "About this place",
       services: "Services here",
       noServices: "No services registered at this place.",
+      courses: "Courses held here",
       share: "Share",
       linkCopied: "Link copied",
       address: "Address",
@@ -878,21 +856,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Salud",
       auditorio: "Auditorio",
       esporte: "Área deportiva",
-      laboratorio: "Laboratorio especializado",
-    },
-    accessibility: {
-      title: "Accesibilidad",
-      none: "No informada",
-      rampa: "Rampa de acceso",
-      elevador: "Ascensor",
-      piso_tatil: "Piso táctil",
-      banheiro: "Baño adaptado",
-      vaga: "Plaza reservada",
-      portas: "Puertas con vano libre (90 cm)",
-      libras: "Intérprete de lengua de señas",
     },
     serviceCard: {
       howToApply: "Cómo solicitar",
+      whereToFind: "Dónde encontrarlo",
       requirements: "Requisitos y documentos",
       deadline: "Plazo",
       openLink: "Consultar convocatoria o guía",
@@ -920,10 +887,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewOnMap: "Ver en el mapa",
       hours: "Horario de atención",
       contact: "Contacto",
-      officeHours: "Atención",
       about: "Sobre el lugar",
       services: "Servicios en el lugar",
       noServices: "No hay servicios registrados en este lugar.",
+      courses: "Cursos en este lugar",
       share: "Compartir",
       linkCopied: "Enlace copiado",
       address: "Dirección",

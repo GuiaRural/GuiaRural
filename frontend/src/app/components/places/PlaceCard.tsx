@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
 import { isOpenNow } from "../../lib/hours";
-import { getDefaultOrigin, isPlaceSaved, toggleSavedPlace } from "../../services/placesService";
+import { getDefaultOrigin, isPlaceSaved, toggleSavedPlace, type Place } from "../../services/placesService";
 import { computeRoute } from "../../services/routeService";
 import PlacePhoto from "./PlacePhoto";
 
@@ -16,7 +15,7 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
   const origin = getDefaultOrigin();
   // A própria origem não mostra distância (seria "0 m").
   const route = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
-  // Horário e acessibilidade podem não estar cadastrados: sem o dado, a tela não afirma "fechado" nem "sem recursos".
+  // O horário pode não estar cadastrado: sem o dado, a tela não afirma "fechado".
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
 
@@ -75,22 +74,12 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
           </button>
         </div>
 
-        {(hasHours || place.accessibility.length > 0) && (
-          <dl className="grid grid-cols-2 gap-2 text-xs">
-            {hasHours && (
-              <div className="rounded-lg bg-slate-50 p-2">
-                <dt className="text-slate-500">{t.placeCard.hours}</dt>
-                <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
-              </div>
-            )}
-            {place.accessibility.length > 0 && (
-              <div className="rounded-lg bg-slate-50 p-2">
-                <dt className="text-slate-500">{t.accessibility.title}</dt>
-                <dd className="font-semibold text-slate-900">
-                  {place.accessibility.map((a) => t.accessibility[a]).join(", ")}
-                </dd>
-              </div>
-            )}
+        {hasHours && (
+          <dl className="text-xs">
+            <div className="rounded-lg bg-slate-50 p-2">
+              <dt className="text-slate-500">{t.placeCard.hours}</dt>
+              <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
+            </div>
           </dl>
         )}
 

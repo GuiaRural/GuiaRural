@@ -3,6 +3,9 @@ import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 // Ponto único de acesso aos serviços estudantis (UC19 a UC21, UC11). Os tipos espelham os DTOs de /api/services.
 // Cadastrar exige login (a API recusa sem sessão); o autor e o histórico ficam por conta do servidor.
 
+// Local publicado onde o serviço é prestado; o slug leva à página do local (/locais/<slug>).
+export type ServicoPlace = { slug: string; name: string };
+
 export type Servico = {
   id: number;
   // Texto livre por decisão do time, até existir uma lista oficial de categorias.
@@ -18,10 +21,12 @@ export type Servico = {
   deadline?: string;
   // RN-19.02: todo serviço novo nasce publicado.
   active: boolean;
+  // O vínculo com o local é feito no formulário de local (painel), não aqui: o serviço só o recebe do servidor.
+  places: ServicoPlace[];
 };
 
 // Campos que o administrador preenche no formulário.
-export type ServicoInput = Omit<Servico, "id" | "active">;
+export type ServicoInput = Omit<Servico, "id" | "active" | "places">;
 
 export type ServicoField = keyof ServicoInput;
 export type ServicoFieldError = "required" | "tooLong" | "invalidUrl";
@@ -64,6 +69,7 @@ type ServicoDto = {
   url: string | null;
   deadline: string | null;
   active: boolean;
+  places?: ServicoPlace[];
 };
 
 function fromDto(dto: ServicoDto): Servico {
@@ -78,6 +84,7 @@ function fromDto(dto: ServicoDto): Servico {
     url: dto.url ?? undefined,
     deadline: dto.deadline ?? undefined,
     active: dto.active,
+    places: dto.places ?? [],
   };
 }
 

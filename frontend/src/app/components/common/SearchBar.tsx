@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
+import type { Place } from "../../services/placesService";
 import { MIN_SEARCH_CHARS, getRecentPlaces, searchPlaces } from "../../services/placesService";
 import { MAX_SUGGESTIONS, searchDepartmentsAndCourses, suggestionHref, type Suggestion } from "../../services/searchService";
 

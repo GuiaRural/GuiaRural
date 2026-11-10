@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
+import type { Place } from "../../services/placesService";
 import { useApi } from "../../hooks/useApi";
 import { useSelectedPlaceId } from "../../hooks/useSelectedPlaceId";
 import type { LatLng } from "../../lib/geo";

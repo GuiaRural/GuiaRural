@@ -3,23 +3,25 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
-import { MOCK_COURSES } from "../../data/mockCourses";
-import {
-  ACCESSIBILITY_FEATURES,
-  OPERATIONAL_STATUSES,
-  PLACE_CATEGORIES,
-  type AccessibilityFeature,
-  type OperationalStatus,
-  type Place,
-  type PlaceCategory,
-} from "../../data/mockPlaces";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { dictionaries } from "../../i18n/dictionaries";
 import { setFlash } from "../../lib/flash";
 import { CAMPUS_BOUNDS } from "../../data/mapConfig";
 import { formatCoord, isInsideCampus, type LatLng } from "../../lib/geo";
 import { isValidHours } from "../../lib/hours";
-import { PlaceValidationError, listAllPlaces, savePlace } from "../../services/placesService";
+import { getCourses, type CourseSummary } from "../../services/coursesService";
+import {
+  PLACE_CATEGORIES,
+  PlaceValidationError,
+  deletePlacePhoto,
+  listAllPlaces,
+  savePlace,
+  uploadPlacePhoto,
+  type Place,
+  type PlaceCategory,
+  type PlaceLink,
+} from "../../services/placesService";
+import { listServicos, type Servico } from "../../services/servicosService";
 import MapLoading from "../common/MapLoading";
 import type { MapMarker } from "../map/CampusMap";
 import Modal from "../ui/Modal";
@@ -30,8 +32,10 @@ const t = dictionaries.pt;
 // O Leaflet acessa `window` ao ser importado: o mapa só carrega no cliente.
 const CampusMap = dynamic(() => import("../map/CampusMap"), { ssr: false, loading: () => <MapLoading /> });
 
+// O servidor confere de novo e reduz a imagem (JPEG de até 1280 px); aqui só se evita enviar arquivo inútil.
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ["image/jpeg", "image/png"];
+const MAX_CONTACTS = 5;
 
 const MESSAGES = {
   required: "Preencha todos os campos obrigatórios para continuar.",
@@ -39,12 +43,8 @@ const MESSAGES = {
   photo: "Formato ou tamanho de imagem inválido. Envie um arquivo JPG ou PNG de até 5MB.",
   georef: "Para publicar, informe a latitude e a longitude do local ou ajuste o pin no mapa.",
   hours: "Horário de funcionamento inválido: o fechamento deve ser depois da abertura.",
-};
-
-const OPERATION: Record<OperationalStatus, [string, string, string]> = {
-  aberto: ["Ativo / Aberto para atividades", "bg-emerald-500", "border-emerald-300 bg-emerald-50 text-emerald-800"],
-  obras: ["Em obras / Fechado temporariamente", "bg-red-500", "border-red-300 bg-red-50 text-red-800"],
-  restrito: ["Acesso restrito / Apenas servidores", "bg-amber-500", "border-amber-300 bg-amber-50 text-amber-800"],
+  contactName: "Informe o nome de cada responsável (ou remova a linha em branco).",
+  contactEmail: "Informe um e-mail válido para o responsável.",
 };
 
 const CATEGORY_ICONS: Record<PlaceCategory, ReactNode> = {
@@ -52,7 +52,6 @@ const CATEGORY_ICONS: Record<PlaceCategory, ReactNode> = {
   administrativo: <path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" />,
   biblioteca: <path d="M5 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H5zM19 4h-4a2 2 0 0 0-2 2M19 4v14h-6" />,
   alimentacao: <path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 0-3 2-3 5s1 4 3 4v9" />,
-  laboratorio: <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9" />,
   portaria: <path d="M6 4h12a2 2 0 0 1 2 2v10H4V6a2 2 0 0 1 2-2zM4 11h16M7 19v2M17 19v2M4 16v3h16v-3M8 14h.01M16 14h.01" />,
   auditorio: <path d="M4 5h16v8a8 8 0 0 1-16 0zM9 9h.01M15 9h.01M9 14a4 4 0 0 0 6 0" />,
   esporte: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18" />,
@@ -63,6 +62,7 @@ const CATEGORY_ICONS: Record<PlaceCategory, ReactNode> = {
 };
 
 type FieldKey = "name" | "shortName" | "category" | "lat" | "lng" | "photo" | "hours";
+type ContactRow = { name: string; email: string };
 
 // Um intervalo só vira os campos "abertura até fechamento"; vários intervalos (ex.: RU) ficam em texto livre.
 function splitHours(hours: string) {
@@ -83,56 +83,82 @@ function parseCoord(value: string) {
   return value.trim() && Number.isFinite(n) ? n : null;
 }
 
+const levelLabel = (level: CourseSummary["level"]) => (level === "POS" ? "Pós-graduação" : "Graduação");
+
 // UC14 — Adicionar Local (também usado para continuar um rascunho ou editar um local existente).
+// Cursos e serviços vêm da API (RN-UC14.03: só os já cadastrados podem ser vinculados); a foto vai por upload.
 export default function PlaceForm({ place }: { place?: Place }) {
   const router = useRouter();
-  const { session, setDirty } = useAdmin();
-  const editing = Boolean(place);
+  const { setDirty } = useAdmin();
+  // Depois do primeiro salvamento (mesmo que a foto falhe) o formulário passa a editar o local que acabou de criar.
+  const [savedId, setSavedId] = useState(place?.id);
+  const editing = Boolean(savedId);
   const initialCoords = place?.position ?? null;
   const initialHours = splitHours(place?.hours ?? "");
 
   const [name, setName] = useState(place?.name ?? "");
   const [shortName, setShortName] = useState(place?.shortName ?? "");
-  const [center, setCenter] = useState(place?.center ?? "");
-  const [sigaCode, setSigaCode] = useState(place?.sigaCode ?? "");
   const [category, setCategory] = useState<PlaceCategory | null>(place?.category ?? null);
-  const [operation, setOperation] = useState<OperationalStatus>(place?.operation ?? "aberto");
-  const [photo, setPhoto] = useState<string | undefined>(place?.photoDataUrl);
   const [address, setAddress] = useState(place?.address ?? "");
   const [lat, setLat] = useState(initialCoords ? formatCoord(initialCoords.lat) : "");
   const [lng, setLng] = useState(initialCoords ? formatCoord(initialCoords.lng) : "");
-  const [accessibility, setAccessibility] = useState<AccessibilityFeature[]>(place?.accessibility ?? []);
   const [open, setOpen] = useState(initialHours.open);
   const [close, setClose] = useState(initialHours.close);
   const [hoursText, setHoursText] = useState(initialHours.text);
-  const [transport, setTransport] = useState(place?.transport ?? "");
   const [description, setDescription] = useState(place?.description ?? "");
-  const [foundedYear, setFoundedYear] = useState(place?.foundedYear ?? "");
-  const [mecGrade, setMecGrade] = useState(place?.mecGrade ?? "");
-  const [researchGroups, setResearchGroups] = useState(place?.researchGroups ?? "");
-  const [courseIds, setCourseIds] = useState<string[]>(place?.courseIds ?? []);
+  const [contacts, setContacts] = useState<ContactRow[]>((place?.contacts ?? []).map((c) => ({ name: c.name, email: c.email ?? "" })));
+
+  // Foto: a que já está no servidor, a escolhida agora (só enviada ao salvar) e o pedido de remover.
+  const currentPhoto = place?.photoUrl;
+  const [newPhoto, setNewPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+
+  // Vínculos: o nome vem junto para aparecer mesmo se o item sair do catálogo (ex.: serviço despublicado).
+  const [courseLinks, setCourseLinks] = useState<PlaceLink[]>(place?.courses ?? []);
+  const [serviceLinks, setServiceLinks] = useState<PlaceLink[]>(place?.services ?? []);
   const [courseToAdd, setCourseToAdd] = useState("");
-  const [phone, setPhone] = useState(place?.phone ?? "");
-  const [email, setEmail] = useState(place?.email ?? "");
-  const [officeHours, setOfficeHours] = useState(place?.officeHours ?? "");
-  const [head, setHead] = useState(place?.head ?? "");
+  const [serviceToAdd, setServiceToAdd] = useState("");
+  const [courseCatalog, setCourseCatalog] = useState<CourseSummary[] | null>(null);
+  const [serviceCatalog, setServiceCatalog] = useState<Servico[] | null>(null);
 
   const [errors, setErrors] = useState<Partial<Record<FieldKey, true>>>({});
   const [summary, setSummary] = useState<string | null>(null);
-  const [photoError, setPhotoError] = useState(false);
   const [saving, setSaving] = useState<"rascunho" | "publicado" | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const [others, setOthers] = useState<MapMarker[]>([]);
 
   useEffect(() => {
-    listAllPlaces().then((all) =>
-      setOthers(
-        all
-          .filter((p) => p.id !== place?.id && p.position)
-          .map((p) => ({ id: p.id, label: p.shortName, point: p.position!, kind: p.category === "portaria" ? "gate" : "place" })),
-      ),
-    );
+    listAllPlaces()
+      .then((all) =>
+        setOthers(
+          all
+            .filter((p) => p.id !== place?.id && p.position)
+            .map((p) => ({ id: p.id, label: p.shortName, point: p.position!, kind: p.category === "portaria" ? "gate" : "place" })),
+        ),
+      )
+      .catch(() => setOthers([]));
   }, [place?.id]);
+
+  // Se o catálogo não carregar, o seletor fica vazio e avisa; os vínculos já feitos continuam na tela.
+  useEffect(() => {
+    getCourses().then(setCourseCatalog).catch(() => setCourseCatalog([]));
+    listServicos().then(setServiceCatalog).catch(() => setServiceCatalog([]));
+  }, []);
+
+  // A pré-visualização é um endereço temporário do navegador: libera ao trocar o arquivo e ao sair da tela.
+  const previewRef = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    },
+    [],
+  );
+  function setPreview(photo: { file: File; previewUrl: string } | null) {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = photo?.previewUrl ?? null;
+    setNewPhoto(photo);
+  }
 
   // Envolve os setters para marcar o formulário como alterado (FE01 do UC24).
   function change<T>(setter: (value: T) => void) {
@@ -148,6 +174,7 @@ export default function PlaceForm({ place }: { place?: Place }) {
   const coordsValid = latNum !== null && lngNum !== null && isInsideCampus({ lat: latNum, lng: lngNum });
   const position: LatLng | null = coordsValid ? { lat: latNum!, lng: lngNum! } : null;
   const hours = hoursText ?? (open && close ? `${open}-${close}` : "");
+  const shownPhoto = newPhoto ? newPhoto.previewUrl : removePhoto ? undefined : currentPhoto;
 
   function checkCoords() {
     if (coordsFilled && !coordsValid) {
@@ -169,9 +196,20 @@ export default function PlaceForm({ place }: { place?: Place }) {
       return;
     }
     setPhotoError(false);
-    const reader = new FileReader();
-    reader.onload = () => change(setPhoto)(reader.result as string);
-    reader.readAsDataURL(file);
+    setRemovePhoto(false);
+    setPreview({ file, previewUrl: URL.createObjectURL(file) });
+    setDirty(true);
+  }
+
+  function dropPhoto() {
+    setPreview(null);
+    // Só há o que remover no servidor se já existir uma foto lá.
+    setRemovePhoto(Boolean(currentPhoto));
+    setDirty(true);
+  }
+
+  function updateContact(index: number, patch: Partial<ContactRow>) {
+    change(setContacts)(contacts.map((c, i) => (i === index ? { ...c, ...patch } : c)));
   }
 
   // O resumo do erro fica no topo do formulário; rola até ele para que seja visto mesmo ao salvar pelo rodapé.
@@ -196,59 +234,66 @@ export default function PlaceForm({ place }: { place?: Place }) {
     if (hours && !isValidHours(hours)) return fail({ hours: true }, MESSAGES.hours);
     // RN-UC14.01
     if (status === "publicado" && !position) return fail({ lat: true, lng: true }, MESSAGES.georef);
+    // Responsável: linha totalmente em branco é ignorada; com e-mail ou nome, o nome é obrigatório.
+    const filledContacts = contacts.filter((c) => c.name.trim() || c.email.trim());
+    if (filledContacts.some((c) => !c.name.trim())) return fail({}, MESSAGES.contactName);
+    if (filledContacts.some((c) => c.email.trim() && !/^\S+@\S+\.\S+$/.test(c.email.trim()))) return fail({}, MESSAGES.contactEmail);
 
     setErrors({});
     setSummary(null);
     setSaving(status);
+    let saved: Place;
     try {
-      const saved = await savePlace(
-        {
-          id: place?.id,
-          services: place?.services ?? [],
-          name: name.trim(),
-          shortName: shortName.trim() || name.trim(),
-          category: category ?? "departamento",
-          status,
-          operation,
-          position,
-          address: address.trim(),
-          hours,
-          accessibility,
-          description: description.trim(),
-          center: center.trim() || undefined,
-          sigaCode: sigaCode.trim() || undefined,
-          foundedYear: foundedYear.trim() || undefined,
-          mecGrade: mecGrade.trim() || undefined,
-          researchGroups: researchGroups.trim() || undefined,
-          transport: transport.trim() || undefined,
-          courseIds,
-          phone: phone.trim() || undefined,
-          email: email.trim() || undefined,
-          officeHours: officeHours.trim() || undefined,
-          head: head.trim() || undefined,
-          photoDataUrl: photo,
-        },
-        session.name,
-      );
-      setDirty(false);
-      setFlash(
-        status === "publicado"
-          ? `"${saved.name}" foi publicado e já aparece no mapa interativo e na busca.`
-          : `"${saved.name}" foi salvo como rascunho. Ele não aparece no mapa nem na busca até ser publicado.`,
-      );
-      router.push("/admin/locais");
+      saved = await savePlace({
+        id: savedId,
+        name: name.trim(),
+        shortName: shortName.trim() || name.trim(),
+        category: category ?? "departamento",
+        status,
+        position,
+        address: address.trim(),
+        hours,
+        description: description.trim(),
+        contacts: filledContacts.map((c) => ({ name: c.name.trim(), email: c.email.trim() || undefined })),
+        serviceIds: serviceLinks.map((s) => s.id),
+        courseIds: courseLinks.map((c) => c.id),
+      });
+      setSavedId(saved.id);
     } catch (err) {
       setSummary(err instanceof PlaceValidationError ? err.message : "Não foi possível salvar o local. Tente novamente.");
       setSaving(null);
+      return;
     }
+
+    // A foto vai depois do local (precisa do identificador). Se ela falhar, o local já está salvo e o formulário
+    // continua aberto para tentar de novo: o próximo "salvar" edita o mesmo local.
+    try {
+      if (newPhoto) await uploadPlacePhoto(saved.id, newPhoto.file);
+      else if (removePhoto) await deletePlacePhoto(saved.id);
+    } catch (err) {
+      setSummary(
+        `O local foi salvo, mas a foto não: ${err instanceof PlaceValidationError ? err.message : "tente enviar novamente."}`,
+      );
+      setSaving(null);
+      return;
+    }
+
+    setDirty(false);
+    setFlash(
+      status === "publicado"
+        ? `"${saved.name}" foi publicado e já aparece no mapa interativo e na busca.`
+        : `"${saved.name}" foi salvo como rascunho. Ele não aparece no mapa nem na busca até ser publicado.`,
+    );
+    router.push("/admin/locais");
   }
 
   const inputCls = (key?: FieldKey) =>
     `h-11 w-full rounded-lg border bg-stone-50 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-navy-700 focus:bg-white focus:ring-2 focus:ring-brand-yellow ${
       key && errors[key] ? "border-red-500 bg-red-50/50" : "border-stone-200"
     }`;
-  const linked = courseIds.map((id) => MOCK_COURSES.find((c) => c.id === id)).filter((c) => c !== undefined);
-  const available = MOCK_COURSES.filter((c) => !courseIds.includes(c.id));
+  const availableCourses = (courseCatalog ?? []).filter((c) => !courseLinks.some((l) => l.id === c.id));
+  const availableServices = (serviceCatalog ?? []).filter((s) => !serviceLinks.some((l) => l.id === s.id));
+  const courseDetails = new Map((courseCatalog ?? []).map((c) => [c.id, c]));
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
@@ -267,11 +312,11 @@ export default function PlaceForm({ place }: { place?: Place }) {
           </nav>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-bold text-navy-900 sm:text-2xl">
-              {editing ? `Editar Local • ${place!.name}` : "Cadastrar Novo Local • Campus Dois Irmãos"}
+              {editing ? `Editar Local • ${place?.name ?? name}` : "Cadastrar Novo Local • Campus Dois Irmãos"}
             </h1>
             <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
               <span aria-hidden className="size-1.5 rounded-full bg-amber-500" />
-              {editing ? (place!.status === "rascunho" ? "Rascunho" : "Modo de edição") : "Modo de criação"}
+              {editing ? (place?.status === "rascunho" ? "Rascunho" : "Modo de edição") : "Modo de criação"}
             </span>
           </div>
         </div>
@@ -323,18 +368,12 @@ export default function PlaceForm({ place }: { place?: Place }) {
         subtitle="Determine a natureza arquitetônica e administrativa deste ponto"
         badge={<span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">Obrigatório</span>}
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field id="pl-name" label="Nome oficial do prédio / local" required>
             <input id="pl-name" className={inputCls("name")} placeholder="Ex: Departamento de Computação (DC)" value={name} onChange={(e) => change(setName)(e.target.value)} aria-invalid={!!errors.name} />
           </Field>
           <Field id="pl-short" label="Sigla / identificador curto" required>
             <input id="pl-short" className={inputCls("shortName")} placeholder="Ex: DC" value={shortName} onChange={(e) => change(setShortName)(e.target.value)} aria-invalid={!!errors.shortName} />
-          </Field>
-          <Field id="pl-center" label="Centro / unidade institucional vinculada">
-            <input id="pl-center" className={inputCls()} placeholder="Ex: Centro de Ciências Exatas (CCET)" value={center} onChange={(e) => change(setCenter)(e.target.value)} />
-          </Field>
-          <Field id="pl-siga" label="Código no sistema SIGA / patrimônio">
-            <input id="pl-siga" className={inputCls()} placeholder="Ex: UFRPE-DC-04" value={sigaCode} onChange={(e) => change(setSigaCode)(e.target.value)} />
           </Field>
         </div>
 
@@ -364,27 +403,6 @@ export default function PlaceForm({ place }: { place?: Place }) {
             })}
           </div>
         </fieldset>
-
-        <fieldset className="mt-6">
-          <legend className="text-xs font-bold uppercase tracking-wide text-slate-800">Status operacional inicial</legend>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {OPERATIONAL_STATUSES.map((s) => {
-              const [label, dot, active] = OPERATION[s];
-              return (
-                <label
-                  key={s}
-                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                    operation === s ? active : "border-stone-200 bg-stone-50 text-slate-600 hover:bg-white"
-                  }`}
-                >
-                  <input type="radio" name="operation" checked={operation === s} onChange={() => change(setOperation)(s)} className="size-3.5 accent-navy-900" />
-                  <span aria-hidden className={`size-2 rounded-full ${dot}`} />
-                  {label}
-                </label>
-              );
-            })}
-          </div>
-        </fieldset>
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -392,15 +410,15 @@ export default function PlaceForm({ place }: { place?: Place }) {
         <Section
           n={2}
           title="Fotografia de Fachada"
-          subtitle="Imagens de alta resolução facilitam a identificação visual por calouros e visitantes"
-          badge={<span className="rounded-md bg-stone-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">16:9 • JPG/PNG até 5MB</span>}
+          subtitle="Imagens facilitam a identificação visual por calouros e visitantes"
+          badge={<span className="rounded-md bg-stone-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">JPG/PNG até 5MB</span>}
         >
-          {photo ? (
+          {shownPhoto ? (
             <div className="relative overflow-hidden rounded-xl">
-              {/* eslint-disable-next-line @next/next/no-img-element -- pré-visualização de arquivo local (data URL) */}
-              <img src={photo} alt={`Fachada — ${name || "novo local"}`} className="aspect-video w-full object-cover" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- pré-visualização do arquivo escolhido ou foto já salva no backend */}
+              <img src={shownPhoto} alt={`Fachada — ${name || "novo local"}`} className="aspect-video w-full object-cover" />
               <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-navy-900/85 px-2.5 py-1 text-[11px] font-bold text-amber-300">
-                ✓ Foto principal definida
+                {newPhoto ? "Nova foto (enviada ao salvar)" : "✓ Foto principal definida"}
               </span>
               <div className="absolute right-3 top-3 flex gap-2">
                 <label className="cursor-pointer rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-navy-900 shadow hover:bg-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-yellow">
@@ -414,7 +432,7 @@ export default function PlaceForm({ place }: { place?: Place }) {
                     aria-describedby={photoError ? "pl-photo-error" : undefined}
                   />
                 </label>
-                <button type="button" onClick={() => change(setPhoto)(undefined)} className="rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-red-700 shadow hover:bg-white">
+                <button type="button" onClick={dropPhoto} className="rounded-md bg-white/95 px-2.5 py-1 text-[11px] font-bold text-red-700 shadow hover:bg-white">
                   Remover
                 </button>
               </div>
@@ -449,13 +467,14 @@ export default function PlaceForm({ place }: { place?: Place }) {
               {MESSAGES.photo}
             </p>
           )}
+          <p className="mt-2 text-[11px] text-slate-500">O servidor reduz a imagem (até 1280 px) e a salva em JPEG ao salvar o local.</p>
         </Section>
 
-        {/* 3. Localização & Acessibilidade */}
+        {/* 3. Localização e horário */}
         <Section
           n={3}
-          title="Localização Geográfica & Acessibilidade"
-          subtitle="Coordenadas precisas de GPS e rotas de mobilidade reduzida"
+          title="Localização Geográfica & Horário"
+          subtitle="Coordenadas precisas de GPS e horário de funcionamento"
           badge={
             position ? (
               <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">✓ Georreferenciado</span>
@@ -490,6 +509,9 @@ export default function PlaceForm({ place }: { place?: Place }) {
           <p className="mt-1.5 text-[11px] text-slate-500">
             Limites do campus Sede: latitude {CAMPUS_BOUNDS[0][0]} a {CAMPUS_BOUNDS[1][0]}, longitude {CAMPUS_BOUNDS[0][1]} a {CAMPUS_BOUNDS[1][1]}.
           </p>
+          {place?.coordinatesSource && (
+            <p className="mt-1 text-[11px] text-slate-500">Origem da coordenada cadastrada: {place.coordinatesSource}.</p>
+          )}
 
           <div className="relative mt-3 h-44 overflow-hidden rounded-xl border border-stone-200">
             {position ? (
@@ -507,49 +529,27 @@ export default function PlaceForm({ place }: { place?: Place }) {
             )}
           </div>
 
-          <fieldset className="mt-5">
-            <legend className="text-xs font-bold uppercase tracking-wide text-slate-800">Acessibilidade física disponível no local</legend>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {ACCESSIBILITY_FEATURES.map((a) => (
-                <label key={a} className="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-slate-800 has-[:checked]:border-navy-900 has-[:checked]:bg-white">
-                  <input
-                    type="checkbox"
-                    checked={accessibility.includes(a)}
-                    onChange={(e) => change(setAccessibility)(e.target.checked ? [...accessibility, a] : accessibility.filter((x) => x !== a))}
-                    className="size-4 accent-navy-900"
-                  />
-                  {t.accessibility[a]}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-800">
-                Horário de funcionamento <span className="text-red-600">*</span>
-              </p>
-              {hoursText !== null ? (
-                <input aria-label="Horário de funcionamento" className={`mt-2 ${inputCls("hours")}`} value={hoursText} onChange={(e) => change(setHoursText)(e.target.value)} placeholder="11:00-14:00, 17:30-19:30" />
-              ) : (
-                <div className="mt-2 flex items-center gap-2">
-                  <input type="time" aria-label="Abertura" className={inputCls("hours")} value={open} onChange={(e) => change(setOpen)(e.target.value)} />
-                  <span className="text-xs text-slate-500">até</span>
-                  <input type="time" aria-label="Fechamento" className={inputCls("hours")} value={close} onChange={(e) => change(setClose)(e.target.value)} />
-                </div>
-              )}
-              <p className="mt-1 text-[11px] text-slate-500">Dias: segunda a sexta-feira.</p>
-            </div>
-            <Field id="pl-transport" label="Proximidade com transporte circular UFRPE">
-              <input id="pl-transport" className={inputCls()} placeholder="Ex: Parada Central CEAGRI / DC — 60 m" value={transport} onChange={(e) => change(setTransport)(e.target.value)} />
-            </Field>
+          <div className="mt-5">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-800">
+              Horário de funcionamento <span className="text-red-600">*</span>
+            </p>
+            {hoursText !== null ? (
+              <input aria-label="Horário de funcionamento" className={`mt-2 ${inputCls("hours")}`} value={hoursText} onChange={(e) => change(setHoursText)(e.target.value)} placeholder="11:00-14:00, 17:30-19:30" />
+            ) : (
+              <div className="mt-2 flex items-center gap-2">
+                <input type="time" aria-label="Abertura" className={inputCls("hours")} value={open} onChange={(e) => change(setOpen)(e.target.value)} />
+                <span className="text-xs text-slate-500">até</span>
+                <input type="time" aria-label="Fechamento" className={inputCls("hours")} value={close} onChange={(e) => change(setClose)(e.target.value)} />
+              </div>
+            )}
+            <p className="mt-1 text-[11px] text-slate-500">Dias: segunda a sexta-feira.</p>
           </div>
         </Section>
       </div>
 
       {/* 4. Descrição */}
-      <Section n={4} title="Descrição Institucional & Destaques" subtitle="Histórico, vocação acadêmica, parcerias científicas e conceitos MEC">
-        <Field id="pl-desc" label="História, propósito e apresentação">
+      <Section n={4} title="Descrição" subtitle="Apresentação do local e orientação aos estudantes">
+        <Field id="pl-desc" label="Descrição do local">
           <textarea
             id="pl-desc"
             rows={4}
@@ -559,36 +559,93 @@ export default function PlaceForm({ place }: { place?: Place }) {
             onChange={(e) => change(setDescription)(e.target.value)}
           />
         </Field>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Highlight id="pl-year" label="Ano de fundação" placeholder="Ex: 1998" value={foundedYear} onChange={change(setFoundedYear)} />
-          <Highlight id="pl-mec" label="Nota MEC / ENADE" placeholder="Ex: Conceito 5" value={mecGrade} onChange={change(setMecGrade)} />
-          <Highlight id="pl-groups" label="Grupos de pesquisa CNPq" placeholder="Ex: 12 grupos ativos" value={researchGroups} onChange={change(setResearchGroups)} />
-        </div>
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 5. Cursos */}
-        <Section n={5} title="Cursos e Programas Acadêmicos Vinculados" subtitle="Cursos sediados com aulas teóricas e práticas no prédio">
-          {linked.length === 0 ? (
+        <Section n={5} title="Cursos Vinculados" subtitle="Cursos sediados com aulas teóricas e práticas no prédio">
+          {courseLinks.length === 0 ? (
             <p className="rounded-lg bg-stone-50 p-4 text-center text-xs text-slate-500">Nenhum curso vinculado a este local.</p>
           ) : (
             <ul className="space-y-2">
-              {linked.map((c) => (
-                <li key={c.id} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-                  <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-lg bg-navy-900 text-xs font-bold text-white">
-                    {c.level === "pos" ? "PG" : "GR"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900">{c.name}</p>
-                    <p className="text-[11px] text-slate-500">
-                      {c.level === "pos" ? "Pós-graduação" : "Graduação"} • Turno {c.shift}
-                      {c.mecGrade && <span className="font-semibold text-emerald-700"> • Nota {c.mecGrade} MEC</span>}
-                    </p>
-                  </div>
+              {courseLinks.map((c) => {
+                const detail = courseDetails.get(c.id);
+                return (
+                  <li key={c.id} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                    <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-lg bg-navy-900 text-xs font-bold text-white">
+                      {detail?.level === "POS" ? "PG" : "GR"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900">{c.name}</p>
+                      {detail && (
+                        <p className="text-[11px] text-slate-500">
+                          {levelLabel(detail.level)}
+                          {detail.shift ? ` • Turno ${detail.shift}` : ""}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => change(setCourseLinks)(courseLinks.filter((l) => l.id !== c.id))}
+                      aria-label={`Remover ${c.name}`}
+                      className="grid size-8 place-items-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                      </svg>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {/* RN-UC14.03: só cursos já cadastrados podem ser vinculados */}
+          <div className="mt-3 flex gap-2">
+            <select aria-label="Curso para vincular" className={inputCls()} value={courseToAdd} onChange={(e) => setCourseToAdd(e.target.value)} disabled={availableCourses.length === 0}>
+              <option value="">
+                {courseCatalog === null
+                  ? "Carregando cursos..."
+                  : availableCourses.length
+                    ? "Selecione um curso cadastrado..."
+                    : courseLinks.length
+                      ? "Todos os cursos cadastrados já estão vinculados"
+                      : "Nenhum curso cadastrado ainda"}
+              </option>
+              {availableCourses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!courseToAdd}
+              onClick={() => {
+                const course = availableCourses.find((c) => String(c.id) === courseToAdd);
+                if (course) change(setCourseLinks)([...courseLinks, { id: course.id, name: course.name }]);
+                setCourseToAdd("");
+              }}
+              className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-navy-900 hover:bg-stone-50 disabled:opacity-50"
+            >
+              ⊕ Vincular curso
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-slate-500">Para vincular um curso novo, cadastre-o antes (UC34).</p>
+        </Section>
+
+        {/* 6. Serviços */}
+        <Section n={6} title="Serviços Prestados no Local" subtitle="Serviços do catálogo (página Serviços) atendidos neste local">
+          {serviceLinks.length === 0 ? (
+            <p className="rounded-lg bg-stone-50 p-4 text-center text-xs text-slate-500">Nenhum serviço vinculado a este local.</p>
+          ) : (
+            <ul className="space-y-2">
+              {serviceLinks.map((s) => (
+                <li key={s.id} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                  <p className="min-w-0 flex-1 text-sm font-semibold text-slate-900">{s.name}</p>
                   <button
                     type="button"
-                    onClick={() => change(setCourseIds)(courseIds.filter((id) => id !== c.id))}
-                    aria-label={`Remover ${c.name}`}
+                    onClick={() => change(setServiceLinks)(serviceLinks.filter((l) => l.id !== s.id))}
+                    aria-label={`Remover ${s.name}`}
                     className="grid size-8 place-items-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
                   >
                     <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -599,49 +656,84 @@ export default function PlaceForm({ place }: { place?: Place }) {
               ))}
             </ul>
           )}
-          {/* RN-UC14.03: só cursos já cadastrados podem ser vinculados */}
           <div className="mt-3 flex gap-2">
-            <select aria-label="Curso para vincular" className={inputCls()} value={courseToAdd} onChange={(e) => setCourseToAdd(e.target.value)} disabled={available.length === 0}>
-              <option value="">{available.length ? "Selecione um curso cadastrado..." : "Todos os cursos cadastrados já estão vinculados"}</option>
-              {available.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
+            <select aria-label="Serviço para vincular" className={inputCls()} value={serviceToAdd} onChange={(e) => setServiceToAdd(e.target.value)} disabled={availableServices.length === 0}>
+              <option value="">
+                {serviceCatalog === null
+                  ? "Carregando serviços..."
+                  : availableServices.length
+                    ? "Selecione um serviço cadastrado..."
+                    : serviceLinks.length
+                      ? "Todos os serviços cadastrados já estão vinculados"
+                      : "Nenhum serviço cadastrado ainda"}
+              </option>
+              {availableServices.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.active ? "" : " (despublicado)"}
                 </option>
               ))}
             </select>
             <button
               type="button"
-              disabled={!courseToAdd}
+              disabled={!serviceToAdd}
               onClick={() => {
-                change(setCourseIds)([...courseIds, courseToAdd]);
-                setCourseToAdd("");
+                const service = availableServices.find((s) => String(s.id) === serviceToAdd);
+                if (service) change(setServiceLinks)([...serviceLinks, { id: service.id, name: service.name }]);
+                setServiceToAdd("");
               }}
               className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-navy-900 hover:bg-stone-50 disabled:opacity-50"
             >
-              ⊕ Adicionar curso vinculado
+              ⊕ Vincular serviço
             </button>
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-500">Para vincular um curso novo, cadastre-o antes (UC34).</p>
-        </Section>
-
-        {/* 6. Contato */}
-        <Section n={6} title="Contato, Secretaria & Atendimento ao Aluno" subtitle="Canais oficiais de resolução acadêmica, horários de guichê e ramais">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="pl-phone" label="Telefone principal & ramal">
-              <input id="pl-phone" className={inputCls()} placeholder="(81) 3320-6480 / Ramal 6481" value={phone} onChange={(e) => change(setPhone)(e.target.value)} />
-            </Field>
-            <Field id="pl-email" label="E-mail institucional da secretaria">
-              <input id="pl-email" type="email" className={inputCls()} placeholder="secretaria@ufrpe.br" value={email} onChange={(e) => change(setEmail)(e.target.value)} />
-            </Field>
-            <Field id="pl-office" label="Expediente de atendimento presencial">
-              <input id="pl-office" className={inputCls()} placeholder="Segunda a sexta, das 08h às 12h" value={officeHours} onChange={(e) => change(setOfficeHours)(e.target.value)} />
-            </Field>
-            <Field id="pl-head" label="Chefia / responsável">
-              <input id="pl-head" className={inputCls()} placeholder="Prof. Dr. Nome Sobrenome" value={head} onChange={(e) => change(setHead)(e.target.value)} />
-            </Field>
-          </div>
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            O serviço aparece na página Serviços com este local. Para criar um serviço novo, use{" "}
+            <Link href="/admin/servicos" className="underline">
+              Serviços
+            </Link>
+            .
+          </p>
         </Section>
       </div>
+
+      {/* 7. Responsável */}
+      <Section n={7} title="Responsável" subtitle="Nome e e-mail institucional de quem responde pelo local (coordenação, chefia ou secretaria)">
+        {contacts.length === 0 ? (
+          <p className="rounded-lg bg-stone-50 p-4 text-center text-xs text-slate-500">Nenhum responsável cadastrado.</p>
+        ) : (
+          <ul className="space-y-3">
+            {contacts.map((c, i) => (
+              <li key={i} className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <Field id={`pl-contact-name-${i}`} label="Nome do responsável">
+                  <input id={`pl-contact-name-${i}`} className={inputCls()} placeholder="Prof. Dr. Nome Sobrenome" value={c.name} onChange={(e) => updateContact(i, { name: e.target.value })} />
+                </Field>
+                <Field id={`pl-contact-email-${i}`} label="E-mail">
+                  <input id={`pl-contact-email-${i}`} type="email" className={inputCls()} placeholder="secretaria@ufrpe.br" value={c.email} onChange={(e) => updateContact(i, { email: e.target.value })} />
+                </Field>
+                <button
+                  type="button"
+                  onClick={() => change(setContacts)(contacts.filter((_, j) => j !== i))}
+                  aria-label={`Remover responsável ${i + 1}`}
+                  className="grid size-11 place-items-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                  </svg>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          disabled={contacts.length >= MAX_CONTACTS}
+          onClick={() => change(setContacts)([...contacts, { name: "", email: "" }])}
+          className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-navy-900 hover:bg-stone-50 disabled:opacity-50"
+        >
+          ⊕ Adicionar responsável
+        </button>
+      </Section>
 
       <Modal
         open={pinOpen}
@@ -798,17 +890,6 @@ function Field({ id, label, required, children }: { id: string; label: string; r
         {label} {required && <span className="text-red-600">*</span>}
       </label>
       <div className="mt-2">{children}</div>
-    </div>
-  );
-}
-
-function Highlight({ id, label, placeholder, value, onChange }: { id: string; label: string; placeholder: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
-      <label htmlFor={id} className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-        {label}
-      </label>
-      <input id={id} className="mt-1 w-full bg-transparent text-sm font-semibold text-navy-900 outline-none placeholder:font-normal placeholder:text-slate-400" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
