@@ -3,6 +3,8 @@ package br.com.guiarural.backend.services.service;
 import br.com.guiarural.backend.core.audit.AuditService;
 import br.com.guiarural.backend.core.exception.BadRequestException;
 import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
+import br.com.guiarural.backend.map.repository.PlaceRepository;
+import br.com.guiarural.backend.services.dto.ServicePlaceDTO;
 import br.com.guiarural.backend.services.dto.ServiceRequestDTO;
 import br.com.guiarural.backend.services.dto.ServiceResponseDTO;
 import br.com.guiarural.backend.services.model.ServiceEntity;
@@ -12,14 +14,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ServiceService {
     private final ServiceRepository repository;
+    private final PlaceRepository placeRepository;
     private final AuditService auditService;
 
-    public ServiceService(ServiceRepository repository, AuditService auditService) {
+    public ServiceService(ServiceRepository repository, PlaceRepository placeRepository, AuditService auditService) {
         this.repository = repository;
+        this.placeRepository = placeRepository;
         this.auditService = auditService;
     }
 
@@ -40,17 +46,13 @@ public class ServiceService {
     // Catálogo público: só o que está publicado.
     @Transactional(readOnly = true)
     public List<ServiceResponseDTO> findAll() {
-        return repository.findByActiveTrueOrderByNameAsc().stream()
-                .map(this::mapToResponseDTO)
-                .toList();
+        return mapAll(repository.findByActiveTrueOrderByNameAsc());
     }
 
     // Painel administrativo: todos, inclusive os despublicados.
     @Transactional(readOnly = true)
     public List<ServiceResponseDTO> findAllForAdmin() {
-        return repository.findAllByOrderByIdAsc().stream()
-                .map(this::mapToResponseDTO)
-                .toList();
+        return mapAll(repository.findAllByOrderByIdAsc());
     }
 
     @Transactional(readOnly = true)
@@ -113,18 +115,32 @@ public class ServiceService {
     }
 
     private ServiceResponseDTO mapToResponseDTO(ServiceEntity entity) {
-        return new ServiceResponseDTO(
-                entity.getId(),
-                entity.getCategory(),
-                entity.getName(),
-                entity.getSector(),
-                entity.getDescription(),
-                entity.getSteps() == null ? List.of() : Arrays.asList(entity.getSteps()),
-                entity.getRequirements(),
-                entity.getUrl(),
-                entity.getDeadline(),
-                entity.getLocationReference(),
-                entity.getActive()
-        );
+        return mapAll(List.of(entity)).get(0);
+    }
+
+    // Os locais de todos os serviços da lista vêm numa consulta só (só os publicados: o mapa não mostra os demais).
+    private List<ServiceResponseDTO> mapAll(List<ServiceEntity> entities) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, List<ServicePlaceDTO>> placesByService = placeRepository
+                .findPublishedPlacesByServiceIds(entities.stream().map(ServiceEntity::getId).toList()).stream()
+                .collect(Collectors.groupingBy(PlaceRepository.ServicePlaceRow::getServiceId,
+                        Collectors.mapping(row -> new ServicePlaceDTO(row.getSlug(), row.getName()), Collectors.toList())));
+        return entities.stream()
+                .map(entity -> new ServiceResponseDTO(
+                        entity.getId(),
+                        entity.getCategory(),
+                        entity.getName(),
+                        entity.getSector(),
+                        entity.getDescription(),
+                        entity.getSteps() == null ? List.of() : Arrays.asList(entity.getSteps()),
+                        entity.getRequirements(),
+                        entity.getUrl(),
+                        entity.getDeadline(),
+                        entity.getLocationReference(),
+                        entity.getActive(),
+                        placesByService.getOrDefault(entity.getId(), List.of())))
+                .toList();
     }
 }

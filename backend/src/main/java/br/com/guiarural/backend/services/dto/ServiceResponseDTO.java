@@ -13,6 +13,8 @@ public record ServiceResponseDTO(
         String url,
         String deadline,
         String locationReference,
-        Boolean active
+        Boolean active,
+        // Locais publicados que oferecem o serviço (vínculo feito no formulário de local, no painel).
+        List<ServicePlaceDTO> places
 ) {
 }
