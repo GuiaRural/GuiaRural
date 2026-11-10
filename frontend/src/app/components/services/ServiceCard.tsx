@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Servico } from "../../services/servicosService";
@@ -32,6 +33,23 @@ export default function ServiceCard({ servico, actions, isNew = false }: { servi
       </div>
 
       <p className="mt-4 text-sm text-slate-700">{servico.description}</p>
+
+      {/* Onde o serviço é prestado: vínculo feito no formulário de local (só locais publicados chegam aqui). */}
+      {servico.places.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-navy-700">{t.serviceCard.whereToFind}</span>
+          {servico.places.map((place) => (
+            <Link
+              key={place.slug}
+              href={`/locais/${place.slug}`}
+              lang="pt"
+              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-navy-900 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700"
+            >
+              {place.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className={`mt-4 grid gap-4 ${hasDetails ? "lg:grid-cols-3" : ""}`}>
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
