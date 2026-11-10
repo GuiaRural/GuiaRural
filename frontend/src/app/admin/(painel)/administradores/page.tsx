@@ -4,7 +4,6 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAdmin } from "../../../components/admin/AdminShell";
 import PageHeader, { ctaButton } from "../../../components/admin/PageHeader";
 import Modal, { ConfirmModal } from "../../../components/ui/Modal";
-import type { AuditLog } from "../../../data/mockAuditLogs";
 import { ApiError } from "../../../lib/api";
 import {
   AdminValidationError,
@@ -20,7 +19,7 @@ import {
   type Permission,
   type Sector,
 } from "../../../services/adminsService";
-import { listLogs } from "../../../services/auditService";
+import { listLogs, type AuditLog } from "../../../services/auditService";
 
 const STATUS_BADGE: Partial<Record<Admin["status"], [string, string]>> = {
   aguardando: ["Aguardando aprovação", "bg-amber-50 text-amber-800 ring-amber-200"],
@@ -281,7 +280,9 @@ function RecentChanges() {
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
 
   useEffect(() => {
-    listLogs().then((all) => setLogs(all.filter((l) => l.entity === "Administrador").slice(0, 8)));
+    listLogs()
+      .then((all) => setLogs(all.filter((l) => l.entity === "Administrador").slice(0, 8)))
+      .catch(() => setLogs([]));
   }, []);
 
   if (!logs) return <p className="text-sm text-slate-500">Carregando...</p>;

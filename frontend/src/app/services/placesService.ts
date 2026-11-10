@@ -110,8 +110,8 @@ function toPlace(dto: PlaceDto): Place {
 let publicCache: Promise<Place[]> | null = null;
 let publicLoaded: Place[] | null = null;
 
-// Depois de criar, editar, excluir ou trocar a foto, o mapa e a busca precisam ler a lista de novo.
-function resetPublicCache() {
+// Depois de criar, editar, excluir, trocar a foto ou desfazer pelo histórico, o mapa e a busca precisam ler a lista de novo.
+export function resetPublicCache() {
   publicCache = null;
   publicLoaded = null;
 }

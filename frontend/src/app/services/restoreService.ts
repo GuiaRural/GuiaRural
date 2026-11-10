@@ -1,36 +1,28 @@
-import type { AuditLog } from "../data/mockAuditLogs";
-import { isServerLog, recordChange, serverLogId } from "./auditService";
-import { apiPost } from "../lib/api";
+import { ApiError, apiPost } from "../lib/api";
+import type { AuditLog } from "./auditService";
 import { resetGuideCache } from "./guidesAdminService";
-import { delay } from "../lib/storage";
+import { resetPublicCache } from "./placesService";
 
-// Entidades que já vêm da API: o desfazer depende do backend saber restaurar o tipo.
-const SERVER_ENTITIES: AuditLog["entity"][] = ["Local", "Serviço", "Aviso", "Acolhimento", "Cardápio", "Administrador"];
-
-// Mudanças auditadas no servidor só podem ser desfeitas quando o backend sabe restaurar o tipo (hoje, só
-// acolhimento). Locais, serviços, avisos e cardápio vêm da API, que ainda não restaura; administradores não têm desfazer (D5).
+// O servidor sabe desfazer todas as entidades do painel, menos administradores (D5): conta se aprova ou revoga
+// pela tela de Administradores.
 export function canRestore(log: AuditLog) {
-  if (isServerLog(log)) return log.entity === "Acolhimento";
-  return !SERVER_ENTITIES.includes(log.entity);
+  return log.entity !== "Administrador";
 }
 
-// FA01 do UC23: volta o registro ao estado anterior à mudança e registra a restauração no histórico.
-export async function restoreFromLog(log: AuditLog, author: string): Promise<void> {
-  if (!canRestore(log)) throw new Error("Esta mudança ainda não pode ser desfeita.");
-  if (isServerLog(log)) {
-    // O servidor aplica o estado anterior e grava a restauração no histórico por conta própria.
-    await apiPost<void>(`/admin/audit-logs/${serverLogId(log)}/restore`, {});
-    resetGuideCache();
-    return;
+// FA01 do UC23: o servidor volta o registro ao estado anterior à mudança e grava a restauração no histórico.
+// Recusas (ex.: já existe cardápio no mesmo dia e turno, o registro já foi excluído) chegam com a mensagem do servidor.
+export async function restoreFromLog(log: AuditLog): Promise<void> {
+  if (!canRestore(log)) throw new Error("Mudanças em administradores não podem ser desfeitas.");
+  try {
+    await apiPost<void>(`/admin/audit-logs/${log.id}/restore`, {});
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      throw new Error("Seu perfil não permite desfazer mudanças.");
+    }
+    if (error instanceof ApiError && error.detail) throw new Error(error.detail);
+    throw new Error("Não foi possível restaurar a versão anterior.");
   }
-  await delay(400);
-  recordChange({
-    author,
-    entity: log.entity,
-    entityId: log.entityId,
-    entityName: log.entityName,
-    action: "restaurado",
-    before: log.after,
-    after: log.before,
-  });
+  if (log.entity === "Acolhimento") resetGuideCache();
+  // A página do local mostra os serviços dele: desfazer em qualquer dos dois muda o que o mapa lê.
+  if (log.entity === "Local" || log.entity === "Serviço") resetPublicCache();
 }

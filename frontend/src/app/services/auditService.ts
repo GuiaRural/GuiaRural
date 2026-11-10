@@ -1,18 +1,23 @@
-import { MOCK_AUDIT_LOGS, type AuditAction, type AuditEntity, type AuditLog } from "../data/mockAuditLogs";
 import { apiGet } from "../lib/api";
-import { delay } from "../lib/storage";
 
-// Histórico somente de inclusão: não há função para apagar logs (RN-03 do UC23).
-// Avisos, serviços, cardápio, locais, administradores e tópicos do guia são auditados no servidor (/api/admin/audit-logs); o que
-// sobra em memória são os registros de exemplo de MOCK_AUDIT_LOGS (removidos junto com o desfazer da Fase 3).
-let logs: AuditLog[] = [...MOCK_AUDIT_LOGS];
-let nextId = 1;
+// Histórico de mudanças do painel (UC23), lido de /api/admin/audit-logs. Somente de inclusão: não há função para
+// apagar logs (RN-03 do UC23). Todo o painel grava o histórico no servidor, na mesma transação da mudança.
 
-export function recordChange(entry: Omit<AuditLog, "id" | "at">): AuditLog {
-  const log: AuditLog = { ...entry, id: `log-${Date.now()}-${nextId++}`, at: new Date().toISOString() };
-  logs = [log, ...logs];
-  return log;
-}
+export type AuditEntity = "Local" | "Serviço" | "Cardápio" | "Aviso" | "Acolhimento" | "Administrador";
+export type AuditAction = "criado" | "editado" | "deletado" | "restaurado";
+
+export type AuditLog = {
+  id: string;
+  at: string; // ISO
+  author: string;
+  entity: AuditEntity;
+  entityId: string;
+  entityName: string;
+  action: AuditAction;
+  // Snapshots (Memento) do registro antes e depois da mudança; null quando não existia/deixou de existir.
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
 
 // Espelha AuditLogResponseDTO.
 type ServerLog = {
@@ -36,15 +41,9 @@ const ENTITY_LABELS: Record<string, AuditEntity> = {
   administrador: "Administrador",
 };
 
-// O id de um log do servidor leva este prefixo, para não se confundir com os locais.
-const SERVER_PREFIX = "srv-";
-
-export const isServerLog = (log: AuditLog) => log.id.startsWith(SERVER_PREFIX);
-export const serverLogId = (log: AuditLog) => log.id.slice(SERVER_PREFIX.length);
-
 function fromServer(log: ServerLog): AuditLog {
   return {
-    id: `${SERVER_PREFIX}${log.id}`,
+    id: String(log.id),
     at: log.at,
     author: log.author,
     entity: ENTITY_LABELS[log.entity] ?? "Local",
@@ -56,21 +55,8 @@ function fromServer(log: ServerLog): AuditLog {
   };
 }
 
+// Mais recentes primeiro (o servidor já ordena). Sem servidor ou sem sessão, a chamada falha e a tela avisa
+// (um 401 já leva ao login).
 export async function listLogs(): Promise<AuditLog[]> {
-  await delay();
-  let remote: AuditLog[] = [];
-  try {
-    remote = (await apiGet<ServerLog[]>("/admin/audit-logs?limit=300")).map(fromServer);
-  } catch {
-    // Servidor fora do ar ou sem sessão (um 401 já leva ao login): mostra só o que está em memória.
-  }
-  return [...remote, ...logs].sort((a, b) => b.at.localeCompare(a.at));
-}
-
-export function snapshot<T extends object>(value: T | null | undefined): Record<string, unknown> | null {
-  if (!value) return null;
-  const copy = { ...value } as Record<string, unknown>;
-  // Fotos em base64 incham o histórico; o snapshot guarda só a indicação de que havia imagem.
-  if ("photoDataUrl" in copy && copy.photoDataUrl) copy.photoDataUrl = "[imagem]";
-  return copy;
+  return (await apiGet<ServerLog[]>("/admin/audit-logs?limit=300")).map(fromServer);
 }
