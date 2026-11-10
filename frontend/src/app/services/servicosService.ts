@@ -86,6 +86,37 @@ export async function listServicos(): Promise<Servico[]> {
   return (await apiGet<ServicoDto[]>("/admin/services")).map(fromDto);
 }
 
+// UC11 — página pública /servicos: só os publicados, em ordem alfabética (o servidor filtra os despublicados).
+export async function listServicosPublicos(): Promise<Servico[]> {
+  return (await apiGet<ServicoDto[]>("/services")).map(fromDto);
+}
+
+// Busca sem diferença de maiúsculas nem acentos ("matricula" acha "Matrícula").
+function normalize(text: string): string {
+  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
+
+// Categorias são texto livre: a lista do filtro sai dos próprios serviços, sem repetir variações de caixa ou acento.
+export function categoriesOf(servicos: Servico[]): string[] {
+  const byKey = new Map<string, string>();
+  for (const s of servicos) {
+    const key = normalize(s.category);
+    if (key && !byKey.has(key)) byKey.set(key, s.category.trim());
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// `category` vazio = todas. A busca olha nome, descrição, setor e categoria.
+export function filterServicos(servicos: Servico[], query: string, category: string): Servico[] {
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  const categoryKey = normalize(category);
+  return servicos.filter((s) => {
+    if (categoryKey && normalize(s.category) !== categoryKey) return false;
+    const haystack = normalize(`${s.name} ${s.description} ${s.sector} ${s.category}`);
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
 // O servidor valida de novo; os erros por campo voltam em `fields` (ex.: "steps", "url", "steps[0]").
 function fieldErrorsOf(error: ApiError): Partial<Record<ServicoField, ServicoFieldError>> {
   const errors: Partial<Record<ServicoField, ServicoFieldError>> = {};
