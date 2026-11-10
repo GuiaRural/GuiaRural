@@ -28,6 +28,7 @@ public class SecurityConfig {
             "/api/search/**",
             "/api/avisos/**",
             "/api/services/**",
+            "/api/menus/**",
             "/api/guide/topics/**",
             "/api/guide/search",
             "/api/guide/recife",

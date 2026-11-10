@@ -95,6 +95,7 @@ class AdminSecurityIntegrationTest {
         mvc.perform(get("/api/guide/recife")).andExpect(status().isOk());
         mvc.perform(get("/api/guide/topics").param("section", "cultura")).andExpect(status().isOk());
         mvc.perform(get("/api/places")).andExpect(status().isOk());
+        mvc.perform(get("/api/menus").param("from", "2026-11-09").param("to", "2026-11-15")).andExpect(status().isOk());
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
     }
 
@@ -131,6 +132,13 @@ class AdminSecurityIntegrationTest {
         mvc.perform(post("/api/avisos").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
         assertEquals(0, count("select count(*) from avisos"));
+
+        // O cardápio tem leitura pública, mas escrever continua exigindo login.
+        String menu = "{\"date\":\"2026-11-10\",\"shift\":\"almoco\",\"main\":\"Frango\",\"vegetarian\":\"Omelete\"}";
+        mvc.perform(post("/api/menus").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content(menu))
+                .andExpect(status().isUnauthorized());
+        assertEquals(0, count("select count(*) from menus"));
     }
 
     @Test
