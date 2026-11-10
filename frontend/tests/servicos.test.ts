@@ -124,6 +124,14 @@ test("a lista do painel vem de /api/admin/services (inclui despublicados) e conv
   assert.equal(lista[1].deadline, "Até 10/02");
 });
 
+test("UC11: o serviço traz os locais publicados onde é prestado (ou lista vazia, se o servidor não mandar)", async () => {
+  respond(200, [{ ...CREATED, places: [{ slug: "prae", name: "Prédio da PRAE" }] }, CREATED]);
+  const lista = await listServicosPublicos();
+
+  assert.deepEqual(lista[0].places, [{ slug: "prae", name: "Prédio da PRAE" }]);
+  assert.deepEqual(lista[1].places, []);
+});
+
 test("UC11: a página pública lê /api/services (só os publicados) e converte os nulos", async () => {
   respond(200, [CREATED]);
   const lista = await listServicosPublicos();
@@ -134,7 +142,7 @@ test("UC11: a página pública lê /api/services (só os publicados) e converte 
 });
 
 // Um serviço já convertido pelo frontend (opcionais ausentes em vez de nulos).
-const SERVICO: Servico = { ...CREATED, requirements: undefined, url: undefined, deadline: undefined };
+const SERVICO: Servico = { ...CREATED, requirements: undefined, url: undefined, deadline: undefined, places: [] };
 
 test("UC11: o filtro de categorias junta variações de caixa e acento e vem em ordem alfabética", () => {
   const servicos = [
