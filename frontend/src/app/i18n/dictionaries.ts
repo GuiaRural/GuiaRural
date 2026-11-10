@@ -198,6 +198,8 @@ export type Dictionary = {
     drink: string;
     empty: string;
     today: string;
+    error: string;
+    retry: string;
   };
   courses: {
     title: string;
@@ -477,6 +479,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Suco",
       empty: "Nenhum cardápio publicado para esta semana.",
       today: "Hoje",
+      error: "Não foi possível carregar o cardápio.",
+      retry: "Tentar novamente",
     },
     courses: {
       title: "Cursos e departamentos",
@@ -754,6 +758,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Juice",
       empty: "No menu published for this week.",
       today: "Today",
+      error: "Could not load the menu.",
+      retry: "Try again",
     },
     courses: {
       title: "Courses and departments",
@@ -1031,6 +1037,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Jugo",
       empty: "No hay menú publicado para esta semana.",
       today: "Hoy",
+      error: "No fue posible cargar el menú.",
+      retry: "Intentar de nuevo",
     },
     courses: {
       title: "Cursos y departamentos",

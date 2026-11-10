@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import AppShell from "../components/common/AppShell";
 import LanguageSwitcher from "../components/common/LanguageSwitcher";
 import { useLanguage } from "../context/LanguageContext";
-import type { Menu } from "../data/mockMenus";
+import { useApi } from "../hooks/useApi";
 import { formatMenuDate, getWeekMenus } from "../services/menuService";
 
 const LOCALES = { pt: "pt-BR", en: "en-US", es: "es-ES" } as const;
+
+const noArg = null;
+// Função de módulo (estável) para o useApi: semana corrente.
+const loadWeek = () => getWeekMenus();
 
 function todayIso() {
   const d = new Date();
@@ -17,11 +20,8 @@ function todayIso() {
 // Publicação do UC25: cardápios cadastrados no painel aparecem aqui.
 export default function WeeklyMenuPage() {
   const { t, language } = useLanguage();
-  const [menus, setMenus] = useState<Menu[] | null>(null);
-
-  useEffect(() => {
-    getWeekMenus().then(setMenus);
-  }, []);
+  const state = useApi(loadWeek, noArg);
+  const menus = state.status === "ready" ? state.data : null;
 
   const days = menus ? [...new Set(menus.map((m) => m.date))] : [];
   const today = todayIso();
@@ -38,7 +38,15 @@ export default function WeeklyMenuPage() {
             <LanguageSwitcher />
           </div>
 
-          {!menus && <p className="mt-6 text-sm text-slate-600">{t.common.loading}</p>}
+          {state.status === "error" && (
+            <div role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              {t.weeklyMenu.error}{" "}
+              <button type="button" onClick={state.retry} className="font-semibold underline">
+                {t.weeklyMenu.retry}
+              </button>
+            </div>
+          )}
+          {state.status === "loading" && <p className="mt-6 text-sm text-slate-600">{t.common.loading}</p>}
           {menus && days.length === 0 && <p className="mt-6 rounded-lg bg-white p-4 text-sm text-slate-600 shadow-sm">{t.weeklyMenu.empty}</p>}
 
           <div className="mt-6 space-y-5">

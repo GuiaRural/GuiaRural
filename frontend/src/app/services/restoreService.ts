@@ -3,15 +3,17 @@ import { restoreAdmin } from "./adminsService";
 import { isServerLog, recordChange, serverLogId } from "./auditService";
 import { apiPost } from "../lib/api";
 import { resetGuideCache } from "./guidesAdminService";
-import { restoreMenu } from "./menuService";
 import { restorePlace } from "./placesService";
 import { delay } from "../lib/storage";
 
+// Entidades que já vêm da API: o desfazer depende do backend saber restaurar o tipo.
+const SERVER_ENTITIES: AuditLog["entity"][] = ["Serviço", "Aviso", "Acolhimento", "Cardápio"];
+
 // Mudanças auditadas no servidor só podem ser desfeitas quando o backend sabe restaurar o tipo (hoje, só
-// acolhimento). Serviços e avisos vêm da API, que ainda não restaura; o resto usa dados de exemplo em memória.
+// acolhimento). Serviços, avisos e cardápio vêm da API, que ainda não restaura; o resto usa dados de exemplo em memória.
 export function canRestore(log: AuditLog) {
   if (isServerLog(log)) return log.entity === "Acolhimento";
-  return log.entity !== "Serviço" && log.entity !== "Aviso" && log.entity !== "Acolhimento";
+  return !SERVER_ENTITIES.includes(log.entity);
 }
 
 // FA01 do UC23: volta o registro ao estado anterior à mudança e registra a restauração no histórico.
@@ -25,7 +27,6 @@ export async function restoreFromLog(log: AuditLog, author: string): Promise<voi
   }
   await delay(400);
   if (log.entity === "Local") restorePlace(log.entityId, log.before);
-  if (log.entity === "Cardápio") restoreMenu(log.entityId, log.before);
   if (log.entity === "Administrador") restoreAdmin(log.entityId, log.before);
   recordChange({
     author,
