@@ -7,9 +7,13 @@ import {
   ServicoValidationError,
   createServico,
   deleteServico,
+  categoriesOf,
+  filterServicos,
   listServicos,
+  listServicosPublicos,
   updateServico,
   validateServico,
+  type Servico,
   type ServicoInput,
 } from "../src/app/services/servicosService";
 
@@ -118,6 +122,39 @@ test("a lista do painel vem de /api/admin/services (inclui despublicados) e conv
   assert.equal(lista[1].active, false);
   assert.equal(lista[1].requirements, "Documento");
   assert.equal(lista[1].deadline, "Até 10/02");
+});
+
+test("UC11: a página pública lê /api/services (só os publicados) e converte os nulos", async () => {
+  respond(200, [CREATED]);
+  const lista = await listServicosPublicos();
+
+  assert.equal(calls[0].url, "/api/services");
+  assert.equal(lista.length, 1);
+  assert.equal(lista[0].requirements, undefined);
+});
+
+// Um serviço já convertido pelo frontend (opcionais ausentes em vez de nulos).
+const SERVICO: Servico = { ...CREATED, requirements: undefined, url: undefined, deadline: undefined };
+
+test("UC11: o filtro de categorias junta variações de caixa e acento e vem em ordem alfabética", () => {
+  const servicos = [
+    { ...SERVICO, id: 1, category: "Saúde" },
+    { ...SERVICO, id: 2, category: "Documentos" },
+    { ...SERVICO, id: 3, category: " saude " },
+  ];
+  assert.deepEqual(categoriesOf(servicos), ["Documentos", "Saúde"]);
+});
+
+test("UC11: a busca ignora acentos e caixa, exige todos os termos e respeita a categoria", () => {
+  const servicos = [
+    { ...SERVICO, id: 1, name: "Matrícula institucional", category: "Documentos", sector: "DRCA" },
+    { ...SERVICO, id: 2, name: "Atendimento psicológico", category: "Saúde", sector: "PRAE", description: "Plantão de escuta" },
+  ];
+  assert.deepEqual(filterServicos(servicos, "MATRICULA", "").map((s) => s.id), [1]);
+  assert.deepEqual(filterServicos(servicos, "prae plantao", "").map((s) => s.id), [2]);
+  assert.deepEqual(filterServicos(servicos, "prae matricula", "").map((s) => s.id), []);
+  assert.deepEqual(filterServicos(servicos, "", "saude").map((s) => s.id), [2]);
+  assert.deepEqual(filterServicos(servicos, "  ", "").map((s) => s.id), [1, 2]);
 });
 
 test("UC20: editar envia PUT com os campos limpos e o status de publicação", async () => {
