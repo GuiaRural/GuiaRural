@@ -47,7 +47,7 @@ Registradas em 10/11/2026 com o time. Todas **fechadas**: podem ser implementada
 | D9 | Tradução de locais, departamentos e cursos | Fechada | **Sem francês.** O admin preenche **PT** no painel; EN e ES são traduzidos **fora do sistema pelo time**, como foi no Guia de Recife, e gravados **marcados como tradução automática** (padrão `machine_translated_langs`) à espera de revisão humana. **Sem API de tradução** (serviço externo fora da stack). |
 | D10 | Matriz curricular | Fechada | **Entra pelo formulário de curso** (tabela `curriculum_subjects`, que já existe). |
 | D11 | "Serviços do local" | Fechada (10/11/2026, substitui o desenho anterior) | **Não é uma lista própria do local.** O local é **ligado a serviços do catálogo** (`services`): o serviço aparece em `/servicos` **e** mostra a qual local pertence. Usa a tabela `place_service` (`place_id`, `service_id`), que já existe no banco mas é órfã (sem migration e sem código); a Fase 1 a coloca sob migration. O horário de cada serviço no local deixa de existir. |
-| D12 | Locais do mock no banco | Fechada, com detalhe na Fase 1 | Os locais que hoje só existem em `data/mockPlaces.ts` entram no banco. Em 10/11/2026 `places` e `departments` estavam **vazios**, embora a migration de seed conste como aplicada: a carga oficial (31 locais e 9 departamentos) também precisa voltar. |
+| D12 | Locais do mock no banco | Fechada, com detalhe na Fase 1 | **Opção 1:** entram no banco só os locais que existem apenas em `data/mockPlaces.ts` (`ru`, `hovet`, `portaria-principal`, `portaria-dois-irmaos`, `auditorio-novo`), por migration versionada e idempotente. Nos locais que o mock e o seed oficial têm em comum, **vale o seed**: endereço, horário e contato do mock (fictícios) não são copiados. `dzo` não entra (duplica `zootecnia`). A coordenada vinda do OpenStreetMap fica marcada em `coordinates_source` como "a conferir em campo". Em 10/11/2026 o banco tinha 31 locais (29 publicados) e 9 departamentos, conforme o seed oficial (conferido com `count(*)`). |
 
 ### 2.1 Respostas às perguntas de 10/11/2026
 Q1 foto: aprovada · Q2 senha esquecida: troca manual no banco, sem endpoint · Q3 módulo `msg` e `/contato`: removidos · Q4 tradução: fora do sistema, marcada como automática · Q5 (a) sem página de acessibilidade, (b) matriz no formulário de curso, (c) `phone` fica no banco e sai do formulário.
@@ -87,7 +87,7 @@ Pré-requisito para todas as outras.
 - [x] Subir o backend com `ddl-auto=validate` contra o banco real: subiu sem erro de schema.
 - [x] Trocar `ddl-auto` para `validate` em `application.properties`; `./mvnw test` continua passando (os testes usam H2 com `create-drop` próprio).
 - [ ] Abrir o PR da Fase 0 (rename da migration + `validate` + `CLAUDE.md`).
-- Achados que alimentam a Fase 1: `places` e `departments` estão vazios no banco; existe a tabela órfã `place_service`; `places` já tem as colunas `photo_url` e `accessibility` (sem uso pelo backend).
+- Achados que alimentam a Fase 1: existe a tabela órfã `place_service` (0 linhas, sem migration e sem código); `places` já tem as colunas `photo_url` e `accessibility` (sem uso pelo backend); `places` só tem 12 campos mapeados na entidade. Atenção: o `rows` do `list_tables` do MCP é **estimativa** e mostrou 0 onde havia dados; use `select count(*)`.
 - Pronto quando: `migration list` sem pendência, backend sobe com `validate`.
 
 ### Fase 1: Locais no painel (A, UC14 a UC16) — G
