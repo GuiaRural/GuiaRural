@@ -5,7 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { Servico } from "../../services/servicosService";
 import Icon from "../common/Icon";
 
-// Card padrão de um serviço, compartilhado entre o painel admin e a futura página pública (UC11).
+// Card padrão de um serviço, compartilhado entre o painel admin e a página pública /servicos (UC11).
 // `actions` (botões Editar/Deletar) só é passado pelo painel admin; `isNew` destaca um serviço recém-criado.
 export default function ServiceCard({ servico, actions, isNew = false }: { servico: Servico; actions?: ReactNode; isNew?: boolean }) {
   const { t } = useLanguage();

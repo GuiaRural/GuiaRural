@@ -170,6 +170,21 @@ export type Dictionary = {
     retry: string;
     portugueseOnly: string;
   };
+  services: {
+    title: string;
+    subtitle: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    categoryFilter: string;
+    allCategories: string;
+    resultsCount: string;
+    empty: string;
+    noResults: string;
+    clearFilters: string;
+    error: string;
+    retry: string;
+    portugueseOnly: string;
+  };
   weeklyMenu: {
     title: string;
     subtitle: string;
@@ -431,6 +446,21 @@ export const dictionaries: Record<Language, Dictionary> = {
       subtitle: "Comunicados da UFRPE sobre o campus Dois Irmãos (Sede).",
       empty: "Nenhum aviso publicado no momento.",
       error: "Não foi possível carregar os avisos.",
+      retry: "Tentar novamente",
+      portugueseOnly: "",
+    },
+    services: {
+      title: "Serviços",
+      subtitle: "Serviços estudantis da UFRPE: como solicitar, requisitos, prazos e links oficiais.",
+      searchLabel: "Buscar serviço",
+      searchPlaceholder: "Buscar por nome, setor ou assunto",
+      categoryFilter: "Filtrar por categoria",
+      allCategories: "Todas",
+      resultsCount: "serviço(s)",
+      empty: "Nenhum serviço publicado no momento.",
+      noResults: "Nenhum serviço encontrado com esses filtros.",
+      clearFilters: "Limpar filtros",
+      error: "Não foi possível carregar os serviços.",
       retry: "Tentar novamente",
       portugueseOnly: "",
     },
@@ -696,6 +726,21 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       portugueseOnly: "Notices are published in Portuguese.",
     },
+    services: {
+      title: "Services",
+      subtitle: "UFRPE student services: how to apply, requirements, deadlines and official links.",
+      searchLabel: "Search services",
+      searchPlaceholder: "Search by name, office or subject",
+      categoryFilter: "Filter by category",
+      allCategories: "All",
+      resultsCount: "service(s)",
+      empty: "No services published at the moment.",
+      noResults: "No services match these filters.",
+      clearFilters: "Clear filters",
+      error: "Could not load the services.",
+      retry: "Try again",
+      portugueseOnly: "Services are published in Portuguese.",
+    },
     weeklyMenu: {
       title: "Weekly menu",
       subtitle: "University Restaurant · lunch 11am–2pm · dinner 5:30pm–7:30pm",
@@ -957,6 +1002,21 @@ export const dictionaries: Record<Language, Dictionary> = {
       error: "No fue posible cargar los avisos.",
       retry: "Intentar de nuevo",
       portugueseOnly: "Los avisos se publican en portugués.",
+    },
+    services: {
+      title: "Servicios",
+      subtitle: "Servicios estudiantiles de la UFRPE: cómo solicitarlos, requisitos, plazos y enlaces oficiales.",
+      searchLabel: "Buscar servicio",
+      searchPlaceholder: "Buscar por nombre, sector o tema",
+      categoryFilter: "Filtrar por categoría",
+      allCategories: "Todas",
+      resultsCount: "servicio(s)",
+      empty: "No hay servicios publicados por el momento.",
+      noResults: "Ningún servicio coincide con estos filtros.",
+      clearFilters: "Limpiar filtros",
+      error: "No fue posible cargar los servicios.",
+      retry: "Intentar de nuevo",
+      portugueseOnly: "Los servicios se publican en portugués.",
     },
     weeklyMenu: {
       title: "Menú de la semana",
