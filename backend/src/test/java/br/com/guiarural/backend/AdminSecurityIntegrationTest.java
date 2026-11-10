@@ -291,12 +291,12 @@ class AdminSecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("Desfazer não é suportado para entidades sem restaurador (ex.: aviso)")
+    @DisplayName("Desfazer não é suportado para administradores (decisão D5)")
     void restoreUnsupportedEntity() throws Exception {
         Auth editor = login("editora@ufrpe.br");
-        mvc.perform(editor.write(post("/api/avisos")).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"x\",\"descricao\":\"y\"}")).andExpect(status().isCreated());
-        Long id = jdbc.queryForObject("select id from audit_logs where entity = 'aviso'", Long.class);
+        jdbc.update("insert into audit_logs (at, admin_id, author, entity, entity_id, entity_name, action) "
+                + "values (current_timestamp, 2, 'Coordenação', 'administrador', '2', 'Leitora', 'editado')");
+        Long id = jdbc.queryForObject("select id from audit_logs where entity = 'administrador'", Long.class);
 
         mvc.perform(editor.write(post("/api/admin/audit-logs/" + id + "/restore"))).andExpect(status().isBadRequest());
     }
