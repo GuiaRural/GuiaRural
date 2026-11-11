@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -143,7 +144,7 @@ class AdminServiceTest {
     @Test
     void update_UltimoGeralAtivo_NaoPodeSerRevogadoNemRebaixado() {
         when(repository.findById(5L)).thenReturn(Optional.of(stored(5, "geral", "ativo")));
-        when(repository.countByPermissionAndStatus("geral", "ativo")).thenReturn(1L);
+        when(repository.lockActiveGenerals()).thenReturn(List.of(stored(5, "geral", "ativo")));
 
         assertThrows(ConflictException.class, () -> service.update(5L, new AdminUpdateDTO("revogado", null), TI));
         assertThrows(ConflictException.class, () -> service.update(5L, new AdminUpdateDTO(null, "editor"), TI));
@@ -153,8 +154,16 @@ class AdminServiceTest {
     @Test
     void update_GeralComOutroGeralAtivo_PodeSerRevogado() {
         when(repository.findById(5L)).thenReturn(Optional.of(stored(5, "geral", "ativo")));
-        when(repository.countByPermissionAndStatus("geral", "ativo")).thenReturn(2L);
+        when(repository.lockActiveGenerals()).thenReturn(List.of(stored(1, "geral", "ativo"), stored(5, "geral", "ativo")));
         assertEquals("revogado", service.update(5L, new AdminUpdateDTO("revogado", null), TI).status());
+    }
+
+    @Test
+    void update_AlvoNaoEGeralAtivo_NaoTravaOsGerais() {
+        // A trava só entra quando a mudança pode tirar um geral ativo; aprovar ou mexer em editor não espera ninguém.
+        when(repository.findById(6L)).thenReturn(Optional.of(stored(6, "editor", "ativo")));
+        assertEquals("revogado", service.update(6L, new AdminUpdateDTO("revogado", null), TI).status());
+        verify(repository, never()).lockActiveGenerals();
     }
 
     @Test

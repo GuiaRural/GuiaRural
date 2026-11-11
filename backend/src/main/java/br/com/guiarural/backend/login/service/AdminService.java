@@ -99,8 +99,10 @@ public class AdminService {
             return before;
         }
 
+        // A trava segura os gerais ativos até o commit: numa revogação simultânea, a outra transação espera e, ao ler
+        // de novo, já não conta quem acabou de ser revogado.
         if (isActiveGeneral(admin.getStatus(), admin.getPermission()) && !isActiveGeneral(status, permission)
-                && repository.countByPermissionAndStatus(GERAL, ACTIVE) <= 1) {
+                && repository.lockActiveGenerals().size() <= 1) {
             throw new ConflictException("O painel precisa de pelo menos um administrador geral ativo.");
         }
 
