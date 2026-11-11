@@ -1,5 +1,11 @@
 package br.com.guiarural.backend.login;
 
+import br.com.guiarural.backend.core.exception.ConflictException;
+import br.com.guiarural.backend.login.dto.AdminUpdateDTO;
+import br.com.guiarural.backend.login.model.AdminEntity;
+import br.com.guiarural.backend.login.model.AdminPrincipal;
+import br.com.guiarural.backend.login.repository.AdminRepository;
+import br.com.guiarural.backend.login.service.AdminService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,8 +20,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,6 +48,12 @@ class AdminManagementIntegrationTest {
     private JdbcTemplate jdbc;
     @Autowired
     private PasswordEncoder encoder;
+    @Autowired
+    private AdminService adminService;
+    @Autowired
+    private AdminRepository adminRepository;
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     @BeforeEach
     void seed() {
@@ -188,5 +204,34 @@ class AdminManagementIntegrationTest {
 
         mvc.perform(ti.write(patch("/api/admin/admins/32")).content("{\"status\":\"revogado\"}")).andExpect(status().isOk());
         mvc.perform(ti.write(patch("/api/admin/admins/999")).content("{\"status\":\"ativo\"}")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("A consulta que trava os gerais ativos roda no banco e devolve só eles, em ordem de id")
+    void locksActiveGeneralsOrderedById() {
+        insertAdmin(30, "Outro geral", "outro.geral@ufrpe.br", "Biblioteca", "geral");
+        jdbc.update("update admins set status = 'aguardando' where id = 30");
+        insertAdmin(35, "Geral novo", "geral.novo@ufrpe.br", "Biblioteca", "geral");
+
+        // PESSIMISTIC_WRITE exige transação: fora dela o JPA recusa a consulta.
+        List<Long> ids = transactionTemplate.execute(tx -> adminRepository.lockActiveGenerals().stream().map(AdminEntity::getId).toList());
+
+        assertEquals(List.of(31L, 32L, 35L), ids);
+    }
+
+    @Test
+    @DisplayName("Com um só geral ativo, revogá-lo ou rebaixá-lo é recusado (regra com trava, chamada direto no serviço)")
+    void lastActiveGeneralIsProtected() {
+        // Pela API isso só acontece em corrida (quem pede é geral ativo e não altera a própria conta); aqui o 31 deixa
+        // de ser geral para o 32 ficar sozinho.
+        jdbc.update("update admins set permission = 'editor' where id = 31");
+        AdminPrincipal author = new AdminPrincipal(31L, "Coordenação de TI", "geral.ti@ufrpe.br", "Coordenação de TI", "geral");
+
+        assertThrows(ConflictException.class, () -> adminService.update(32L, new AdminUpdateDTO("revogado", null), author));
+        assertThrows(ConflictException.class, () -> adminService.update(32L, new AdminUpdateDTO(null, "editor"), author));
+
+        assertEquals("ativo", jdbc.queryForObject("select status from admins where id = 32", String.class));
+        assertEquals("geral", jdbc.queryForObject("select permission from admins where id = 32", String.class));
+        assertEquals(0, jdbc.queryForObject("select count(*) from audit_logs", Integer.class));
     }
 }
