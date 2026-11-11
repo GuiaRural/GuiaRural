@@ -16,7 +16,7 @@ import java.util.Locale;
 public class AuditService {
     // Mesmos valores do check de audit_logs.entity.
     public enum Entity {
-        LOCAL, SERVICO, CARDAPIO, AVISO, ACOLHIMENTO, ADMINISTRADOR;
+        LOCAL, SERVICO, CARDAPIO, AVISO, ACOLHIMENTO, ADMINISTRADOR, CURSO;
 
         String value() {
             return name().toLowerCase(Locale.ROOT);
