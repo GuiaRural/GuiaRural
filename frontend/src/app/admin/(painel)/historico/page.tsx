@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { useAdmin } from "../../../components/admin/AdminShell";
 import PageHeader, { primaryButton, secondaryButton } from "../../../components/admin/PageHeader";
 import Modal, { ConfirmModal } from "../../../components/ui/Modal";
-import { listLogs, type AuditAction, type AuditEntity, type AuditLog } from "../../../services/auditService";
+import { useLanguage } from "../../../context/LanguageContext";
+import { ENTITY_KEYS, listLogs, type AuditAction, type AuditEntity, type AuditLog } from "../../../services/auditService";
 import { canRestore, restoreFromLog } from "../../../services/restoreService";
 
-const ENTITIES: ("todos" | AuditEntity)[] = ["todos", "Local", "Aviso", "Cardápio", "Acolhimento", "Serviço", "Administrador"];
+const ENTITIES: ("todos" | AuditEntity)[] = ["todos", "Local", "Aviso", "Cardápio", "Acolhimento", "Serviço", "Curso", "Administrador"];
 
 const ACTIONS: Record<AuditAction, [string, string]> = {
   criado: ["Criado", "bg-emerald-50 text-emerald-800 border-emerald-200"],
@@ -90,6 +91,8 @@ function diffRows(log: AuditLog) {
 // UC23 — Visualizar logs de mudanças
 export default function HistoryPage() {
   const { session } = useAdmin();
+  const { t } = useLanguage();
+  const entityLabel = (e: AuditEntity) => t.audit.entities[ENTITY_KEYS[e]];
   // Desfazer é uma escrita: o perfil "leitura" só consulta o histórico.
   const canWrite = session.permission !== "leitura";
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
@@ -158,7 +161,7 @@ export default function HistoryPage() {
     <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
       <PageHeader
         title="Histórico de mudanças"
-        subtitle="Quem criou, editou ou deletou locais, avisos, cardápios, conteúdos de acolhimento e administradores. Os registros não podem ser apagados."
+        subtitle="Quem criou, editou ou deletou locais, avisos, cardápios, serviços, cursos, conteúdos de acolhimento e administradores. Os registros não podem ser apagados."
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -175,7 +178,7 @@ export default function HistoryPage() {
               }}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${entity === key ? "bg-navy-900 text-white" : "text-slate-700 hover:bg-white"}`}
             >
-              {key === "todos" ? "Todos" : key}
+              {key === "todos" ? "Todos" : entityLabel(key)}
             </button>
           ))}
         </div>
@@ -243,7 +246,7 @@ export default function HistoryPage() {
                 <tr key={l.id} onClick={() => setSelected(l)} className="cursor-pointer hover:bg-amber-50/40">
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{new Date(l.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
                   <td className="px-4 py-3 font-semibold text-slate-900">{l.entityName}</td>
-                  <td className="px-4 py-3 text-slate-700">{l.entity}</td>
+                  <td className="px-4 py-3 text-slate-700">{entityLabel(l.entity)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${ACTIONS[l.action][1]}`}>{ACTIONS[l.action][0]}</span>
                   </td>
@@ -297,7 +300,7 @@ export default function HistoryPage() {
         open={selected !== null && !confirming}
         onClose={() => setSelected(null)}
         title="Detalhes da alteração"
-        description={selected ? `${selected.entity} · ${selected.entityName}` : undefined}
+        description={selected ? `${entityLabel(selected.entity)} · ${selected.entityName}` : undefined}
         size="lg"
       >
         {selected && (

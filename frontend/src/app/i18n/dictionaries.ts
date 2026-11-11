@@ -1,6 +1,7 @@
 import type { GuideSection, GuideStage } from "../services/guidesService";
 import type { PlaceCategory } from "../services/placesService";
 import type { CourseType } from "../services/coursesService";
+import type { AuditEntityKey } from "../services/auditService";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -253,6 +254,10 @@ export type Dictionary = {
     obligatory: string;
     optional: string;
     noSubjects: string;
+  };
+  // Painel: tipo de registro no histórico (UC23).
+  audit: {
+    entities: Record<AuditEntityKey, string>;
   };
 };
 
@@ -524,6 +529,17 @@ export const dictionaries: Record<Language, Dictionary> = {
       optional: "Optativa",
       noSubjects: "Nenhuma disciplina cadastrada neste período.",
     },
+    audit: {
+      entities: {
+        local: "Local",
+        servico: "Serviço",
+        cardapio: "Cardápio",
+        aviso: "Aviso",
+        acolhimento: "Acolhimento",
+        administrador: "Administrador",
+        curso: "Curso",
+      },
+    },
   },
   en: {
     header: { publicPlatform: "Public Platform • Free Access" },
@@ -792,6 +808,17 @@ export const dictionaries: Record<Language, Dictionary> = {
       optional: "Elective",
       noSubjects: "No subjects registered for this term.",
     },
+    audit: {
+      entities: {
+        local: "Place",
+        servico: "Service",
+        cardapio: "Menu",
+        aviso: "Notice",
+        acolhimento: "Welcome guide",
+        administrador: "Administrator",
+        curso: "Course",
+      },
+    },
   },
   es: {
     header: { publicPlatform: "Plataforma Pública • Acceso Libre" },
@@ -1059,6 +1086,17 @@ export const dictionaries: Record<Language, Dictionary> = {
       obligatory: "Obligatoria",
       optional: "Optativa",
       noSubjects: "No hay asignaturas registradas en este período.",
+    },
+    audit: {
+      entities: {
+        local: "Lugar",
+        servico: "Servicio",
+        cardapio: "Menú",
+        aviso: "Aviso",
+        acolhimento: "Acogida",
+        administrador: "Administrador",
+        curso: "Curso",
+      },
     },
   },
 };

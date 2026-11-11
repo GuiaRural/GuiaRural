@@ -53,11 +53,20 @@ test("sem servidor, a lista falha para a tela avisar (em vez de mostrar só dado
   await assert.rejects(listLogs());
 });
 
-test("todas as entidades do painel podem ser desfeitas, menos administradores (D5)", () => {
+test("todas as entidades do painel podem ser desfeitas, menos administradores (D5) e cursos (RN-UC36-01)", () => {
   for (const entity of ["Local", "Serviço", "Cardápio", "Aviso", "Acolhimento"] as const) {
     assert.equal(canRestore(log(entity)), true, entity);
   }
   assert.equal(canRestore(log("Administrador")), false);
+  assert.equal(canRestore(log("Curso")), false);
+});
+
+test("log de curso do servidor vira a entidade Curso, e não cai no padrão Local", async () => {
+  respond(200, [{ ...SERVER_LOG, entity: "curso", entityName: "Agronomia" }]);
+  const [course] = await listLogs();
+
+  assert.equal(course.entity, "Curso");
+  assert.equal(canRestore(course), false);
 });
 
 test("FA01: desfazer pede ao servidor a restauração do log", async () => {
@@ -75,8 +84,9 @@ test("a recusa do servidor chega com a mensagem dele (ex.: já existe cardápio 
   await assert.rejects(restoreFromLog(log("Aviso")), { message: "Seu perfil não permite desfazer mudanças." });
 });
 
-test("administrador não chega a chamar a API", async () => {
+test("administrador e curso não chegam a chamar a API", async () => {
   respond(204);
   await assert.rejects(restoreFromLog(log("Administrador")));
+  await assert.rejects(restoreFromLog(log("Curso")));
   assert.equal(calls.length, 0);
 });
