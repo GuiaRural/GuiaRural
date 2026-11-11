@@ -12,6 +12,9 @@ public record PlaceContactDTO(
 
         @Email(message = "Informe um e-mail válido para o responsável.")
         @Size(max = 150, message = "O e-mail do responsável não pode ter mais que 150 caracteres.")
-        String email
+        String email,
+
+        @Size(max = 20, message = "O telefone não pode ter mais que 20 caracteres.")
+        String phone
 ) {
 }

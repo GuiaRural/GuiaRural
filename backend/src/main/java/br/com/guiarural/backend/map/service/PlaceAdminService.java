@@ -208,7 +208,11 @@ public class PlaceAdminService {
             return;
         }
         for (PlaceContactDTO contact : contacts) {
-            contactRepository.save(new ContactEntity(contact.name().trim(), blankToNull(contact.email()), null, placeId));
+            contactRepository.save(new ContactEntity(
+                    contact.name().trim(),
+                    blankToNull(contact.email()),
+                    blankToNull(contact.phone()),
+                    placeId));
         }
     }
 

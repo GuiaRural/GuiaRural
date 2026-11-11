@@ -53,7 +53,7 @@ public class PlaceAssembler {
 
         Map<Long, List<PlaceContactDTO>> contacts = contactRepository.findByPlaceIdInOrderByIdAsc(ids).stream()
                 .collect(Collectors.groupingBy(ContactEntity::getPlaceId,
-                        Collectors.mapping(c -> new PlaceContactDTO(c.getName(), c.getEmail()), Collectors.toList())));
+                        Collectors.mapping(c -> new PlaceContactDTO(c.getName(), c.getEmail(), c.getPhone()), Collectors.toList())));
 
         Set<Long> serviceIds = new LinkedHashSet<>();
         Set<Long> courseIds = new LinkedHashSet<>();

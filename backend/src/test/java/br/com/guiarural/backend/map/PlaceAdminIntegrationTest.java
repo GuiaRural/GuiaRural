@@ -191,7 +191,7 @@ class PlaceAdminIntegrationTest {
         Auth editor = login("editor.locais@ufrpe.br");
 
         String extra = "\"serviceIds\":[1],\"courseIds\":[" + courseId + "],"
-                + "\"contacts\":[{\"name\":\"Maria Souza\",\"email\":\"maria@ufrpe.br\"}]";
+                + "\"contacts\":[{\"name\":\"Maria Souza\",\"email\":\"maria@ufrpe.br\",\"phone\":\"(81) 0000-0000\"}]";
         mvc.perform(editor.write(post("/api/places")).contentType(MediaType.APPLICATION_JSON)
                         .content(place("Prédio da PRAE", "publicado", "\"slug\":\"prae\"," + extra)))
                 .andExpect(status().isCreated())
@@ -201,7 +201,8 @@ class PlaceAdminIntegrationTest {
 
         mvc.perform(get("/api/places/prae"))
                 .andExpect(jsonPath("$.services[0].id").value(1))
-                .andExpect(jsonPath("$.contacts[0].name").value("Maria Souza"));
+                .andExpect(jsonPath("$.contacts[0].name").value("Maria Souza"))
+                .andExpect(jsonPath("$.contacts[0].phone").value("(81) 0000-0000"));
         mvc.perform(get("/api/services"))
                 .andExpect(jsonPath("$[0].places[0].slug").value("prae"))
                 .andExpect(jsonPath("$[0].places[0].name").value("Prédio da PRAE"));
