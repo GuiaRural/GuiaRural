@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import { useAdmin } from "../../../components/admin/AdminShell";
 import PageHeader, { primaryButton, secondaryButton } from "../../../components/admin/PageHeader";
 import Modal, { ConfirmModal } from "../../../components/ui/Modal";
-import type { AuditAction, AuditEntity, AuditLog } from "../../../data/mockAuditLogs";
-import { listLogs } from "../../../services/auditService";
+import { listLogs, type AuditAction, type AuditEntity, type AuditLog } from "../../../services/auditService";
 import { canRestore, restoreFromLog } from "../../../services/restoreService";
 
 const ENTITIES: ("todos" | AuditEntity)[] = ["todos", "Local", "Aviso", "Cardápio", "Acolhimento", "Serviço", "Administrador"];
@@ -91,6 +90,8 @@ function diffRows(log: AuditLog) {
 // UC23 — Visualizar logs de mudanças
 export default function HistoryPage() {
   const { session } = useAdmin();
+  // Desfazer é uma escrita: o perfil "leitura" só consulta o histórico.
+  const canWrite = session.permission !== "leitura";
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [entity, setEntity] = useState<(typeof ENTITIES)[number]>("todos");
@@ -124,7 +125,7 @@ export default function HistoryPage() {
     if (!selected) return;
     setRestoring(true);
     try {
-      await restoreFromLog(selected, session.name);
+      await restoreFromLog(selected);
       setMessage({ kind: "ok", text: `"${selected.entityName}" voltou à versão anterior. A restauração foi registrada no histórico.` });
       setSelected(null);
       setPage(1);
@@ -342,15 +343,21 @@ export default function HistoryPage() {
             </div>
             {selected.before === null && <p className="text-xs text-slate-500">O registro não existia antes desta mudança: desfazer remove o registro.</p>}
             {selected.after === null && <p className="text-xs text-slate-500">O registro foi deletado nesta mudança: desfazer traz o registro de volta.</p>}
-            {!canRestore(selected) && (
-              <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">A restauração de serviços ainda não é suportada pelo backend.</p>
+            {selected.entity === "Local" && selected.before !== null && (
+              <p className="text-xs text-slate-500">A foto do local não faz parte do histórico: desfazer mantém a foto atual (e um local excluído volta sem foto).</p>
+            )}
+            {!canWrite && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Seu perfil é somente leitura: não permite desfazer mudanças.</p>}
+            {canWrite && !canRestore(selected) && (
+              <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                Mudanças em administradores não podem ser desfeitas. Aprove ou revogue a conta na tela de Administradores.
+              </p>
             )}
 
             <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setSelected(null)} className={`${secondaryButton} justify-center`}>
                 Fechar
               </button>
-              <button type="button" disabled={!canRestore(selected)} onClick={() => setConfirming(true)} className={`${primaryButton} justify-center`}>
+              <button type="button" disabled={!canWrite || !canRestore(selected)} onClick={() => setConfirming(true)} className={`${primaryButton} justify-center`}>
                 <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 7v6h6" />
                   <path d="M3 13a9 9 0 1 0 3-7.7L3 8" />

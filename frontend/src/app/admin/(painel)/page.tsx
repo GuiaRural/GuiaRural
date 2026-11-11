@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAdmin } from "../../components/admin/AdminShell";
 import PageHeader from "../../components/admin/PageHeader";
-import type { AuditLog } from "../../data/mockAuditLogs";
-import { listLogs } from "../../services/auditService";
+import { listLogs, type AuditLog } from "../../services/auditService";
 import { listAllPlaces } from "../../services/placesService";
 import { listMenus } from "../../services/menuService";
 
@@ -24,8 +23,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<{ places: number | null; drafts: number | null; menus: number | null; logs: AuditLog[] } | null>(null);
 
   useEffect(() => {
-    // Locais e cardápios vêm da API: se ela falhar, o número fica em "—" sem derrubar o resto do painel.
-    Promise.all([listAllPlaces().catch(() => null), listMenus().catch(() => null), listLogs()]).then(([places, menus, logs]) =>
+    // Tudo vem da API: se uma parte falhar, o número fica em "—" (ou a lista vazia) sem derrubar o resto do painel.
+    Promise.all([listAllPlaces().catch(() => null), listMenus().catch(() => null), listLogs().catch(() => [])]).then(([places, menus, logs]) =>
       setStats({
         places: places ? places.filter((p) => p.status === "publicado").length : null,
         drafts: places ? places.filter((p) => p.status === "rascunho").length : null,
