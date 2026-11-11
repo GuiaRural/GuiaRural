@@ -1,6 +1,6 @@
 "use client";
 
-import { PERMISSIONS } from "../../data/mockAdmins";
+import { PERMISSIONS } from "../../services/adminsService";
 import type { Session } from "../../services/authService";
 import Modal from "../ui/Modal";
 

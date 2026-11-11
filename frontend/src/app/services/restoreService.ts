@@ -1,15 +1,14 @@
 import type { AuditLog } from "../data/mockAuditLogs";
-import { restoreAdmin } from "./adminsService";
 import { isServerLog, recordChange, serverLogId } from "./auditService";
 import { apiPost } from "../lib/api";
 import { resetGuideCache } from "./guidesAdminService";
 import { delay } from "../lib/storage";
 
 // Entidades que já vêm da API: o desfazer depende do backend saber restaurar o tipo.
-const SERVER_ENTITIES: AuditLog["entity"][] = ["Local", "Serviço", "Aviso", "Acolhimento", "Cardápio"];
+const SERVER_ENTITIES: AuditLog["entity"][] = ["Local", "Serviço", "Aviso", "Acolhimento", "Cardápio", "Administrador"];
 
 // Mudanças auditadas no servidor só podem ser desfeitas quando o backend sabe restaurar o tipo (hoje, só
-// acolhimento). Locais, serviços, avisos e cardápio vêm da API, que ainda não restaura; o resto usa dados de exemplo em memória.
+// acolhimento). Locais, serviços, avisos e cardápio vêm da API, que ainda não restaura; administradores não têm desfazer (D5).
 export function canRestore(log: AuditLog) {
   if (isServerLog(log)) return log.entity === "Acolhimento";
   return !SERVER_ENTITIES.includes(log.entity);
@@ -25,7 +24,6 @@ export async function restoreFromLog(log: AuditLog, author: string): Promise<voi
     return;
   }
   await delay(400);
-  if (log.entity === "Administrador") restoreAdmin(log.entityId, log.before);
   recordChange({
     author,
     entity: log.entity,

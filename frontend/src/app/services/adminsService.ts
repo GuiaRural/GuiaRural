@@ -1,108 +1,95 @@
-import { IT_SECTOR, MOCK_ADMINS, MOCK_PASSWORDS, type Admin, type Permission, type Sector } from "../data/mockAdmins";
-import { delay } from "../lib/storage";
-import { recordChange, snapshot } from "./auditService";
+import { ApiError, apiGet, apiPatch, apiPost } from "../lib/api";
 
-let admins: Admin[] = [...MOCK_ADMINS];
-const passwords: Record<string, string> = { ...MOCK_PASSWORDS };
+// Ponto único de acesso aos administradores do painel (UC13), via /api/admin/admins. O servidor decide o status
+// inicial (RN-UC13.01), guarda só o hash da senha e grava o histórico (UC23). Listar exige login; cadastrar,
+// aprovar e revogar exigem o perfil "geral".
 
-export const INSTITUTIONAL_DOMAIN = "@ufrpe.br";
+export const SECTORS = [
+  "Coordenação de TI",
+  "Comunicação",
+  "Biblioteca",
+  "Nutrição / RU",
+  "Departamento de Computação",
+  "Pró-Reitoria de Assuntos Comunitários",
+] as const;
+export type Sector = (typeof SECTORS)[number];
 
-export function isInstitutionalEmail(email: string) {
-  return email.trim().toLowerCase().endsWith(INSTITUTIONAL_DOMAIN);
-}
+// Setor cujos cadastros não precisam de aprovação (RN-UC13.01). A regra vale no servidor; aqui só orienta a tela.
+export const IT_SECTOR: Sector = "Coordenação de TI";
 
-export async function listAdmins(): Promise<Admin[]> {
-  await delay();
-  return [...admins];
-}
+export const PERMISSIONS = {
+  geral: "Administrador geral",
+  editor: "Editor do setor",
+  leitura: "Somente leitura",
+} as const;
+export type Permission = keyof typeof PERMISSIONS;
 
-export function findAdminByEmail(email: string): Admin | undefined {
-  return admins.find((a) => a.email === email.trim().toLowerCase());
-}
+export type AdminStatus = "ativo" | "aguardando" | "revogado";
 
-// Verificação de senha só existe no mock; no backend real a comparação é feita no servidor.
-export function checkPassword(email: string, password: string): boolean {
-  return passwords[email.trim().toLowerCase()] === password;
-}
-
-export class AdminValidationError extends Error {
-  constructor(
-    message: string,
-    readonly field?: "email",
-  ) {
-    super(message);
-  }
-}
+// Espelha AdminResponseDTO. O setor é texto livre no banco (o primeiro administrador é inserido à mão).
+export type Admin = {
+  id: number;
+  name: string;
+  email: string;
+  sector: string;
+  permission: Permission;
+  status: AdminStatus;
+};
 
 export type NewAdmin = {
   name: string;
   email: string;
   sector: Sector;
   permission: Permission;
+  // Definida por quem cadastra (D3). Só viaja no cadastro; o servidor nunca a devolve.
   password: string;
-  sendCredentials: boolean;
 };
 
-// authorSector é o setor de quem está cadastrando: ele define o status inicial (RN-UC13.01).
-export async function createAdmin(input: NewAdmin, author: string, authorSector: Sector): Promise<Admin> {
-  await delay(400);
+type AdminField = keyof NewAdmin;
+
+export const INSTITUTIONAL_DOMAIN = "@ufrpe.br";
+
+export function isInstitutionalEmail(email: string) {
+  return /^[^@\s]+@ufrpe\.br$/.test(email.trim().toLowerCase());
+}
+
+export class AdminValidationError extends Error {
+  constructor(
+    message: string,
+    readonly field?: AdminField,
+  ) {
+    super(message);
+  }
+}
+
+const FIELDS: AdminField[] = ["name", "email", "sector", "permission", "password"];
+
+export async function listAdmins(): Promise<Admin[]> {
+  return apiGet<Admin[]>("/admin/admins");
+}
+
+export async function createAdmin(input: NewAdmin): Promise<Admin> {
   const email = input.email.trim().toLowerCase();
+  // FE-13.01: conferido antes de chamar a API (o servidor confere de novo).
   if (!isInstitutionalEmail(email)) {
     throw new AdminValidationError("O e-mail deve pertencer ao domínio institucional @ufrpe.br.", "email");
   }
-  if (findAdminByEmail(email)) {
-    throw new AdminValidationError("Já existe um administrador com este e-mail.", "email");
+  try {
+    return await apiPost<Admin>("/admin/admins", { ...input, name: input.name.trim(), email });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      throw new AdminValidationError(error.detail ?? "Já existe um administrador com este e-mail.", "email");
+    }
+    if (error instanceof ApiError && error.status === 400) {
+      const field = FIELDS.find((f) => error.fields?.[f]);
+      const message = (field && error.fields?.[field]) || error.detail || "Confira os dados do cadastro.";
+      throw new AdminValidationError(message, field ?? (/e-mail/i.test(message) ? "email" : undefined));
+    }
+    throw error;
   }
-  const admin: Admin = {
-    id: `a${Date.now()}`,
-    name: input.name.trim(),
-    email,
-    sector: input.sector,
-    permission: input.permission,
-    // RN-UC13.01: cadastros feitos por um setor diferente da Coordenação de TI aguardam aprovação de um administrador geral.
-    status: authorSector === IT_SECTOR ? "ativo" : "aguardando",
-  };
-  admins = [...admins, admin];
-  passwords[email] = input.password;
-  recordChange({
-    author,
-    entity: "Administrador",
-    entityId: admin.id,
-    entityName: admin.name,
-    action: "criado",
-    before: null,
-    after: snapshot(admin),
-  });
-  // input.sendCredentials: o envio do e-mail fica a cargo do backend.
-  return admin;
 }
 
-async function updateStatus(id: string, status: Admin["status"], author: string) {
-  await delay();
-  const existing = admins.find((a) => a.id === id);
-  if (!existing) return;
-  const updated = { ...existing, status };
-  admins = admins.map((a) => (a.id === id ? updated : a));
-  recordChange({
-    author,
-    entity: "Administrador",
-    entityId: id,
-    entityName: existing.name,
-    action: "editado",
-    before: snapshot(existing),
-    after: snapshot(updated),
-  });
-}
-
-export const revokeAdmin = (id: string, author: string) => updateStatus(id, "revogado", author);
-export const approveAdmin = (id: string, author: string) => updateStatus(id, "ativo", author);
-
-export function restoreAdmin(id: string, previous: Record<string, unknown> | null) {
-  const current = admins.find((a) => a.id === id);
-  if (!previous) {
-    admins = admins.filter((a) => a.id !== id);
-    return;
-  }
-  const restored = { ...(current ?? {}), ...previous } as Admin;
-  admins = current ? admins.map((a) => (a.id === id ? restored : a)) : [...admins, restored];
-}
+// Aprovar e revogar. Erros (403 sem perfil geral, 400 na própria conta, 409 no último geral) chegam como ApiError,
+// com a mensagem do servidor em `detail`.
+export const approveAdmin = (id: number) => apiPatch<Admin>(`/admin/admins/${id}`, { status: "ativo" });
+export const revokeAdmin = (id: number) => apiPatch<Admin>(`/admin/admins/${id}`, { status: "revogado" });

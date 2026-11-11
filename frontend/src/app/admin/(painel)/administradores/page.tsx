@@ -5,8 +5,21 @@ import { useAdmin } from "../../../components/admin/AdminShell";
 import PageHeader, { ctaButton } from "../../../components/admin/PageHeader";
 import Modal, { ConfirmModal } from "../../../components/ui/Modal";
 import type { AuditLog } from "../../../data/mockAuditLogs";
-import { IT_SECTOR, PERMISSIONS, SECTORS, type Admin, type Permission, type Sector } from "../../../data/mockAdmins";
-import { AdminValidationError, approveAdmin, createAdmin, isInstitutionalEmail, listAdmins, revokeAdmin } from "../../../services/adminsService";
+import { ApiError } from "../../../lib/api";
+import {
+  AdminValidationError,
+  IT_SECTOR,
+  PERMISSIONS,
+  SECTORS,
+  approveAdmin,
+  createAdmin,
+  isInstitutionalEmail,
+  listAdmins,
+  revokeAdmin,
+  type Admin,
+  type Permission,
+  type Sector,
+} from "../../../services/adminsService";
 import { listLogs } from "../../../services/auditService";
 
 const STATUS_BADGE: Partial<Record<Admin["status"], [string, string]>> = {
@@ -34,18 +47,45 @@ export default function AdminsPage() {
   const [showChanges, setShowChanges] = useState(false);
   const [toRevoke, setToRevoke] = useState<Admin | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const isGeneral = session.permission === "geral";
 
   function reload() {
-    listAdmins().then(setAdmins);
+    listAdmins()
+      .then((list) => {
+        setAdmins(list);
+        setError(null);
+      })
+      .catch(() => {
+        setAdmins((current) => current ?? []);
+        setError("Não foi possível carregar os administradores. Tente novamente.");
+      });
   }
   useEffect(reload, []);
+
+  // Aprovar e revogar: a recusa do servidor (ex.: a própria conta) aparece para quem clicou.
+  async function change(admin: Admin, action: (id: number) => Promise<Admin>, success: string) {
+    setNotice(null);
+    setError(null);
+    setBusyId(admin.id);
+    try {
+      await action(admin.id);
+      setNotice(success);
+      reload();
+    } catch (err) {
+      setError(err instanceof ApiError && err.detail ? err.detail : "Não foi possível concluir a alteração. Tente novamente.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const q = normalize(query.trim());
   const visible = admins?.filter((a) => !q || [a.name, a.email, a.sector].some((v) => normalize(v).includes(q)));
 
   function openCreate() {
     setNotice(null);
+    setError(null);
     setCreating(true);
   }
 
@@ -103,6 +143,11 @@ export default function AdminsPage() {
           {notice}
         </p>
       )}
+      {error && (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {error}
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-sm">
@@ -150,12 +195,9 @@ export default function AdminsPage() {
                       {isGeneral && a.status === "aguardando" && (
                         <button
                           type="button"
-                          className="rounded-md bg-brand-yellow px-3 py-1.5 text-xs font-bold text-navy-900 hover:brightness-95"
-                          onClick={async () => {
-                            await approveAdmin(a.id, session.name);
-                            setNotice(`${a.name} foi aprovado e já pode acessar o painel.`);
-                            reload();
-                          }}
+                          disabled={busyId === a.id}
+                          className="rounded-md bg-brand-yellow px-3 py-1.5 text-xs font-bold text-navy-900 hover:brightness-95 disabled:opacity-60"
+                          onClick={() => change(a, approveAdmin, `${a.name} foi aprovado e já pode acessar o painel.`)}
                         >
                           Aprovar
                         </button>
@@ -163,7 +205,8 @@ export default function AdminsPage() {
                       {isGeneral && a.status !== "revogado" && a.email !== session.email && (
                         <button
                           type="button"
-                          className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                          disabled={busyId === a.id}
+                          className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
                           onClick={() => setToRevoke(a)}
                         >
                           Revogar
@@ -196,19 +239,16 @@ export default function AdminsPage() {
         }
       >
         <NewAdminForm
-          author={session.name}
-          authorSector={session.sector as Sector}
+          authorSector={session.sector}
           onCancel={() => setCreating(false)}
-          onCreated={(admin, sent) => {
+          onCreated={(admin) => {
             setCreating(false);
-            const status =
+            // Sem envio de e-mail nesta etapa (D4): quem cadastrou repassa a senha à pessoa.
+            setNotice(
               admin.status === "ativo"
-                ? `${admin.name} foi cadastrado e já pode acessar o painel.`
-                : `${admin.name} foi cadastrado com status "Aguardando aprovação" até que um administrador geral da Coordenação de TI o aprove.`;
-            const email = sent
-              ? ` As credenciais provisórias foram enviadas para ${admin.email}.`
-              : " As credenciais não foram enviadas por e-mail.";
-            setNotice(status + email);
+                ? `${admin.name} foi cadastrado e já pode acessar o painel com a senha definida no cadastro.`
+                : `${admin.name} foi cadastrado com status "Aguardando aprovação" até que um administrador geral o aprove.`,
+            );
             reload();
           }}
         />
@@ -226,12 +266,11 @@ export default function AdminsPage() {
         cancelLabel="Cancelar"
         message={`O acesso de ${toRevoke?.name} ao painel será revogado. Deseja continuar?`}
         onCancel={() => setToRevoke(null)}
-        onConfirm={async () => {
+        onConfirm={() => {
           if (!toRevoke) return;
-          await revokeAdmin(toRevoke.id, session.name);
-          setNotice(`O acesso de ${toRevoke.name} foi revogado.`);
+          const admin = toRevoke;
           setToRevoke(null);
-          reload();
+          change(admin, revokeAdmin, `O acesso de ${admin.name} foi revogado.`);
         }}
       />
     </div>
@@ -267,15 +306,13 @@ const fieldClass =
   "h-11 w-full rounded-lg border bg-white px-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-navy-700 focus:ring-2 focus:ring-brand-yellow";
 
 function NewAdminForm({
-  author,
   authorSector,
   onCancel,
   onCreated,
 }: {
-  author: string;
-  authorSector: Sector;
+  authorSector: string;
   onCancel: () => void;
-  onCreated: (admin: Admin, credentialsSent: boolean) => void;
+  onCreated: (admin: Admin) => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -283,7 +320,6 @@ function NewAdminForm({
   const [permission, setPermission] = useState<Permission | "">("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [sendCredentials, setSendCredentials] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [summary, setSummary] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -311,26 +347,24 @@ function NewAdminForm({
     }
     if (password.length < 8) {
       setErrors({ password: "Mínimo de 8 caracteres" });
-      setSummary("A senha provisória deve ter pelo menos 8 caracteres.");
+      setSummary("A senha deve ter pelo menos 8 caracteres.");
       return;
     }
     if (password !== confirm) {
       setErrors({ confirm: "As senhas não conferem" });
-      setSummary("A confirmação da senha provisória não confere.");
+      setSummary("A confirmação da senha não confere.");
       return;
     }
     setSaving(true);
     try {
-      const admin = await createAdmin(
-        { name, email, sector: sector as Sector, permission: permission as Permission, password, sendCredentials },
-        author,
-        authorSector,
-      );
-      onCreated(admin, sendCredentials);
+      const admin = await createAdmin({ name, email, sector: sector as Sector, permission: permission as Permission, password });
+      onCreated(admin);
     } catch (err) {
       if (err instanceof AdminValidationError) {
         setErrors(err.field ? { [err.field]: err.message } : {});
         setSummary(err.message);
+      } else if (err instanceof ApiError && err.status === 403) {
+        setSummary("Somente administradores gerais podem cadastrar novos administradores.");
       } else setSummary("Não foi possível cadastrar o administrador. Tente novamente.");
     } finally {
       setSaving(false);
@@ -387,21 +421,13 @@ function NewAdminForm({
             </select>
           </SelectWrap>
         </Field>
-        <Field id="adm-password" label="Senha provisória" error={errors.password}>
-          <input id="adm-password" type="password" autoComplete="new-password" placeholder="••••••••" className={field("password")} value={password} onChange={(e) => setPassword(e.target.value)} {...describe("password", "adm-password")} />
+        <Field id="adm-password" label="Senha" error={errors.password} hint="Mínimo de 8 caracteres. Repasse a senha à pessoa cadastrada.">
+          <input id="adm-password" type="password" autoComplete="new-password" placeholder="••••••••" className={field("password")} value={password} onChange={(e) => setPassword(e.target.value)} {...describe("password", "adm-password", true)} />
         </Field>
-        <Field id="adm-confirm" label="Confirmar senha provisória" error={errors.confirm}>
+        <Field id="adm-confirm" label="Confirmar senha" error={errors.confirm}>
           <input id="adm-confirm" type="password" autoComplete="new-password" placeholder="••••••••" className={field("confirm")} value={confirm} onChange={(e) => setConfirm(e.target.value)} {...describe("confirm", "adm-confirm")} />
         </Field>
       </div>
-      {/* FA-13.02: desmarcar evita o envio automático */}
-      <label className="flex items-start gap-3 text-sm">
-        <input type="checkbox" checked={sendCredentials} onChange={(e) => setSendCredentials(e.target.checked)} className="mt-0.5 size-[18px] accent-blue-600" />
-        <span>
-          <span className="font-semibold text-slate-900">Enviar credenciais provisórias por e-mail institucional</span>
-          <span className="block text-xs text-slate-500">O usuário será solicitado a alterar a senha no primeiro acesso ao painel do GuiaRural.</span>
-        </span>
-      </label>
       <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
         {/* FA-13.01 */}
         <button type="button" className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200" onClick={onCancel}>

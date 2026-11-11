@@ -3,8 +3,8 @@ import { apiGet } from "../lib/api";
 import { delay } from "../lib/storage";
 
 // Histórico somente de inclusão: não há função para apagar logs (RN-03 do UC23).
-// Avisos, serviços, cardápio e tópicos do guia são auditados no servidor (/api/admin/audit-logs); as demais telas do painel
-// ainda usam dados de exemplo e gravam o histórico aqui, em memória.
+// Avisos, serviços, cardápio, locais, administradores e tópicos do guia são auditados no servidor (/api/admin/audit-logs); o que
+// sobra em memória são os registros de exemplo de MOCK_AUDIT_LOGS (removidos junto com o desfazer da Fase 3).
 let logs: AuditLog[] = [...MOCK_AUDIT_LOGS];
 let nextId = 1;
 

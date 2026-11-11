@@ -1,5 +1,6 @@
 package br.com.guiarural.backend.core.security;
 
+import br.com.guiarural.backend.login.repository.AdminRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -40,6 +42,7 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http,
                                     SecurityContextRepository securityContextRepository,
                                     RestSecurityErrorHandler errorHandler,
+                                    AdminRepository adminRepository,
                                     @Value("${server.servlet.session.cookie.secure:false}") boolean secureCookies) throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookiePath("/");
@@ -59,6 +62,7 @@ public class SecurityConfig {
                         .ignoringRequestMatchers("/api/auth/login")
                         .ignoringRequestMatchers(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/messages")))
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
+                .addFilterAfter(new AdminSessionRefreshFilter(adminRepository, securityContextRepository), SecurityContextHolderFilter.class)
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(errorHandler)
                         .accessDeniedHandler(errorHandler))
@@ -69,6 +73,11 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.POST, "/api/messages").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated();
                     auth.requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll();
+                    // UC13: cadastrar, aprovar, mudar perfil e revogar administradores é só do perfil "geral". Vem antes
+                    // do laço abaixo porque a primeira regra que casa é a que vale.
+                    for (HttpMethod method : WRITES) {
+                        auth.requestMatchers(method, "/api/admin/admins/**").hasRole("GERAL");
+                    }
                     for (HttpMethod method : WRITES) {
                         auth.requestMatchers(method, "/api/**").hasAnyRole("GERAL", "EDITOR");
                     }
