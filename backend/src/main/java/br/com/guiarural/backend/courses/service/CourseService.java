@@ -1,6 +1,9 @@
 package br.com.guiarural.backend.courses.service;
 
+import br.com.guiarural.backend.core.audit.AuditService;
+import br.com.guiarural.backend.core.exception.BadRequestException;
 import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
+import br.com.guiarural.backend.courses.dto.CourseRequestDTO;
 import br.com.guiarural.backend.courses.dto.CoordinationDTO;
 import br.com.guiarural.backend.courses.dto.CourseCoordinationDTO;
 import br.com.guiarural.backend.courses.dto.CourseDetailResponseDTO;
@@ -9,6 +12,8 @@ import br.com.guiarural.backend.courses.dto.CourseSummaryDTO;
 import br.com.guiarural.backend.courses.dto.DepartmentCoursesResponseDTO;
 import br.com.guiarural.backend.courses.dto.SubjectResponseDTO;
 import br.com.guiarural.backend.courses.model.CourseEntity;
+import br.com.guiarural.backend.courses.model.CourseLevel;
+import br.com.guiarural.backend.courses.model.CourseType;
 import br.com.guiarural.backend.courses.model.DepartmentEntity;
 import br.com.guiarural.backend.courses.model.SubjectEntity;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
@@ -19,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,16 +43,157 @@ public class CourseService {
             .comparing(SubjectEntity::getPeriod, Comparator.nullsLast(Comparator.<Short>naturalOrder()))
             .thenComparing(SubjectEntity::getCode);
 
+    // Nível × tipo aceitos (decisão do time): graduação é bacharelado ou licenciatura; pós é stricto sensu.
+    private static final Map<CourseLevel, Set<CourseType>> TYPES_BY_LEVEL = Map.of(
+            CourseLevel.GRADUACAO, EnumSet.of(CourseType.BACHARELADO, CourseType.LICENCIATURA),
+            CourseLevel.POS, EnumSet.of(CourseType.STRICTO_SENSU));
+
     private final CourseRepository repository;
     private final DepartmentRepository departmentRepository;
     private final SubjectRepository subjectRepository;
+    private final AuditService auditService;
 
     public CourseService(CourseRepository repository,
                          DepartmentRepository departmentRepository,
-                         SubjectRepository subjectRepository) {
+                         SubjectRepository subjectRepository,
+                         AuditService auditService) {
         this.repository = repository;
         this.departmentRepository = departmentRepository;
         this.subjectRepository = subjectRepository;
+        this.auditService = auditService;
+    }
+
+    // Painel: todos os cursos, inclusive os inativos.
+    @Transactional(readOnly = true)
+    public List<CourseSummaryDTO> findAllForAdmin() {
+        return repository.findAll()
+                .stream()
+                .sorted(DISPLAY_ORDER)
+                .map(this::mapToSummaryDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CourseDetailResponseDTO findByIdForAdmin(Long id) {
+        CourseEntity course = findAnyOrThrow(id);
+        return mapToDetailDTO(course, departmentOf(course), subjectsOf(id));
+    }
+
+    @Transactional
+    public CourseDetailResponseDTO create(CourseRequestDTO dto) {
+        checkLevelAndType(dto.level(), dto.type());
+        DepartmentEntity department = activeDepartment(dto.departmentId());
+        CourseEntity course = new CourseEntity();
+        apply(course, dto);
+        course.setActive(dto.active() == null || dto.active());
+        CourseEntity saved = repository.saveAndFlush(course);
+        auditService.record(AuditService.Entity.CURSO, String.valueOf(saved.getId()), saved.getName(),
+                AuditService.Action.CRIADO, null, snapshot(saved, department));
+        return mapToDetailDTO(saved, department, List.of());
+    }
+
+    // UC35. PUT substitui os campos do curso (a matriz não é tocada aqui).
+    @Transactional
+    public CourseDetailResponseDTO update(Long id, CourseRequestDTO dto) {
+        CourseEntity course = findAnyOrThrow(id);
+        checkLevelAndType(dto.level(), dto.type());
+        DepartmentEntity current = departmentOf(course);
+        // Trocar para outro departamento exige que ele esteja ativo; manter o atual não, para um curso de um
+        // departamento desativado continuar editável.
+        DepartmentEntity department = dto.departmentId().equals(course.getDepartmentId())
+                ? current
+                : activeDepartment(dto.departmentId());
+        CourseDetailResponseDTO before = snapshot(course, current);
+        apply(course, dto);
+        if (dto.active() != null) {
+            course.setActive(dto.active());
+        }
+        CourseEntity saved = repository.saveAndFlush(course);
+        auditService.record(AuditService.Entity.CURSO, String.valueOf(id), saved.getName(),
+                AuditService.Action.EDITADO, before, snapshot(saved, department));
+        return mapToDetailDTO(saved, department, subjectsOf(id));
+    }
+
+    // UC36: exclusão definitiva, sem desfazer (RN-UC36-01). A matriz sai antes do curso; os vínculos com locais
+    // (place_courses) saem pelo "on delete cascade" do banco.
+    @Transactional
+    public void delete(Long id) {
+        CourseEntity course = findAnyOrThrow(id);
+        CourseDetailResponseDTO before = snapshot(course, departmentOf(course));
+        subjectRepository.deleteByCourseId(id);
+        repository.delete(course);
+        repository.flush();
+        auditService.record(AuditService.Entity.CURSO, String.valueOf(id), course.getName(),
+                AuditService.Action.DELETADO, before, null);
+    }
+
+    private CourseEntity findAnyOrThrow(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + id));
+    }
+
+    private DepartmentEntity departmentOf(CourseEntity course) {
+        return departmentRepository.findById(course.getDepartmentId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Departamento não encontrado com ID: " + course.getDepartmentId()));
+    }
+
+    private DepartmentEntity activeDepartment(Long departmentId) {
+        return departmentRepository.findByIdAndActiveTrue(departmentId)
+                .orElseThrow(() -> new BadRequestException("Departamento inexistente ou inativo: " + departmentId));
+    }
+
+    private static void checkLevelAndType(CourseLevel level, CourseType type) {
+        if (!TYPES_BY_LEVEL.get(level).contains(type)) {
+            throw new BadRequestException("Nível e tipo incompatíveis: graduação aceita bacharelado ou licenciatura; "
+                    + "pós-graduação aceita stricto sensu.");
+        }
+    }
+
+    // Texto vazio vira nulo: a página não mostra campo em branco.
+    private static String clean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static void apply(CourseEntity course, CourseRequestDTO dto) {
+        course.setDepartmentId(dto.departmentId());
+        course.setName(dto.name().trim());
+        course.setLevel(dto.level());
+        course.setType(dto.type());
+        course.setCode(clean(dto.code()));
+        course.setModality(clean(dto.modality()));
+        course.setShift(clean(dto.shift()));
+        course.setDurationSemesters(dto.durationSemesters());
+        course.setTotalWorkloadHours(dto.totalWorkloadHours() == null ? null : dto.totalWorkloadHours().shortValue());
+        course.setMecGrade(dto.mecGrade());
+        course.setCapesGrade(dto.capesGrade());
+        course.setDescription(clean(dto.description()));
+        course.setCoordinatorName(clean(dto.coordinatorName()));
+        course.setViceCoordinatorName(clean(dto.viceCoordinatorName()));
+        course.setOfficeLocation(clean(dto.officeLocation()));
+        course.setOfficeHours(clean(dto.officeHours()));
+        course.setAttendanceMode(clean(dto.attendanceMode()));
+        course.setPhone(clean(dto.phone()));
+        course.setExtension(clean(dto.extension()));
+        course.setEmail(clean(dto.email()));
+        course.setSecondaryEmail(clean(dto.secondaryEmail()));
+    }
+
+    // Estado gravado no histórico: o curso sem a matriz (subjects nulo), que entra na Fase 5c.
+    private CourseDetailResponseDTO snapshot(CourseEntity course, DepartmentEntity department) {
+        return mapToDetailDTO(course, department, null);
+    }
+
+    private List<SubjectResponseDTO> subjectsOf(Long courseId) {
+        return subjectRepository.findByCourseId(courseId)
+                .stream()
+                .sorted(SUBJECT_ORDER)
+                .map(this::mapToSubjectDTO)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -63,12 +212,7 @@ public class CourseService {
         DepartmentEntity department = departmentRepository.findById(course.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Departamento não encontrado com ID: " + course.getDepartmentId()));
-        List<SubjectResponseDTO> subjects = subjectRepository.findByCourseId(id)
-                .stream()
-                .sorted(SUBJECT_ORDER)
-                .map(this::mapToSubjectDTO)
-                .toList();
-        return mapToDetailDTO(course, department, subjects);
+        return mapToDetailDTO(course, department, subjectsOf(id));
     }
 
     @Transactional(readOnly = true)
@@ -109,7 +253,8 @@ public class CourseService {
                 entity.getMecGrade(),
                 entity.getCapesGrade(),
                 entity.getDescription(),
-                entity.getOfficeLocation()
+                entity.getOfficeLocation(),
+                Boolean.TRUE.equals(entity.getActive())
         );
     }
 
@@ -144,7 +289,8 @@ public class CourseService {
                 department.getShortName(),
                 department.getAcademicCenter(),
                 coordination,
-                subjects
+                subjects,
+                Boolean.TRUE.equals(entity.getActive())
         );
     }
 

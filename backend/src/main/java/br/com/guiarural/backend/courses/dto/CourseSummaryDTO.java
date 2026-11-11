@@ -16,5 +16,7 @@ public record CourseSummaryDTO (
     Short mecGrade,
     Short capesGrade,
     String description,
-    String officeLocation
+    String officeLocation,
+    // Sempre true nas rotas públicas (só listam cursos ativos); o painel também vê os inativos.
+    boolean active
 ) {}

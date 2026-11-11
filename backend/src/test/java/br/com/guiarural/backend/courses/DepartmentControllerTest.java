@@ -51,7 +51,7 @@ class DepartmentControllerTest {
     void shouldReturnDepartmentCourses() throws Exception {
         CourseSummaryDTO course = new CourseSummaryDTO(1L, 10L, "104", "Ciência da Computação",
                 CourseLevel.GRADUACAO, CourseType.BACHARELADO, "Presencial", "Diurno",
-                (short) 8, (short) 5, null, null, "Sala 204");
+                (short) 8, (short) 5, null, null, "Sala 204", true);
         when(departmentService.findCourses(10L)).thenReturn(new DepartmentCoursesResponseDTO(
                 10L, 1, List.of(new CourseGroupDTO(CourseLevel.GRADUACAO, List.of(course))), List.of()));
 
