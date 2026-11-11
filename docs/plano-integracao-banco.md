@@ -49,6 +49,11 @@ Registradas em 10/11/2026 com o time. Todas **fechadas**: podem ser implementada
 | D11 | "Serviços do local" | Fechada (10/11/2026, substitui o desenho anterior) | **Não é uma lista própria do local.** O local é **ligado a serviços do catálogo** (`services`): o serviço aparece em `/servicos` **e** mostra a qual local pertence. Usa a tabela `place_service` (`place_id`, `service_id`), que já existe no banco mas é órfã (sem migration e sem código); a Fase 1 a coloca sob migration. O horário de cada serviço no local deixa de existir. |
 | D12 | Locais do mock no banco | Fechada, com detalhe na Fase 1 | **Opção 1:** entram no banco só os locais que existem apenas em `data/mockPlaces.ts` (`ru`, `hovet`, `portaria-principal`, `portaria-dois-irmaos`, `auditorio-novo`), por migration versionada e idempotente. Nos locais que o mock e o seed oficial têm em comum, **vale o seed**: endereço, horário e contato do mock (fictícios) não são copiados. `dzo` não entra (duplica `zootecnia`). A coordenada vinda do OpenStreetMap fica marcada em `coordinates_source` como "a conferir em campo". Em 10/11/2026 o banco tinha 31 locais (29 publicados) e 9 departamentos, conforme o seed oficial (conferido com `count(*)`). |
 
+| D13 | Unicidade de curso | Fechada (11/11/2026) | **Sem unique de nome** (nem por departamento). A API de cursos não tem 409. |
+| D14 | Nível × tipo do curso | Fechada (11/11/2026) | Validado no `CourseService`, sem mudança no banco: `GRADUACAO` só com `BACHARELADO` ou `LICENCIATURA`; `POS` só com `STRICTO_SENSU`. Fora disso, 400. |
+| D15 | Desfazer de curso | Fechada (11/11/2026) | **Não faz**, nem de edição nem de exclusão (a exclusão já era definitiva pela RN-UC36-01). |
+| D16 | RN-UC35-02 "Edição em Tempo Real" | **Pendente de confirmação com o PO** | Interpretação adotada: "a mudança aparece logo depois de salvar" (a API grava na hora e as leituras públicas não têm cache no servidor). Não há sincronização ao vivo entre abas nem salvamento automático. |
+
 ### 2.1 Respostas às perguntas de 10/11/2026
 Q1 foto: aprovada · Q2 senha esquecida: troca manual no banco, sem endpoint · Q3 módulo `msg` e `/contato`: removidos · Q4 tradução: fora do sistema, marcada como automática · Q5 (a) sem página de acessibilidade, (b) matriz no formulário de curso, (c) `phone` fica no banco e sai do formulário.
 
@@ -177,10 +182,22 @@ Substitui o antigo plano de "tela de contato e caixa de mensagens". Depende da F
 
 ### Fase 5: Cursos, escrita e dados (E) — G
 Sem carga inicial: os dados entram pelo painel (D8).
-- [ ] `POST/PUT/DELETE` em `/api/courses` (UC35, UC36 e cadastro), validação e erros padrão. O formulário inclui coordenador, vice, e-mail e e-mail secundário.
-- [ ] **Matriz curricular no formulário de curso (D10):** edição da lista de disciplinas (`curriculum_subjects`: período, código etc.; `null` = bloco "Optativas / Eletivas") junto com o curso, na mesma transação. Excluir o curso remove a matriz (`on delete cascade`, UC36). Pode ser dividida em duas entregas: curso sem matriz, depois a matriz.
-- [ ] Auditoria: a entidade `curso` **não existe** no `check` de `audit_logs.entity` ⇒ migration + enum `AuditService.Entity` (+ restorer, se for desfazível). O snapshot inclui a matriz.
-- [ ] Telas do painel para cursos (casos de uso `[UC35]` e `[UC36]` em `docs/`).
+Dividida em três entregas: **5a** API de escrita (sem matriz e sem telas), **5b** telas do painel, **5c** matriz curricular. Não há caso de uso de *cadastro* de curso em `docs/` (só UC35 e UC36); o cadastro segue as mesmas regras da edição.
+
+**5a — API de escrita (feita em 11/11/2026, branch `feat/cursos-api`)**
+- [x] `POST /api/courses` (201), `PUT /api/courses/{id}` (200, substitui os campos do curso) e `DELETE /api/courses/{id}` (204, definitivo). Exigem `geral` ou `editor` (regra geral de escrita do `SecurityConfig`). `CourseRequestDTO` com Bean Validation: nome obrigatório (RN-UC35-01), departamento, nível e tipo obrigatórios, notas MEC 1–5 e CAPES 1–7, e-mails com formato, limites de tamanho. Erros: 400 (campos, nível × tipo D14, departamento inexistente ou inativo), 404, 401/403. Sem 409 (D13).
+- [x] Texto vazio vira nulo. `active` nulo: no cadastro nasce ativo; na edição mantém. Trocar de departamento exige um ativo; manter o atual (mesmo inativo) não.
+- [x] `GET /api/admin/courses` e `/api/admin/courses/{id}`: incluem inativos, exigem só login (ficam fora de `/api/courses/**`, que é leitura pública). As respostas de curso ganharam o campo `active`.
+- [x] Excluir apaga a matriz **explicitamente** antes do curso (igual no Postgres e no H2 dos testes); os vínculos `place_courses` saem pelo `on delete cascade` do banco (não testável no H2).
+- [x] Auditoria: `Entity.CURSO` na mesma transação; o snapshot é o curso **sem** a matriz (`subjects` nulo) até a 5c. Sem restorer (D15). Migration `20261111043117_auditoria_curso` acrescenta `'curso'` ao check de `audit_logs.entity`: **criada, ainda não aplicada no banco**.
+- [x] Frontend mínimo: histórico mostra "Curso" (rótulo das entidades vem do dicionário `audit.entities`, PT/EN/ES) e não oferece desfazer para curso.
+
+**5b — Telas do painel**
+- [ ] Telas do painel para cursos (casos de uso `[UC35]` e `[UC36]` em `docs/`), usando `/api/admin/courses` para ler e `/api/courses` para escrever. Confirmação explícita antes de excluir (RN-UC36-02).
+
+**5c — Matriz curricular**
+- [ ] **Matriz curricular no formulário de curso (D10):** edição da lista de disciplinas (`curriculum_subjects`: período, código etc.; `null` = bloco "Optativas / Eletivas") junto com o curso, na mesma transação. Excluir o curso remove a matriz (UC36; já feito na 5a).
+- [ ] O snapshot do histórico passa a incluir a matriz.
 - [ ] Verificar se `data/mockCourses.ts` ainda é importado em algum lugar; se não, é código morto e pode sair.
 - Pronto quando: um curso é criado, editado e excluído no painel e aparece em `/cursos`, na busca e na lista de cursos vinculados do formulário de local.
 
