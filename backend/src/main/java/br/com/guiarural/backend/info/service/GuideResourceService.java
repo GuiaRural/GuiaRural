@@ -141,12 +141,15 @@ public class GuideResourceService {
     }
 
     private SupportBannerDTO toBanner(GuideSupportBannerEntity banner, Language language) {
+        LinkDTO cta = banner.getCtaHref() == null || banner.getCtaLabelPt() == null
+                ? null
+                : new LinkDTO(language.pick(banner.getCtaLabelPt(), banner.getCtaLabelEn(), banner.getCtaLabelEs()),
+                        banner.getCtaHref());
         return new SupportBannerDTO(
                 language.pick(banner.getBeforePt(), banner.getBeforeEn(), banner.getBeforeEs()),
                 banner.getHighlight(),
                 language.pick(banner.getAfterPt(), banner.getAfterEn(), banner.getAfterEs()),
-                new LinkDTO(language.pick(banner.getCtaLabelPt(), banner.getCtaLabelEn(), banner.getCtaLabelEs()),
-                        banner.getCtaHref())
+                cta
         );
     }
 

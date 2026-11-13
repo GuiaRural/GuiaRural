@@ -39,7 +39,7 @@ export type GuideSupport = {
   before: string;
   highlight: string;
   after: string;
-  cta: { label: string; href: string };
+  cta: { label: string; href: string } | null;
 };
 
 export type RecifeGuide = {
