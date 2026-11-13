@@ -27,7 +27,6 @@ const WELCOME: Item[] = [
 ];
 
 const SUPPORT: Item[] = [
-  { key: "contactTeam", href: "/contato" },
   { key: "accessibility", href: "/acessibilidade" },
   { key: "admin", href: "/admin" },
 ];

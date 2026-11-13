@@ -81,12 +81,14 @@ export default function GuideTipsSection({
               {support.after}
             </span>
           </p>
-          <Link
-            href={support.cta.href}
-            className="rounded-md bg-white px-3 py-1.5 font-bold text-navy-900 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-navy-700"
-          >
-            {support.cta.label}
-          </Link>
+          {support.cta && (
+            <Link
+              href={support.cta.href}
+              className="rounded-md bg-white px-3 py-1.5 font-bold text-navy-900 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-navy-700"
+            >
+              {support.cta.label}
+            </Link>
+          )}
         </div>
       )}
     </section>
