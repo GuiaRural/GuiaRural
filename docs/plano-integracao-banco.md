@@ -189,7 +189,7 @@ Dividida em três entregas: **5a** API de escrita (sem matriz e sem telas), **5b
 - [x] Texto vazio vira nulo. `active` nulo: no cadastro nasce ativo; na edição mantém. Trocar de departamento exige um ativo; manter o atual (mesmo inativo) não.
 - [x] `GET /api/admin/courses` e `/api/admin/courses/{id}`: incluem inativos, exigem só login (ficam fora de `/api/courses/**`, que é leitura pública). As respostas de curso ganharam o campo `active`.
 - [x] Excluir apaga a matriz **explicitamente** antes do curso (igual no Postgres e no H2 dos testes); os vínculos `place_courses` saem pelo `on delete cascade` do banco (não testável no H2).
-- [x] Auditoria: `Entity.CURSO` na mesma transação; o snapshot é o curso **sem** a matriz (`subjects` nulo) até a 5c. Sem restorer (D15). Migration `20261111043117_auditoria_curso` acrescenta `'curso'` ao check de `audit_logs.entity`: **criada, ainda não aplicada no banco**.
+- [x] Auditoria: `Entity.CURSO` na mesma transação; o snapshot é o curso **sem** a matriz (`subjects` nulo) até a 5c. Sem restorer (D15). Migration `20261111043117_auditoria_curso` acrescenta `'curso'` ao check de `audit_logs.entity`: **aplicada no banco** (conferido em 14/11/2026).
 - [x] Frontend mínimo: histórico mostra "Curso" (rótulo das entidades vem do dicionário `audit.entities`, PT/EN/ES) e não oferece desfazer para curso.
 
 **5b — Telas do painel**
