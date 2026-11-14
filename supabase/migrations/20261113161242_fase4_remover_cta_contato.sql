@@ -1,4 +1,10 @@
 -- D7: não existe tela de contato dedicada; o CTA antigo apontava para uma rota removida.
+-- O banner passa a aceitar "sem CTA" (o backend e o front já tratam CTA nulo).
+-- Os checks de cta_label_pt e cta_href continuam valendo para valores não nulos.
+alter table public.guide_support_banners
+    alter column cta_label_pt drop not null,
+    alter column cta_href drop not null;
+
 update public.guide_support_banners
 set cta_label_pt = null,
     cta_label_en = null,
