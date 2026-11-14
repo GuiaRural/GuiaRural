@@ -53,6 +53,7 @@ Registradas em 10/11/2026 com o time. Todas **fechadas**: podem ser implementada
 | D14 | Nível × tipo do curso | Fechada (11/11/2026) | Validado no `CourseService`, sem mudança no banco: `GRADUACAO` só com `BACHARELADO` ou `LICENCIATURA`; `POS` só com `STRICTO_SENSU`. Fora disso, 400. |
 | D15 | Desfazer de curso | Fechada (11/11/2026) | **Não faz**, nem de edição nem de exclusão (a exclusão já era definitiva pela RN-UC36-01). |
 | D16 | RN-UC35-02 "Edição em Tempo Real" | **Pendente de confirmação com o PO** | Interpretação adotada: "a mudança aparece logo depois de salvar" (a API grava na hora e as leituras públicas não têm cache no servidor). Não há sincronização ao vivo entre abas nem salvamento automático. |
+| D17 | Conteúdo das páginas públicas de locais (Fase 7) | Decidida pelo time em 14/11/2026, **pendente de confirmação com o PO** (sem contato a curto prazo) | Listas dos locais publicados por categoria, sem tabela nova. **Espaços de estudo:** `sala` + `biblioteca`. **Onde comer:** só o RU (`alimentacao`); barracas independentes não estão sob controle do projeto. **Portarias e paradas:** só `portaria`; as paradas de ônibus não entram porque o projeto ainda não comporta o circular. Nome e endereço da página mantidos, com o aviso "As paradas de ônibus serão adicionadas em breve". |
 
 ### 2.1 Respostas às perguntas de 10/11/2026
 Q1 foto: aprovada · Q2 senha esquecida: troca manual no banco, sem endpoint · Q3 módulo `msg` e `/contato`: removidos · Q4 tradução: fora do sistema, marcada como automática · Q5 (a) sem página de acessibilidade, (b) matriz no formulário de curso, (c) `phone` fica no banco e sai do formulário.
@@ -211,12 +212,12 @@ Idiomas: PT, EN e ES (**sem francês**), conforme D9: o painel edita só PT; EN 
 - Pronto quando: trocar o idioma altera nome e descrição de locais, departamentos e cursos que tenham tradução, e cai em PT quando não tiver.
 
 ### Fase 7: Telas públicas que dão 404 (G) — M
-Depende da Fase 1.
-- `/portarias-e-paradas`, `/onde-comer` e `/espacos-de-estudo` podem ser **visões filtradas de `places`** (a tabela já tem as categorias `portaria`, `alimentacao` e `sala`), sem tabela nova. **Confirmar com o PO** antes de assumir.
-- `/acessibilidade`: **não será criada** (D1: o local não terá campo de acessibilidade). Tirar o link da sidebar.
-- `/contato`: **não será criada** (D7 e D6); tirar o link da sidebar.
-- O banco ainda **não tem** portarias nem RU cadastrados; o conteúdo entra pelo painel (Fase 1).
-- Enquanto a página não existir, considerar esconder o item da sidebar em vez de deixar 404.
+Depende da Fase 1. **Implementada** no branch `feat/telas-publicas-locais` (14/11/2026), só no frontend; o conteúdo segue D17.
+- [x] `/portarias-e-paradas`, `/onde-comer` e `/espacos-de-estudo` são **visões filtradas de `places`**, sem tabela nova: um componente único (`components/places/PlaceCategoryPage.tsx`) filtra os locais publicados de `getPublicPlaces()` pelas categorias de cada página (tabela `LISTS` no próprio componente) e ordena por nome. Cada cartão leva à página do local (`/locais/<slug>`). Nomes e endereços vêm só em PT (`lang="pt"`, com aviso em EN/ES). Textos novos em `placeLists` do dicionário; EN/ES precisam de revisão humana.
+- [x] `/acessibilidade`: **não será criada** (D1). O link saiu da sidebar e o texto `sidebar.accessibility` saiu do dicionário.
+- [x] `/contato`: **não será criada** (D7 e D6); o link já tinha saído da sidebar na Fase 4.
+- Dados em 14/11/2026: o RU e as duas portarias vieram da migration `20261110144035_locais_do_mock`; há 3 salas e 2 bibliotecas publicadas. Locais novos dessas categorias cadastrados no painel aparecem sozinhos.
+- Pendente: confirmar D17 com o PO. Paradas de ônibus ficam para quando o projeto comportar o circular.
 
 ## 5. Backlog fora do banco (sem detalhamento)
 Rota pela malha viária atrás de uma Facade (RNF08; `services/routeService.ts` hoje liga origem e destino em linha reta) · cache offline persistente (RNF03) · Dockerfile e GitHub Actions (CI/CD, 4 ambientes) · testes de página no frontend · GPS no botão da busca (FA-38.02) · "manter conectado" com cookie persistente.
