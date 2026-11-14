@@ -12,6 +12,7 @@ export default function Modal({
   icon,
   children,
   size = "md",
+  closeOnBackdrop = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -20,6 +21,8 @@ export default function Modal({
   icon?: ReactNode;
   children: ReactNode;
   size?: "sm" | "md" | "lg";
+  // Só para avisos: em formulários, um clique fora sem querer perderia o que foi digitado.
+  closeOnBackdrop?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -40,6 +43,10 @@ export default function Modal({
       onCancel={(e) => {
         e.preventDefault();
         onClose();
+      }}
+      // O clique no fundo escurecido chega ao próprio <dialog>; cliques no conteúdo têm outro alvo.
+      onClick={(e) => {
+        if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
       aria-labelledby={titleId}
       className={`m-auto w-[calc(100%-2rem)] ${width} overflow-hidden rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/60`}
