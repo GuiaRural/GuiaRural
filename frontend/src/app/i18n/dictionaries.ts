@@ -2,6 +2,7 @@ import type { GuideSection, GuideStage } from "../services/guidesService";
 import type { PlaceCategory } from "../services/placesService";
 import type { CourseType } from "../services/coursesService";
 import type { AuditEntityKey } from "../services/auditService";
+import type { ContactFieldError } from "../services/messagesService";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -185,6 +186,30 @@ export type Dictionary = {
     error: string;
     retry: string;
     portugueseOnly: string;
+  };
+  // UC39 — formulário "Falar com a equipe" (/contato).
+  contact: {
+    title: string;
+    requiredHint: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    phoneLabel: string;
+    phonePlaceholder: string;
+    phoneHint: string;
+    messageLabel: string;
+    messagePlaceholder: string;
+    characters: string;
+    send: string;
+    sending: string;
+    successTitle: string;
+    success: string;
+    errorTitle: string;
+    invalidFields: string;
+    sendError: string;
+    ok: string;
+    fieldErrors: Record<ContactFieldError, string>;
   };
   weeklyMenu: {
     title: string;
@@ -459,6 +484,34 @@ export const dictionaries: Record<Language, Dictionary> = {
       error: "Não foi possível carregar os serviços.",
       retry: "Tentar novamente",
       portugueseOnly: "",
+    },
+    contact: {
+      title: "Entre em contato com a administração",
+      requiredHint: "Campos com * são obrigatórios.",
+      nameLabel: "Nome",
+      namePlaceholder: "Digite seu nome",
+      emailLabel: "E-mail",
+      emailPlaceholder: "Digite seu e-mail",
+      phoneLabel: "Telefone (opcional)",
+      phonePlaceholder: "(81) 99999-9999",
+      phoneHint: "Com DDD.",
+      messageLabel: "Mensagem",
+      messagePlaceholder: "Digite sua mensagem",
+      characters: "caracteres",
+      send: "Enviar",
+      sending: "Enviando...",
+      successTitle: "Mensagem enviada",
+      success: "Mensagem enviada com sucesso",
+      errorTitle: "Falha ao enviar",
+      invalidFields: "Falha ao enviar a mensagem: preencha todos os campos solicitados",
+      sendError: "Falha ao enviar a mensagem. Verifique sua conexão e tente novamente.",
+      ok: "OK",
+      fieldErrors: {
+        required: "Preencha este campo.",
+        tooLong: "Texto maior que o permitido.",
+        invalidEmail: "Digite um e-mail válido, como nome@exemplo.com.",
+        invalidPhone: "Digite o telefone com DDD, como (81) 99999-9999.",
+      },
     },
     weeklyMenu: {
       title: "Cardápio da semana",
@@ -739,6 +792,34 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       portugueseOnly: "Services are published in Portuguese.",
     },
+    contact: {
+      title: "Contact the administration",
+      requiredHint: "Fields marked with * are required.",
+      nameLabel: "Name",
+      namePlaceholder: "Enter your name",
+      emailLabel: "Email",
+      emailPlaceholder: "Enter your email",
+      phoneLabel: "Phone (optional)",
+      phonePlaceholder: "(81) 99999-9999",
+      phoneHint: "Brazilian number with area code (DDD).",
+      messageLabel: "Message",
+      messagePlaceholder: "Enter your message",
+      characters: "characters",
+      send: "Send",
+      sending: "Sending...",
+      successTitle: "Message sent",
+      success: "Message sent successfully",
+      errorTitle: "Could not send",
+      invalidFields: "Could not send the message: please fill in all required fields",
+      sendError: "Could not send the message. Check your connection and try again.",
+      ok: "OK",
+      fieldErrors: {
+        required: "Please fill in this field.",
+        tooLong: "This text is longer than allowed.",
+        invalidEmail: "Enter a valid email, such as name@example.com.",
+        invalidPhone: "Enter the phone number with area code, such as (81) 99999-9999.",
+      },
+    },
     weeklyMenu: {
       title: "Weekly menu",
       subtitle: "University Restaurant · lunch 11am–2pm · dinner 5:30pm–7:30pm",
@@ -1017,6 +1098,34 @@ export const dictionaries: Record<Language, Dictionary> = {
       error: "No fue posible cargar los servicios.",
       retry: "Intentar de nuevo",
       portugueseOnly: "Los servicios se publican en portugués.",
+    },
+    contact: {
+      title: "Contacta con la administración",
+      requiredHint: "Los campos con * son obligatorios.",
+      nameLabel: "Nombre",
+      namePlaceholder: "Escribe tu nombre",
+      emailLabel: "Correo electrónico",
+      emailPlaceholder: "Escribe tu correo electrónico",
+      phoneLabel: "Teléfono (opcional)",
+      phonePlaceholder: "(81) 99999-9999",
+      phoneHint: "Número brasileño con código de área (DDD).",
+      messageLabel: "Mensaje",
+      messagePlaceholder: "Escribe tu mensaje",
+      characters: "caracteres",
+      send: "Enviar",
+      sending: "Enviando...",
+      successTitle: "Mensaje enviado",
+      success: "Mensaje enviado con éxito",
+      errorTitle: "No se pudo enviar",
+      invalidFields: "No fue posible enviar el mensaje: completa todos los campos solicitados",
+      sendError: "No fue posible enviar el mensaje. Revisa tu conexión e inténtalo de nuevo.",
+      ok: "OK",
+      fieldErrors: {
+        required: "Completa este campo.",
+        tooLong: "El texto es más largo de lo permitido.",
+        invalidEmail: "Escribe un correo válido, como nombre@ejemplo.com.",
+        invalidPhone: "Escribe el teléfono con código de área, como (81) 99999-9999.",
+      },
     },
     weeklyMenu: {
       title: "Menú de la semana",
