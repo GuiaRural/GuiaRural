@@ -118,8 +118,8 @@ class GuideResourceServiceTest {
                 "beforePt", "Procure a ", "beforeEn", "Contact the ",
                 "highlight", "PROGEST / DACE",
                 "afterPt", " no Prédio Central.", "afterEn", " at the Central Building.",
-                "ctaLabelPt", "Falar com Apoio", "ctaLabelEn", "Talk to Support",
-                "ctaHref", "/contato");
+                "ctaLabelPt", null, "ctaLabelEn", null,
+                "ctaHref", null);
         when(spotRepository.findAllByOrderByPositionAsc()).thenReturn(List.of());
         when(tipRepository.findAllByOrderByPositionAsc()).thenReturn(List.of());
         when(bannerRepository.findBySlug("recife")).thenReturn(Optional.of(banner));
@@ -130,8 +130,7 @@ class GuideResourceServiceTest {
         assertEquals("Contact the ", support.before());
         assertEquals("PROGEST / DACE", support.highlight());
         assertEquals(" at the Central Building.", support.after());
-        assertEquals("Talk to Support", support.cta().label());
-        assertEquals("/contato", support.cta().href());
+        assertNull(support.cta());
     }
 
     @Test

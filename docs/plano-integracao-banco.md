@@ -174,10 +174,10 @@ Depende das Fases 1 e 2 (locais e administradores no servidor). **Implementada**
 Substitui o antigo plano de "tela de contato e caixa de mensagens". Depende da Fase 1 (local) e da Fase 5 (curso).
 - **Local:** o responsável (nome + e-mail) vive em `contacts` e vai no formulário de local (Fase 1).
 - **Curso:** a tabela `courses` **já tem** `coordinator_name`, `vice_coordinator_name`, `email` e `secondary_email`; não precisa de tabela nova. O formulário de curso (Fase 5) expõe esses campos.
-- [ ] Exibir o responsável e o e-mail (link `mailto:`) na página do local e na do curso, sem inventar dado (campo vazio não aparece).
-- [ ] O `ContactController` avulso (`/api/contacts`) fica redundante: remover ou restringir ao painel depois de confirmar que ninguém o consome (nada no frontend o chama hoje).
-- [ ] Conforme D6: **remover** o módulo `msg` (código, testes e a regra de `POST /api/messages` público e isento de CSRF no `SecurityConfig`) e o item `/contato` da sidebar. A tabela `messages` pode ficar no banco ou sair por migration própria (decidir ao implementar, com cuidado: é DDL destrutivo).
-- [ ] Atualizar o `CLAUDE.md` (hoje descreve `contacts` como placeholder).
+- [x] Exibir o responsável e o e-mail (link `mailto:`) na página do local e na do curso, sem inventar dado (campo vazio não aparece).
+- [x] O `ContactController` avulso (`/api/contacts`) fica redundante: removido depois de confirmar que ninguém o consome (nada no frontend o chamava).
+- [x] Conforme D6: **remover** o módulo `msg` (código, testes e a regra de `POST /api/messages` público e isento de CSRF no `SecurityConfig`) e o item `/contato` da sidebar. A tabela `messages` foi mantida no banco para evitar DDL destrutivo.
+- [x] Atualizar o `CLAUDE.md` (descreve `contacts` como persistência dos responsáveis dos locais).
 - Pronto quando: a página de um local e a de um curso mostram o responsável e o e-mail cadastrados no painel, e não sobra rota pública sem uso.
 
 ### Fase 5: Cursos, escrita e dados (E) — G

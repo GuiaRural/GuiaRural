@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useState } from "react";
+import type { ReactNode } from "react";
 import AppShell from "../../components/common/AppShell";
 import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import ApiFailure from "../../components/courses/ApiFailure";
@@ -94,8 +95,12 @@ function CourseDetails({ course }: { course: CourseDetail }) {
             lines={[
               c.phone && `${t.courses.phone}: ${c.phone}`,
               c.extension && `${t.courses.extension}: ${c.extension}`,
-              c.email,
-              c.secondaryEmail,
+              c.email && <a href={`mailto:${c.email}`} className="text-navy-700 underline">{c.email}</a>,
+              c.secondaryEmail && (
+                <a href={`mailto:${c.secondaryEmail}`} className="text-navy-700 underline">
+                  {c.secondaryEmail}
+                </a>
+              ),
             ]}
           />
         </div>
@@ -106,15 +111,15 @@ function CourseDetails({ course }: { course: CourseDetail }) {
   );
 }
 
-function InfoCard({ title, lines }: { title: string; lines: (string | null | undefined | false)[] }) {
-  const shown = lines.filter(Boolean) as string[];
+function InfoCard({ title, lines }: { title: string; lines: (ReactNode | null | undefined | false)[] }) {
+  const shown = lines.filter(Boolean);
   if (shown.length === 0) return null;
   return (
     <div className="rounded-xl bg-slate-50 p-4 text-sm">
       <h3 className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{title}</h3>
       <div className="mt-1 space-y-1 text-slate-700">
-        {shown.map((line) => (
-          <p key={line}>{line}</p>
+        {shown.map((line, index) => (
+          <p key={typeof line === "string" ? line : index}>{line}</p>
         ))}
       </div>
     </div>

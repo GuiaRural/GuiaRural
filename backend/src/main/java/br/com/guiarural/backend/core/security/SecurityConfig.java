@@ -12,7 +12,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
-import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
@@ -59,8 +58,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers("/api/auth/login")
-                        .ignoringRequestMatchers(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/messages")))
+                        .ignoringRequestMatchers("/api/auth/login"))
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .addFilterAfter(new AdminSessionRefreshFilter(adminRepository, securityContextRepository), SecurityContextHolderFilter.class)
                 .exceptionHandling(errors -> errors
@@ -69,8 +67,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/actuator/health/**", "/error").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll();
-                    // Formulário de contato (público). Ler e apagar mensagens é do painel.
-                    auth.requestMatchers(HttpMethod.POST, "/api/messages").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated();
                     auth.requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll();
                     // UC13: cadastrar, aprovar, mudar perfil e revogar administradores é só do perfil "geral". Vem antes

@@ -100,21 +100,11 @@ class AdminSecurityIntegrationTest {
     }
 
     @Test
-    @DisplayName("Dados internos exigem login: mensagens, contatos, traduções e histórico")
+    @DisplayName("Dados internos exigem login: traduções e histórico")
     void protectedReadsRequireLogin() throws Exception {
-        mvc.perform(get("/api/messages")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/contacts")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/guide/translations/topics").param("section", "cultura")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/admin/audit-logs")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("O formulário de contato continua público, sem sessão nem token CSRF")
-    void contactFormStaysPublic() throws Exception {
-        // Corpo vazio: chega à validação (400), não é barrado por login (401) nem por CSRF (403).
-        mvc.perform(post("/api/messages").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadRequest());
     }
 
     @Test
