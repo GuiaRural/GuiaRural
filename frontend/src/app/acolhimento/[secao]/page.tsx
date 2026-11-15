@@ -6,24 +6,24 @@ import { use, useEffect, useState, type ReactNode } from "react";
 import AppShell from "../../components/common/AppShell";
 import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import { useLanguage } from "../../context/LanguageContext";
+import { useApi } from "../../hooks/useApi";
 import {
-  EMERGENCY_NUMBERS,
-  GUIDE_DOWNLOADS,
   GUIDE_SECTIONS,
-  SUPPORT_CONTACTS,
-  type GuideBlock,
+  MIN_SEARCH_LENGTH,
+  getChecklist,
+  loadGuideResources,
+  loadGuideSearch,
+  loadGuideTopic,
+  loadGuideTopics,
+  toggleChecklistItem,
+  type GuideResources,
   type GuideSection,
   type GuideStage,
-  type GuideTopic,
-  type Translated,
-} from "../../data/mockGuides";
-import {
-  getChecklist,
-  getGuideTopics,
-  isFullyTranslated,
-  searchGuides,
-  toggleChecklistItem,
-  translate,
+  type GuideTopicDetail,
+  type GuideTopicSummary,
+  type ResolvedGuideBlock,
+  type TopicKey,
+  type TopicsKey,
 } from "../../services/guidesService";
 
 function isSection(value: string): value is GuideSection {
@@ -40,13 +40,16 @@ export default function GuidePage({ params }: PageProps<"/acolhimento/[secao]">)
   );
 }
 
-type LoadState = { status: "loading" } | { status: "ready"; topics: GuideTopic[] } | { status: "error" };
-
 const STAGES: GuideStage[] = ["antes", "chegada", "primeiras-semanas", "mobilidade"];
 
-function useTr() {
-  const { language } = useLanguage();
-  return (text: Translated) => translate(text, language).text;
+// Espera o usuário parar de digitar antes de buscar, para não chamar a API a cada tecla (RNF01).
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
 }
 
 // ~200 palavras por minuto, nunca menos de 1 min.
@@ -57,15 +60,13 @@ function readingMinutes(texts: string[]): number {
 
 function GuideSectionView({ section }: { section: GuideSection }) {
   const { t, language } = useLanguage();
-  const [state, setState] = useState<LoadState>({ status: "loading" });
+  // O servidor devolve os textos já no idioma escolhido: trocar o idioma refaz as buscas.
+  const topicsState = useApi(loadGuideTopics, `${section}:${language}` satisfies TopicsKey);
+  const resourcesState = useApi(loadGuideResources, language);
   const [topicId, setTopicId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    getGuideTopics(section)
-      .then((topics) => setState({ status: "ready", topics }))
-      .catch(() => setState({ status: "error" }));
-  }, [section]);
+  const debouncedQuery = useDebounced(query, 300);
+  const searchState = useApi(loadGuideSearch, `${language}:${debouncedQuery}`);
 
   // O tópico aberto fica no endereço (#cpf) para poder ser compartilhado e aberto pela busca.
   useEffect(() => {
@@ -82,10 +83,11 @@ function GuideSectionView({ section }: { section: GuideSection }) {
   }
 
   const info = t.guides.sections[section];
-  const topics = state.status === "ready" ? state.topics : [];
-  const topic = topics.find((g) => g.id === topicId);
-  const results = searchGuides(query, language);
-  const searching = query.trim().length >= 2;
+  const topics = topicsState.status === "ready" ? topicsState.data : [];
+  const resources = resourcesState.status === "ready" ? resourcesState.data : null;
+  const searching = query.trim().length >= MIN_SEARCH_LENGTH;
+  // Enquanto o usuário digita, a busca ainda não tem o termo final.
+  const searchPending = query.trim() !== debouncedQuery.trim() || searchState.status === "loading";
 
   return (
     <div className="h-full overflow-y-auto">
@@ -147,23 +149,29 @@ function GuideSectionView({ section }: { section: GuideSection }) {
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         {searching ? (
-          <SearchResults results={results} currentSection={section} onOpen={openTopic} />
+          searchPending ? (
+            <TopicsSkeleton label={t.common.loading} />
+          ) : searchState.status === "error" ? (
+            <Unavailable message={t.guides.unavailable} />
+          ) : (
+            <SearchResults results={searchState.status === "ready" ? searchState.data : []} currentSection={section} onOpen={openTopic} />
+          )
         ) : (
           <>
-            {state.status === "loading" && <TopicsSkeleton label={t.common.loading} />}
-            {(state.status === "error" || (state.status === "ready" && topics.length === 0)) && <Unavailable message={t.guides.unavailable} />}
+            {topicsState.status === "loading" && <TopicsSkeleton label={t.common.loading} />}
+            {(topicsState.status === "error" || (topicsState.status === "ready" && topics.length === 0)) && <Unavailable message={t.guides.unavailable} />}
 
-            {state.status === "ready" && topics.length > 0 && (
+            {topicsState.status === "ready" && topics.length > 0 && (
               <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
                 {/* No celular, a lista some enquanto a cartilha está aberta */}
-                <div className={`space-y-6 ${topic ? "hidden lg:block" : ""}`}>
+                <div className={`space-y-6 ${topicId ? "hidden lg:block" : ""}`}>
                   <TopicList section={section} topics={topics} activeId={topicId} onSelect={openTopic} />
-                  <HelpCard />
-                  {(section === "cultura" || section === "documentos") && <DownloadsCard />}
+                  {resources && <HelpCard resources={resources} />}
+                  {resources && (section === "cultura" || section === "documentos") && <DownloadsCard resources={resources} />}
                 </div>
 
-                {topic ? (
-                  <GuideReader key={topic.id} topic={topic} onBack={() => openTopic(null)} />
+                {topicId ? (
+                  <GuideReader key={topicId} slug={topicId} onBack={() => openTopic(null)} />
                 ) : section === "documentos" ? (
                   <DocumentsTimeline topics={topics} onSelect={openTopic} />
                 ) : (
@@ -185,7 +193,7 @@ function TopicList({
   onSelect,
 }: {
   section: GuideSection;
-  topics: GuideTopic[];
+  topics: GuideTopicSummary[];
   activeId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -209,8 +217,8 @@ function TopicList({
           {stage && <h3 className="mb-2 mt-4 text-[11px] font-bold uppercase tracking-wider text-amber-700">{t.guides.stages[stage]}</h3>}
           <ul className="space-y-3">
             {items.map((g) => (
-              <li key={g.id}>
-                <TopicCard topic={g} index={index++} active={g.id === activeId} onSelect={() => onSelect(g.id)} />
+              <li key={g.slug}>
+                <TopicCard topic={g} index={index++} active={g.slug === activeId} onSelect={() => onSelect(g.slug)} />
               </li>
             ))}
           </ul>
@@ -220,10 +228,7 @@ function TopicList({
   );
 }
 
-function TopicCard({ topic, index, active, onSelect }: { topic: GuideTopic; index: number; active: boolean; onSelect: () => void }) {
-  const { language } = useLanguage();
-  const tr = useTr();
-
+function TopicCard({ topic, index, active, onSelect }: { topic: GuideTopicSummary; index: number; active: boolean; onSelect: () => void }) {
   return (
     <button
       type="button"
@@ -241,20 +246,19 @@ function TopicCard({ topic, index, active, onSelect }: { topic: GuideTopic; inde
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-2">
-          <span className="font-bold text-navy-900">{tr(topic.title)}</span>
-          {!isFullyTranslated(topic, language) && (
+          <span className="font-bold text-navy-900">{topic.title}</span>
+          {!topic.fullyTranslated && (
             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">PT</span>
           )}
         </span>
-        <span className="mt-1 block text-sm text-slate-600">{tr(topic.summary)}</span>
+        <span className="mt-1 block text-sm text-slate-600">{topic.summary}</span>
       </span>
     </button>
   );
 }
 
-function SearchResults({ results, currentSection, onOpen }: { results: GuideTopic[]; currentSection: GuideSection; onOpen: (id: string) => void }) {
+function SearchResults({ results, currentSection, onOpen }: { results: GuideTopicSummary[]; currentSection: GuideSection; onOpen: (id: string) => void }) {
   const { t } = useLanguage();
-  const tr = useTr();
 
   return (
     <section aria-live="polite">
@@ -271,18 +275,18 @@ function SearchResults({ results, currentSection, onOpen }: { results: GuideTopi
             const content = (
               <>
                 <span className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{t.guides.sections[g.section].title}</span>
-                <span className="mt-0.5 block font-bold text-navy-900">{tr(g.title)}</span>
-                <span className="mt-1 block text-sm text-slate-600">{tr(g.summary)}</span>
+                <span className="mt-0.5 block font-bold text-navy-900">{g.title}</span>
+                <span className="mt-1 block text-sm text-slate-600">{g.summary}</span>
               </>
             );
             return (
-              <li key={g.id}>
+              <li key={g.slug}>
                 {g.section === currentSection ? (
-                  <button type="button" onClick={() => onOpen(g.id)} className={`w-full ${className}`}>
+                  <button type="button" onClick={() => onOpen(g.slug)} className={`w-full ${className}`}>
                     {content}
                   </button>
                 ) : (
-                  <Link href={`/acolhimento/${g.section}#${g.id}`} className={className}>
+                  <Link href={`/acolhimento/${g.section}#${g.slug}`} className={className}>
                     {content}
                   </Link>
                 )}
@@ -295,13 +299,32 @@ function SearchResults({ results, currentSection, onOpen }: { results: GuideTopi
   );
 }
 
-// Passo 2: detalhes completos da cartilha e links de apoio.
-function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void }) {
+// Passo 2: carrega o tópico aberto (conteúdo completo) no idioma ativo.
+function GuideReader({ slug, onBack }: { slug: string; onBack: () => void }) {
   const { t, language } = useLanguage();
-  const tr = useTr();
+  const state = useApi(loadGuideTopic, `${slug}:${language}` satisfies TopicKey);
+
+  if (state.status === "loading") {
+    return <div role="status" aria-label={t.common.loading} className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />;
+  }
+  if (state.status === "error") {
+    return (
+      <div>
+        <button type="button" onClick={onBack} className="mb-3 text-sm font-semibold text-navy-900 hover:underline lg:hidden">
+          ← {t.guides.backToTopics}
+        </button>
+        <Unavailable message={t.guides.unavailable} />
+      </div>
+    );
+  }
+  return <GuideArticle topic={state.data} onBack={onBack} />;
+}
+
+// Detalhes completos da cartilha e links de apoio.
+function GuideArticle({ topic, onBack }: { topic: GuideTopicDetail; onBack: () => void }) {
+  const { t, language } = useLanguage();
   const [copied, setCopied] = useState(false);
-  const title = translate(topic.title, language);
-  const minutes = readingMinutes(topic.blocks.flatMap((b) => ("text" in b && typeof b.text === "object" ? [tr(b.text)] : [])));
+  const minutes = readingMinutes(topic.blocks.flatMap((b) => ("text" in b && typeof b.text === "string" ? [b.text] : [])));
 
   async function copyLink() {
     try {
@@ -322,15 +345,15 @@ function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void 
         <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
           {topic.stage ? t.guides.stages[topic.stage] : t.guides.sections[topic.section].title} · {minutes} {t.guides.readingTime}
         </p>
-        <h2 id="guide-title" lang={title.fallback ? "pt" : language} className="mt-1 text-2xl font-bold text-navy-900">
-          {title.text}
+        <h2 id="guide-title" lang={topic.titleLang} className="mt-1 text-2xl font-bold text-navy-900">
+          {topic.title}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">{tr(topic.summary)}</p>
+        <p className="mt-1 text-sm text-slate-600">{topic.summary}</p>
       </div>
 
       <div className="px-6 py-5">
         {/* FE01: sem tradução, o texto em português é exibido e o usuário é avisado */}
-        {!isFullyTranslated(topic, language) && (
+        {!topic.fullyTranslated && (
           <p role="status" className="mb-5 flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             <span aria-hidden className="font-bold">
               ⓘ
@@ -339,7 +362,8 @@ function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void 
           </p>
         )}
 
-        <div className="space-y-5 text-[15px] leading-relaxed text-slate-800">
+        {/* Com tradução incompleta o texto mistura idiomas: só marcamos o idioma quando todo o conteúdo o tem. */}
+        <div lang={topic.fullyTranslated ? language : undefined} className="space-y-5 text-[15px] leading-relaxed text-slate-800">
           {topic.blocks.map((block, i) => (
             <Block key={i} block={block} />
           ))}
@@ -356,11 +380,11 @@ function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void 
                   <li key={l.url}>
                     {l.url.startsWith("/") ? (
                       <Link href={l.url} className={className}>
-                        {tr(l.label)} <span aria-hidden>→</span>
+                        {l.label} <span aria-hidden>→</span>
                       </Link>
                     ) : (
                       <a href={l.url} target="_blank" rel="noopener noreferrer" className={className}>
-                        {tr(l.label)} <span aria-hidden>↗</span>
+                        {l.label} <span aria-hidden>↗</span>
                         <span className="sr-only">({t.serviceCard.newTab})</span>
                       </a>
                     )}
@@ -372,12 +396,10 @@ function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void 
         )}
 
         <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 text-xs text-slate-500">
-          <p>
-            {t.guides.source}: {tr(topic.source)}
-          </p>
+          <p>{topic.source && `${t.guides.source}: ${topic.source}`}</p>
           <div className="flex gap-2">
-            {topic.placeId && (
-              <Link href={`/locais/${topic.placeId}`} className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50">
+            {topic.placeSlug && (
+              <Link href={`/locais/${topic.placeSlug}`} className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50">
                 {t.guides.viewOnMap}
               </Link>
             )}
@@ -391,35 +413,25 @@ function GuideReader({ topic, onBack }: { topic: GuideTopic; onBack: () => void 
   );
 }
 
-function Localized({ text, as: Tag = "span", className }: { text: Translated; as?: "span" | "p" | "h3" | "li" | "dt" | "dd"; className?: string }) {
-  const { language } = useLanguage();
-  const { text: value, fallback } = translate(text, language);
-  return (
-    <Tag lang={fallback ? "pt" : language} className={className}>
-      {value}
-    </Tag>
-  );
-}
-
 const CALLOUT_STYLES = {
   info: { box: "border-sky-200 bg-sky-50 text-sky-950", icon: "ⓘ" },
   tip: { box: "border-emerald-200 bg-emerald-50 text-emerald-950", icon: "✦" },
   warning: { box: "border-red-200 bg-red-50 text-red-950", icon: "!" },
 } as const;
 
-function Block({ block }: { block: GuideBlock }) {
+function Block({ block }: { block: ResolvedGuideBlock }) {
   switch (block.type) {
     case "heading":
-      return <Localized as="h3" text={block.text} className="pt-1 text-base font-bold text-navy-900" />;
+      return <h3 className="pt-1 text-base font-bold text-navy-900">{block.text}</h3>;
     case "p":
-      return <Localized as="p" text={block.text} className="max-w-prose" />;
+      return <p className="max-w-prose">{block.text}</p>;
     case "list":
       return (
         <ul className="max-w-prose space-y-1.5">
           {block.items.map((item, i) => (
             <li key={i} className="flex gap-2">
               <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-brand-yellow ring-2 ring-amber-200" />
-              <Localized text={item} />
+              <span>{item}</span>
             </li>
           ))}
         </ul>
@@ -433,8 +445,8 @@ function Block({ block }: { block: GuideBlock }) {
                 {i + 1}
               </span>
               <div className="pt-0.5">
-                <Localized as="p" text={step.title} className="font-semibold text-navy-900" />
-                {step.text && <Localized as="p" text={step.text} className="mt-0.5 text-sm text-slate-700" />}
+                <p className="font-semibold text-navy-900">{step.title}</p>
+                {step.text && <p className="mt-0.5 text-sm text-slate-700">{step.text}</p>}
               </div>
             </li>
           ))}
@@ -450,8 +462,8 @@ function Block({ block }: { block: GuideBlock }) {
             {style.icon}
           </span>
           <div>
-            {block.title && <Localized as="p" text={block.title} className="font-bold" />}
-            <Localized as="p" text={block.text} className={block.title ? "mt-0.5" : undefined} />
+            {block.title && <p className="font-bold">{block.title}</p>}
+            <p className={block.title ? "mt-0.5" : undefined}>{block.text}</p>
           </div>
         </div>
       );
@@ -461,8 +473,8 @@ function Block({ block }: { block: GuideBlock }) {
         <dl className="grid gap-3 sm:grid-cols-2">
           {block.items.map((f, i) => (
             <div key={i} className="rounded-xl bg-background p-3 ring-1 ring-slate-200">
-              <Localized as="dt" text={f.label} className="text-[11px] font-bold uppercase tracking-wide text-amber-700" />
-              <Localized as="dd" text={f.value} className="mt-1 text-sm text-slate-800" />
+              <dt className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{f.label}</dt>
+              <dd className="mt-1 text-sm text-slate-800">{f.value}</dd>
             </div>
           ))}
         </dl>
@@ -474,10 +486,9 @@ function Block({ block }: { block: GuideBlock }) {
   }
 }
 
-function Checklist({ block }: { block: Extract<GuideBlock, { type: "checklist" }> }) {
+function Checklist({ block }: { block: Extract<ResolvedGuideBlock, { type: "checklist" }> }) {
   const { t } = useLanguage();
-  const tr = useTr();
-  // A cartilha só é renderizada no navegador (após carregar os tópicos), então o progresso salvo pode ser lido direto.
+  // A cartilha só é renderizada no navegador (após carregar o tópico), então o progresso salvo pode ser lido direto.
   const [checked, setChecked] = useState(() => getChecklist(block.id));
 
   const done = checked.length;
@@ -485,7 +496,7 @@ function Checklist({ block }: { block: Extract<GuideBlock, { type: "checklist" }
 
   return (
     <fieldset className="rounded-xl border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-bold text-navy-900">{tr(block.title)}</legend>
+      <legend className="px-1 text-sm font-bold text-navy-900">{block.title}</legend>
       <div className="mb-3 flex items-center gap-3">
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(done / total) * 100}%` }} />
@@ -506,7 +517,7 @@ function Checklist({ block }: { block: Extract<GuideBlock, { type: "checklist" }
                   onChange={() => setChecked(toggleChecklistItem(block.id, i))}
                   className="mt-0.5 size-4 shrink-0 accent-navy-900"
                 />
-                <Localized text={item} className={isChecked ? "text-slate-500 line-through" : "text-slate-800"} />
+                <span className={isChecked ? "text-slate-500 line-through" : "text-slate-800"}>{item}</span>
               </label>
             </li>
           );
@@ -516,14 +527,13 @@ function Checklist({ block }: { block: Extract<GuideBlock, { type: "checklist" }
   );
 }
 
-function VideoBlock({ block }: { block: Extract<GuideBlock, { type: "video" }> }) {
-  const tr = useTr();
+function VideoBlock({ block }: { block: Extract<ResolvedGuideBlock, { type: "video" }> }) {
   return (
     <figure className="overflow-hidden rounded-xl bg-navy-900 shadow-sm">
       <div className="aspect-video">
         <iframe
           src={`https://drive.google.com/file/d/${block.driveId}/preview`}
-          title={tr(block.title)}
+          title={block.title}
           allow="autoplay; fullscreen"
           allowFullScreen
           loading="lazy"
@@ -531,29 +541,28 @@ function VideoBlock({ block }: { block: Extract<GuideBlock, { type: "video" }> }
         />
       </div>
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-white">
-        <span className="font-semibold">{tr(block.title)}</span>
+        <span className="font-semibold">{block.title}</span>
         <span className="text-xs text-slate-300">© {block.credit}</span>
       </figcaption>
     </figure>
   );
 }
 
-function GalleryBlock({ block }: { block: Extract<GuideBlock, { type: "gallery" }> }) {
+function GalleryBlock({ block }: { block: Extract<ResolvedGuideBlock, { type: "gallery" }> }) {
   const { t } = useLanguage();
-  const tr = useTr();
   return (
     <figure className="overflow-hidden rounded-xl border border-slate-200">
       {block.embed && (
         <iframe
           src={`https://drive.google.com/embeddedfolderview?id=${block.folderId}#grid`}
-          title={tr(block.title)}
+          title={block.title}
           loading="lazy"
           className="h-80 w-full border-b border-slate-200 bg-white"
         />
       )}
       <figcaption className="flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-3">
         <span>
-          <span className="block font-semibold text-navy-900">{tr(block.title)}</span>
+          <span className="block font-semibold text-navy-900">{block.title}</span>
           <span className="text-xs text-slate-600">
             {t.guides.photoCredit}: © {block.credit}
           </span>
@@ -568,9 +577,8 @@ function GalleryBlock({ block }: { block: Extract<GuideBlock, { type: "gallery" 
 }
 
 // FA02: visão geral dos documentos na ordem em que o estudante precisa deles.
-function DocumentsTimeline({ topics, onSelect }: { topics: GuideTopic[]; onSelect: (id: string) => void }) {
+function DocumentsTimeline({ topics, onSelect }: { topics: GuideTopicSummary[]; onSelect: (id: string) => void }) {
   const { t } = useLanguage();
-  const tr = useTr();
 
   return (
     <section aria-labelledby="timeline-title" className="rounded-2xl bg-white p-6 shadow-sm">
@@ -593,12 +601,12 @@ function DocumentsTimeline({ topics, onSelect }: { topics: GuideTopic[]; onSelec
                 <div className="mt-2 flex flex-wrap gap-2">
                   {items.map((g) => (
                     <button
-                      key={g.id}
+                      key={g.slug}
                       type="button"
-                      onClick={() => onSelect(g.id)}
+                      onClick={() => onSelect(g.slug)}
                       className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:border-amber-300 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-navy-900"
                     >
-                      {tr(g.title)}
+                      {g.title}
                     </button>
                   ))}
                 </div>
@@ -620,15 +628,14 @@ function SideCard({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function HelpCard() {
+function HelpCard({ resources }: { resources: GuideResources }) {
   const { t } = useLanguage();
-  const tr = useTr();
   return (
     <SideCard title={t.guides.helpTitle}>
       <ul className="mt-3 space-y-2.5 text-sm">
-        {SUPPORT_CONTACTS.map((c) => (
+        {resources.support.map((c) => (
           <li key={c.href}>
-            <span className="block text-xs text-slate-500">{tr(c.label)}</span>
+            <span className="block text-xs text-slate-500">{c.label}</span>
             <a
               href={c.href}
               {...(c.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
@@ -641,14 +648,14 @@ function HelpCard() {
       </ul>
       <h3 className="mt-5 text-[11px] font-bold uppercase tracking-wider text-red-700">{t.guides.emergencyTitle}</h3>
       <ul className="mt-2 grid grid-cols-3 gap-2">
-        {EMERGENCY_NUMBERS.map((e) => (
-          <li key={e.number}>
+        {resources.emergency.map((e) => (
+          <li key={e.href}>
             <a
-              href={`tel:${e.number}`}
+              href={e.href}
               className="flex h-full flex-col items-center rounded-xl bg-red-50 px-2 py-2 text-center ring-1 ring-red-100 hover:bg-red-100"
             >
-              <span className="text-lg font-bold text-red-700">{e.number}</span>
-              <span className="text-[11px] leading-tight text-red-900">{tr(e.label)}</span>
+              <span className="text-lg font-bold text-red-700">{e.value}</span>
+              <span className="text-[11px] leading-tight text-red-900">{e.label}</span>
             </a>
           </li>
         ))}
@@ -657,13 +664,12 @@ function HelpCard() {
   );
 }
 
-function DownloadsCard() {
+function DownloadsCard({ resources }: { resources: GuideResources }) {
   const { t } = useLanguage();
-  const tr = useTr();
   return (
     <SideCard title={t.guides.downloadsTitle}>
       <ul className="mt-3 space-y-2">
-        {GUIDE_DOWNLOADS.map((d) => (
+        {resources.downloads.map((d) => (
           <li key={d.href}>
             <a
               href={d.href}
@@ -671,7 +677,7 @@ function DownloadsCard() {
               rel="noopener noreferrer"
               className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm hover:border-amber-300 hover:bg-amber-50"
             >
-              <span className="font-semibold text-navy-900">{tr(d.label)}</span>
+              <span className="font-semibold text-navy-900">{d.label}</span>
               <span className="shrink-0 rounded-full bg-navy-900 px-2 py-0.5 text-[11px] font-bold text-white">{d.language}</span>
             </a>
           </li>

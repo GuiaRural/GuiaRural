@@ -1,6 +1,12 @@
 package br.com.guiarural.backend.map.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "places")
@@ -22,8 +28,48 @@ public class PlaceEntity {
     private String description;
     private String phone;
     private String email;
+    // Traduções (RF04): o painel edita só o português; EN e ES são gravadas fora do sistema pelo time.
+    // Endereço, horário e sigla não têm tradução.
+    private String nameEn;
+    private String nameEs;
+    private String descriptionEn;
+    private String descriptionEs;
+    // Idiomas (en, es) traduzidos automaticamente que esperam revisão humana. Nunca nulo: a coluna é NOT NULL.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private String[] machineTranslatedLangs = new String[0];
+
+    // Serviços do catálogo (/servicos) prestados neste local (decisão D11 do plano de integração).
+    // A tabela place_service tem id próprio gerado pelo banco; aqui só importam as duas pontas do vínculo.
+    @ElementCollection
+    @CollectionTable(name = "place_service", joinColumns = @JoinColumn(name = "place_id"))
+    @Column(name = "service_id")
+    @BatchSize(size = 50)
+    private Set<Long> serviceIds = new LinkedHashSet<>();
+
+    // Cursos vinculados ao local (escolhidos no formulário do painel).
+    @ElementCollection
+    @CollectionTable(name = "place_courses", joinColumns = @JoinColumn(name = "place_id"))
+    @Column(name = "course_id")
+    @BatchSize(size = 50)
+    private Set<Long> courseIds = new LinkedHashSet<>();
 
     public PlaceEntity() {
+    }
+
+    public Set<Long> getServiceIds() {
+        return serviceIds;
+    }
+
+    public void setServiceIds(Set<Long> serviceIds) {
+        this.serviceIds = serviceIds;
+    }
+
+    public Set<Long> getCourseIds() {
+        return courseIds;
+    }
+
+    public void setCourseIds(Set<Long> courseIds) {
+        this.courseIds = courseIds;
     }
 
     public Long getId() {
@@ -136,5 +182,45 @@ public class PlaceEntity {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getNameEn() {
+        return nameEn;
+    }
+
+    public void setNameEn(String nameEn) {
+        this.nameEn = nameEn;
+    }
+
+    public String getNameEs() {
+        return nameEs;
+    }
+
+    public void setNameEs(String nameEs) {
+        this.nameEs = nameEs;
+    }
+
+    public String getDescriptionEn() {
+        return descriptionEn;
+    }
+
+    public void setDescriptionEn(String descriptionEn) {
+        this.descriptionEn = descriptionEn;
+    }
+
+    public String getDescriptionEs() {
+        return descriptionEs;
+    }
+
+    public void setDescriptionEs(String descriptionEs) {
+        this.descriptionEs = descriptionEs;
+    }
+
+    public String[] getMachineTranslatedLangs() {
+        return machineTranslatedLangs;
+    }
+
+    public void setMachineTranslatedLangs(String[] machineTranslatedLangs) {
+        this.machineTranslatedLangs = machineTranslatedLangs;
     }
 }

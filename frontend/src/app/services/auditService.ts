@@ -1,25 +1,77 @@
-import { MOCK_AUDIT_LOGS, type AuditLog } from "../data/mockAuditLogs";
-import { delay } from "../lib/storage";
+import { apiGet } from "../lib/api";
 
-// Histórico somente de inclusão: não há função para apagar logs (RN-03 do UC23).
-let logs: AuditLog[] = [...MOCK_AUDIT_LOGS];
-let nextId = 1;
+// Histórico de mudanças do painel (UC23), lido de /api/admin/audit-logs. Somente de inclusão: não há função para
+// apagar logs (RN-03 do UC23). Todo o painel grava o histórico no servidor, na mesma transação da mudança.
 
-export function recordChange(entry: Omit<AuditLog, "id" | "at">): AuditLog {
-  const log: AuditLog = { ...entry, id: `log-${Date.now()}-${nextId++}`, at: new Date().toISOString() };
-  logs = [log, ...logs];
-  return log;
+// Identificador interno do tipo de registro (filtros, regras de desfazer). O texto exibido vem do dicionário
+// (t.audit.entities), pela chave do servidor: ENTITY_KEYS.
+export type AuditEntity = "Local" | "Serviço" | "Cardápio" | "Aviso" | "Acolhimento" | "Administrador" | "Curso";
+// Valor de audit_logs.entity no servidor.
+export type AuditEntityKey = "local" | "servico" | "cardapio" | "aviso" | "acolhimento" | "administrador" | "curso";
+export type AuditAction = "criado" | "editado" | "deletado" | "restaurado";
+
+export type AuditLog = {
+  id: string;
+  at: string; // ISO
+  author: string;
+  entity: AuditEntity;
+  entityId: string;
+  entityName: string;
+  action: AuditAction;
+  // Snapshots (Memento) do registro antes e depois da mudança; null quando não existia/deixou de existir.
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
+
+// Espelha AuditLogResponseDTO.
+type ServerLog = {
+  id: number;
+  at: string;
+  author: string;
+  entity: string;
+  entityId: string;
+  entityName: string;
+  action: AuditAction;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
+
+const ENTITY_LABELS: Record<AuditEntityKey, AuditEntity> = {
+  local: "Local",
+  servico: "Serviço",
+  cardapio: "Cardápio",
+  aviso: "Aviso",
+  acolhimento: "Acolhimento",
+  administrador: "Administrador",
+  curso: "Curso",
+};
+
+export const ENTITY_KEYS: Record<AuditEntity, AuditEntityKey> = {
+  Local: "local",
+  Serviço: "servico",
+  Cardápio: "cardapio",
+  Aviso: "aviso",
+  Acolhimento: "acolhimento",
+  Administrador: "administrador",
+  Curso: "curso",
+};
+
+function fromServer(log: ServerLog): AuditLog {
+  return {
+    id: String(log.id),
+    at: log.at,
+    author: log.author,
+    entity: ENTITY_LABELS[log.entity as AuditEntityKey] ?? "Local",
+    entityId: log.entityId,
+    entityName: log.entityName,
+    action: log.action,
+    before: log.before,
+    after: log.after,
+  };
 }
 
+// Mais recentes primeiro (o servidor já ordena). Sem servidor ou sem sessão, a chamada falha e a tela avisa
+// (um 401 já leva ao login).
 export async function listLogs(): Promise<AuditLog[]> {
-  await delay();
-  return [...logs].sort((a, b) => b.at.localeCompare(a.at));
-}
-
-export function snapshot<T extends object>(value: T | null | undefined): Record<string, unknown> | null {
-  if (!value) return null;
-  const copy = { ...value } as Record<string, unknown>;
-  // Fotos em base64 incham o histórico; o snapshot guarda só a indicação de que havia imagem.
-  if ("photoDataUrl" in copy && copy.photoDataUrl) copy.photoDataUrl = "[imagem]";
-  return copy;
+  return (await apiGet<ServerLog[]>("/admin/audit-logs?limit=300")).map(fromServer);
 }

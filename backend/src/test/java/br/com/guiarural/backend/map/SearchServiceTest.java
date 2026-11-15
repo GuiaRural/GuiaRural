@@ -4,6 +4,7 @@ import br.com.guiarural.backend.courses.model.CourseEntity;
 import br.com.guiarural.backend.courses.model.DepartmentEntity;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
 import br.com.guiarural.backend.courses.repository.DepartmentRepository;
+import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.map.dto.SearchSuggestionDTO;
 import br.com.guiarural.backend.map.dto.SearchType;
 import br.com.guiarural.backend.map.model.PlaceEntity;
@@ -70,9 +71,9 @@ class SearchServiceTest {
     @Test
     @DisplayName("Não deve buscar com menos de 3 caracteres")
     void shouldReturnEmptyWhenQueryIsTooShort() {
-        assertTrue(service.search("di").isEmpty());
-        assertTrue(service.search("  ").isEmpty());
-        assertTrue(service.search(null).isEmpty());
+        assertTrue(service.search("di", Language.PT).isEmpty());
+        assertTrue(service.search("  ", Language.PT).isEmpty());
+        assertTrue(service.search(null, Language.PT).isEmpty());
 
         verifyNoInteractions(placeRepository, departmentRepository, courseRepository);
     }
@@ -90,7 +91,7 @@ class SearchServiceTest {
         when(departmentRepository.findAllById(anyIterable())).thenReturn(List.of(
                 department(10L, "Departamento de Computação", "DC")));
 
-        List<SearchSuggestionDTO> result = service.search("COMPUTACAO");
+        List<SearchSuggestionDTO> result = service.search("COMPUTACAO", Language.PT);
 
         assertEquals(3, result.size());
         assertTrue(result.stream().anyMatch(s -> s.type() == SearchType.PLACE && "dc".equals(s.slug())));
@@ -109,7 +110,7 @@ class SearchServiceTest {
         when(departmentRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of());
         when(courseRepository.findByActiveTrue()).thenReturn(List.of());
 
-        List<SearchSuggestionDTO> result = service.search("biblio");
+        List<SearchSuggestionDTO> result = service.search("biblio", Language.PT);
 
         assertEquals(List.of("Biblioteca Setorial", "Casa da Biblioteca Velha"),
                 result.stream().map(SearchSuggestionDTO::name).toList());
@@ -125,7 +126,7 @@ class SearchServiceTest {
         when(departmentRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of());
         when(courseRepository.findByActiveTrue()).thenReturn(List.of());
 
-        List<SearchSuggestionDTO> result = service.search("sala");
+        List<SearchSuggestionDTO> result = service.search("sala", Language.PT);
 
         assertEquals(SearchService.MAX_SUGGESTIONS, result.size());
     }
@@ -139,6 +140,35 @@ class SearchServiceTest {
         when(courseRepository.findByActiveTrue()).thenReturn(List.of());
         when(departmentRepository.findAllById(Set.of())).thenReturn(List.of());
 
-        assertTrue(service.search("xadrez").isEmpty());
+        assertTrue(service.search("xadrez", Language.PT).isEmpty());
+    }
+
+    @Test
+    @DisplayName("Fase 6: sugestões saem no idioma pedido e casam também com o nome em português")
+    void shouldSuggestInRequestedLanguageAndMatchPortugueseToo() {
+        PlaceEntity library = place(1L, "biblioteca", "Biblioteca Central", "BC", "biblioteca");
+        library.setNameEn("Central Library");
+        DepartmentEntity department = department(2L, "Departamento de Computação", "DC");
+        department.setNameEn("Department of Computing");
+        CourseEntity course = course(3L, 2L, "Ciência da Computação");
+        course.setNameEn("Computer Science");
+        when(placeRepository.findByStatusOrderByNameAsc("publicado")).thenReturn(List.of(library));
+        when(departmentRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(department));
+        when(courseRepository.findByActiveTrue()).thenReturn(List.of(course));
+        when(departmentRepository.findAllById(any())).thenReturn(List.of(department));
+
+        // Termo em inglês: acha pelo nome traduzido, e a resposta vem em inglês (inclusive o departamento do curso).
+        List<SearchSuggestionDTO> english = service.search("comput", Language.EN);
+        assertTrue(english.stream().anyMatch(s -> s.type() == SearchType.DEPARTMENT && s.name().equals("Department of Computing")));
+        SearchSuggestionDTO courseHit = english.stream().filter(s -> s.type() == SearchType.COURSE).findFirst().orElseThrow();
+        assertEquals("Computer Science", courseHit.name());
+        assertEquals("Department of Computing", courseHit.detail());
+        assertEquals("Central Library", service.search("central lib", Language.EN).get(0).name());
+
+        // Termo em português com a tela em inglês: ainda acha, mas mostra o nome em inglês.
+        assertEquals("Central Library", service.search("biblioteca", Language.EN).get(0).name());
+
+        // Sem tradução em espanhol: nome em português.
+        assertEquals("Biblioteca Central", service.search("biblioteca", Language.ES).get(0).name());
     }
 }

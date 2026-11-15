@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import PlaceForm from "../../../../components/admin/PlaceForm";
-import type { Place } from "../../../../data/mockPlaces";
-import { getPlaceForAdmin } from "../../../../services/placesService";
+import { getPlaceForAdmin, type Place } from "../../../../services/placesService";
 
 // Continuar um rascunho (FA-14.01) ou editar um local já cadastrado.
 export default function EditPlacePage() {
@@ -13,7 +12,10 @@ export default function EditPlacePage() {
   const [place, setPlace] = useState<Place | null | undefined>(undefined);
 
   useEffect(() => {
-    getPlaceForAdmin(id).then(setPlace);
+    // Falha ao carregar aparece como "não encontrado": o link para a lista continua valendo.
+    getPlaceForAdmin(id)
+      .then(setPlace)
+      .catch(() => setPlace(null));
   }, [id]);
 
   if (place === undefined) return <p className="p-6 text-sm text-slate-500">Carregando...</p>;

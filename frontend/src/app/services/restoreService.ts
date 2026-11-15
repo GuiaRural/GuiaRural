@@ -1,33 +1,30 @@
-import type { AuditLog } from "../data/mockAuditLogs";
-import { restoreAdmin } from "./adminsService";
-import { recordChange } from "./auditService";
-import { restoreGuideTopic } from "./guidesService";
-import { restoreMenu } from "./menuService";
-import { restoreNotice } from "./noticesService";
-import { restorePlace } from "./placesService";
-import { delay } from "../lib/storage";
+import { ApiError, apiPost } from "../lib/api";
+import type { AuditLog } from "./auditService";
+import { resetGuideCache } from "./guidesAdminService";
+import { resetPublicCache } from "./placesService";
 
-// Serviços vêm do backend (/api/services), que ainda não guarda snapshots para desfazer.
+// O servidor sabe desfazer todas as entidades do painel, menos administradores (D5: conta se aprova ou revoga
+// pela tela de Administradores) e cursos (RN-UC36-01 e decisão da Fase 5: nem edição nem exclusão se desfazem).
+const NOT_RESTORABLE: AuditLog["entity"][] = ["Administrador", "Curso"];
+
 export function canRestore(log: AuditLog) {
-  return log.entity !== "Serviço";
+  return !NOT_RESTORABLE.includes(log.entity);
 }
 
-// FA01 do UC23: volta o registro ao estado anterior à mudança e registra a restauração no histórico.
-export async function restoreFromLog(log: AuditLog, author: string): Promise<void> {
-  await delay(400);
-  if (!canRestore(log)) throw new Error("Restauração de serviços ainda não é suportada pelo backend.");
-  if (log.entity === "Local") restorePlace(log.entityId, log.before);
-  if (log.entity === "Cardápio") restoreMenu(log.entityId, log.before);
-  if (log.entity === "Aviso") restoreNotice(log.entityId, log.before);
-  if (log.entity === "Acolhimento") restoreGuideTopic(log.entityId, log.before);
-  if (log.entity === "Administrador") restoreAdmin(log.entityId, log.before);
-  recordChange({
-    author,
-    entity: log.entity,
-    entityId: log.entityId,
-    entityName: log.entityName,
-    action: "restaurado",
-    before: log.after,
-    after: log.before,
-  });
+// FA01 do UC23: o servidor volta o registro ao estado anterior à mudança e grava a restauração no histórico.
+// Recusas (ex.: já existe cardápio no mesmo dia e turno, o registro já foi excluído) chegam com a mensagem do servidor.
+export async function restoreFromLog(log: AuditLog): Promise<void> {
+  if (!canRestore(log)) throw new Error("Mudanças em administradores e cursos não podem ser desfeitas.");
+  try {
+    await apiPost<void>(`/admin/audit-logs/${log.id}/restore`, {});
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      throw new Error("Seu perfil não permite desfazer mudanças.");
+    }
+    if (error instanceof ApiError && error.detail) throw new Error(error.detail);
+    throw new Error("Não foi possível restaurar a versão anterior.");
+  }
+  if (log.entity === "Acolhimento") resetGuideCache();
+  // A página do local mostra os serviços dele: desfazer em qualquer dos dois muda o que o mapa lê.
+  if (log.entity === "Local" || log.entity === "Serviço") resetPublicCache();
 }

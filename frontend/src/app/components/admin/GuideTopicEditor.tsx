@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import type { GuideBlock, GuideSection, GuideStage, GuideTopic, Translated } from "../../data/mockGuides";
+import type { GuideBlock, GuideSection, GuideStage, GuideTopic, Translated } from "../../services/guidesService";
 import { dictionaries, type Language } from "../../i18n/dictionaries";
 import { setFlash } from "../../lib/flash";
-import { GuideValidationError, isFullyTranslated, saveGuideTopic } from "../../services/guidesService";
+import { GuideValidationError, saveGuideTopic } from "../../services/guidesAdminService";
+import { isFullyTranslated } from "../../services/guidesService";
 import { primaryButton, secondaryButton } from "./PageHeader";
 import { useAdmin } from "./AdminShell";
 
@@ -45,7 +46,7 @@ export function emptyTopic(section: GuideSection): GuideTopic {
 // Edição de um tópico das cartilhas de acolhimento (UC09): textos em PT/EN/ES, blocos e links de apoio.
 export default function GuideTopicEditor({ initial }: { initial: GuideTopic }) {
   const router = useRouter();
-  const { session, setDirty } = useAdmin();
+  const { setDirty } = useAdmin();
   const creating = !initial.id;
   const [topic, setTopic] = useState(initial);
   const [lang, setLang] = useState<Language>("pt");
@@ -68,7 +69,7 @@ export default function GuideTopicEditor({ initial }: { initial: GuideTopic }) {
     setSaving(true);
     setError(null);
     try {
-      const saved = await saveGuideTopic(topic, session.name);
+      const saved = await saveGuideTopic(topic);
       setDirty(false);
       setFlash(`"${saved.title.pt}" foi ${creating ? "publicado" : "atualizado"} em ${sectionTitle}.`);
       router.push(backHref);

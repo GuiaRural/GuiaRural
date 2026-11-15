@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
+import type { Place } from "../../services/placesService";
 import { MIN_SEARCH_CHARS, getRecentPlaces, searchPlaces } from "../../services/placesService";
 import { MAX_SUGGESTIONS, searchDepartmentsAndCourses, suggestionHref, type Suggestion } from "../../services/searchService";
 
@@ -12,7 +12,7 @@ type Item = { kind: "place"; key: string; place: Place } | { kind: "link"; key: 
 const DEBOUNCE_MS = 250;
 
 export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (place: Place) => void; recentVersion?: number }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [places, setPlaces] = useState<Place[]>([]);
@@ -26,8 +26,8 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
 
   // recentVersion muda a cada local consultado, para refletir a lista atualizada (RN-UC02.02).
   useEffect(() => {
-    getRecentPlaces().then(setRecent, () => setRecent([]));
-  }, [recentVersion]);
+    getRecentPlaces(language).then(setRecent, () => setRecent([]));
+  }, [recentVersion, language]);
 
   useEffect(() => () => clearTimeout(debounce.current), []);
 
@@ -51,7 +51,7 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
     latestQuery.current = value;
     clearTimeout(debounce.current);
 
-    searchPlaces(value).then(
+    searchPlaces(value, language).then(
       (found) => {
         if (latestQuery.current === value) setPlaces(found);
       },
@@ -66,7 +66,7 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
     }
     // Departamentos e cursos vêm do backend: espera o usuário parar de digitar para limitar as requisições (RNF01).
     debounce.current = setTimeout(() => {
-      searchDepartmentsAndCourses(value)
+      searchDepartmentsAndCourses(value, language)
         .then((found) => {
           if (latestQuery.current === value) setLinked(found);
         })

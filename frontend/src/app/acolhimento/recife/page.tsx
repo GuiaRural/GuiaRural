@@ -1,24 +1,16 @@
 import type { Metadata } from "next";
 import AppShell from "../../components/common/AppShell";
 import RecifeGuideView from "../../components/common/RecifeGuideView";
-import type { RecifeGuide } from "../../data/mockGuide";
-import { getRecifeGuide } from "../../services/guideService";
 
 export const metadata: Metadata = {
   title: "Guia de Recife & RMR · GuiaRural UFRPE",
 };
 
-export default async function RecifeGuidePage() {
-  let guide: RecifeGuide | null = null;
-  try {
-    guide = await getRecifeGuide();
-  } catch {
-    guide = null;
-  }
-
+// O conteúdo vem da API no idioma escolhido pelo usuário, que só o navegador conhece: a busca acontece no cliente.
+export default function RecifeGuidePage() {
   return (
     <AppShell>
-      <RecifeGuideView guide={guide} />
+      <RecifeGuideView />
     </AppShell>
   );
 }

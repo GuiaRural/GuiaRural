@@ -4,12 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAdmin } from "../../../../components/admin/AdminShell";
-import type { Menu, Shift } from "../../../../data/mockMenus";
 import { setFlash } from "../../../../lib/flash";
 import { primaryButton, secondaryButton } from "../../../../components/admin/PageHeader";
-import { MenuValidationError, SHIFT_LABELS, createMenu, formatMenuDate, listMenus } from "../../../../services/menuService";
+import {
+  MenuValidationError,
+  SHIFT_LABELS,
+  createMenu,
+  formatMenuDate,
+  listMenus,
+  type Menu,
+  type MenuInput,
+  type Shift,
+} from "../../../../services/menuService";
 
-type Fields = Omit<Menu, "id">;
+type Fields = MenuInput;
 const EMPTY: Fields = { date: "", shift: "almoco", main: "", vegetarian: "", sides: "", salad: "", dessert: "", drink: "" };
 
 const DISHES: { key: keyof Fields; label: string; placeholder: string; required?: boolean }[] = [
@@ -29,7 +37,7 @@ function describe(m: Menu) {
 export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio/novo">) {
   const { base } = use(searchParams);
   const router = useRouter();
-  const { session, setDirty } = useAdmin();
+  const { setDirty } = useAdmin();
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [existing, setExisting] = useState<Menu[]>([]);
   const [baseId, setBaseId] = useState("");
@@ -40,7 +48,7 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
   // FA02: copia pratos e turno do cardápio escolhido; a data fica em branco para ser alterada.
   function cloneFrom(id: string, list: Menu[]) {
     setBaseId(id);
-    const source = list.find((m) => m.id === id);
+    const source = list.find((m) => String(m.id) === id);
     if (!source) return;
     const copy = Object.fromEntries((Object.keys(EMPTY) as (keyof Fields)[]).map((k) => [k, source[k]])) as Fields;
     setFields({ ...copy, date: "" });
@@ -50,10 +58,14 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
   }
 
   useEffect(() => {
-    listMenus().then((all) => {
-      setExisting(all);
-      if (typeof base === "string") cloneFrom(base, all);
-    });
+    listMenus().then(
+      (all) => {
+        setExisting(all);
+        if (typeof base === "string") cloneFrom(base, all);
+      },
+      // Sem a lista, só a opção de duplicar fica vazia; criar do zero continua possível.
+      () => setExisting([]),
+    );
     // Só no carregamento: o parâmetro ?base= vem do botão "Duplicar" da listagem.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -69,10 +81,8 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
     setSaving(true);
     setSummary(null);
     try {
-      const menu = await createMenu(
-        Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim()])) as Fields,
-        session.name,
-      );
+      // O servidor registra quem criou (sessão) e grava o histórico.
+      const menu = await createMenu(fields);
       setDirty(false);
       setFlash(`Cardápio do RU criado com sucesso: ${SHIFT_LABELS[menu.shift].toLowerCase()} de ${formatMenuDate(menu.date)} já está no Cardápio da semana.`);
       router.push("/admin/cardapio");

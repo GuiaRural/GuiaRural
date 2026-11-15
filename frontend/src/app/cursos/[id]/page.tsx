@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { use, useState } from "react";
+import type { ReactNode } from "react";
 import AppShell from "../../components/common/AppShell";
 import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import ApiFailure from "../../components/courses/ApiFailure";
 import { useLanguage } from "../../context/LanguageContext";
 import { useApi } from "../../hooks/useApi";
-import { getCourse, type CourseDetail } from "../../services/coursesService";
+import { getCourse, type CourseDetail, type CourseKey } from "../../services/coursesService";
 
 // Aba da matriz: número do período ou "optativas" (disciplinas sem período).
 type Tab = number | "electives";
 
 export default function CoursePage({ params }: PageProps<"/cursos/[id]">) {
   const { id } = use(params);
-  const { t } = useLanguage();
-  const state = useApi(getCourse, id);
+  const { t, language } = useLanguage();
+  const state = useApi(getCourse, `${id}:${language}` satisfies CourseKey);
 
   return (
     <AppShell>
@@ -41,7 +42,7 @@ export default function CoursePage({ params }: PageProps<"/cursos/[id]">) {
 }
 
 function CourseDetails({ course }: { course: CourseDetail }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const c = course.coordination;
   const subtitle = [course.academicCenter, course.code && `${t.courses.courseCode}: ${course.code}`, course.modality, course.shift]
     .filter(Boolean)
@@ -60,7 +61,19 @@ function CourseDetails({ course }: { course: CourseDetail }) {
             {course.durationSemesters ? ` • ${t.courses.duration}: ${course.durationSemesters} ${t.courses.semesters}` : ""}
           </span>
         </div>
-        <h1 className="mt-2 text-2xl font-bold text-navy-900">{course.name}</h1>
+        <h1 lang={course.lang !== language ? course.lang : undefined} className="mt-2 text-2xl font-bold text-navy-900">
+          {course.name}
+        </h1>
+        {course.machineTranslated && (
+          <p role="note" className="mt-2 inline-block rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+            {t.courses.machineTranslated}
+          </p>
+        )}
+        {language !== "pt" && course.lang === "pt" && (
+          <p role="note" className="mt-2 text-xs text-slate-600">
+            {t.courses.notTranslated}
+          </p>
+        )}
         {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
         <Link
           href={`/departamentos/${course.departmentId}`}
@@ -94,8 +107,12 @@ function CourseDetails({ course }: { course: CourseDetail }) {
             lines={[
               c.phone && `${t.courses.phone}: ${c.phone}`,
               c.extension && `${t.courses.extension}: ${c.extension}`,
-              c.email,
-              c.secondaryEmail,
+              c.email && <a href={`mailto:${c.email}`} className="text-navy-700 underline">{c.email}</a>,
+              c.secondaryEmail && (
+                <a href={`mailto:${c.secondaryEmail}`} className="text-navy-700 underline">
+                  {c.secondaryEmail}
+                </a>
+              ),
             ]}
           />
         </div>
@@ -106,15 +123,15 @@ function CourseDetails({ course }: { course: CourseDetail }) {
   );
 }
 
-function InfoCard({ title, lines }: { title: string; lines: (string | null | undefined | false)[] }) {
-  const shown = lines.filter(Boolean) as string[];
+function InfoCard({ title, lines }: { title: string; lines: (ReactNode | null | undefined | false)[] }) {
+  const shown = lines.filter(Boolean);
   if (shown.length === 0) return null;
   return (
     <div className="rounded-xl bg-slate-50 p-4 text-sm">
       <h3 className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{title}</h3>
       <div className="mt-1 space-y-1 text-slate-700">
-        {shown.map((line) => (
-          <p key={line}>{line}</p>
+        {shown.map((line, index) => (
+          <p key={typeof line === "string" ? line : index}>{line}</p>
         ))}
       </div>
     </div>

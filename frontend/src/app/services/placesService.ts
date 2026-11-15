@@ -1,27 +1,105 @@
-import { DEFAULT_ORIGIN_ID, MOCK_PLACES, MOCK_RECENT_IDS, type Place, type PlaceCategory, type PlaceStatus } from "../data/mockPlaces";
-import { apiGet } from "../lib/api";
-import { delay, readJson, writeJson } from "../lib/storage";
-import { recordChange, snapshot } from "./auditService";
+import type { Language } from "../i18n/dictionaries";
+import { ApiError, apiDelete, apiGet, apiPost, apiPut, apiPutForm, isNotFound } from "../lib/api";
+import type { LatLng } from "../lib/geo";
+import { readJson, writeJson } from "../lib/storage";
 
-// Ponto único de acesso aos locais. A leitura pública (mapa, busca, página do local) vem do backend
-// (/api/places); a área do administrador abaixo ainda usa um mock em memória, então o que for editado
-// lá não aparece no mapa até o CRUD de locais ir para a API (UC14 a UC16, que exigem autenticação).
-let places: Place[] = structuredClone(MOCK_PLACES);
+// Ponto único de acesso aos locais (backend: /api/places e /api/admin/places). Os tipos espelham os DTOs.
+// Leitura pública (mapa, busca, página do local): só locais publicados. Painel: todos, com criar, editar,
+// excluir e foto (UC14 a UC16); o servidor valida de novo e grava o histórico de cada mudança.
 
-// Espelha PlaceResponseDTO do backend. Campos que o banco ainda não tem (acessibilidade, serviços,
-// cursos vinculados, foto) saem vazios.
+// Mesma lista do check da tabela places (o banco recusa qualquer outra).
+export const PLACE_CATEGORIES = [
+  "departamento",
+  "administrativo",
+  "biblioteca",
+  "alimentacao",
+  "portaria",
+  "auditorio",
+  "esporte",
+  "sala",
+  "saude",
+  "moradia",
+  "apoio",
+] as const;
+export type PlaceCategory = (typeof PLACE_CATEGORIES)[number];
+
+// publicado: visível no mapa e na busca; rascunho e inativo: só na área do administrador (RN-UC14.02).
+export type PlaceStatus = "publicado" | "rascunho" | "inativo";
+
+// Responsável pelo local (D7): nome e e-mail institucional.
+export type PlaceContact = { name: string; email?: string };
+
+// Serviço do catálogo (/servicos) ou curso ligado ao local.
+export type PlaceLink = { id: number; name: string };
+
+export type Place = {
+  // Slug do local: é o que aparece na URL (/locais/<id>) e o que o navegador guarda em "últimos acessos".
+  id: string;
+  name: string;
+  shortName: string;
+  category: PlaceCategory;
+  status: PlaceStatus;
+  // Coordenadas no mapa; null enquanto o local não for georreferenciado.
+  position: LatLng | null;
+  // De onde veio a coordenada (ex.: "Google Places"): mostra o que ainda precisa de conferência em campo.
+  coordinatesSource?: string;
+  address: string;
+  hours: string;
+  description: string;
+  contacts: PlaceContact[];
+  services: PlaceLink[];
+  courses: PlaceLink[];
+  // Endereço da foto no backend (com a versão na URL); sem foto, a tela mostra a sigla do local.
+  photoUrl?: string;
+  // Idioma em que `name` e `description` de fato vieram (pt quando faltou a tradução), para o atributo lang.
+  lang: Language;
+  // O texto veio de uma tradução automática que ainda espera revisão humana.
+  machineTranslated: boolean;
+  // Idiomas em que o nome tem tradução (o painel usa para avisar que o texto pode defasar).
+  translatedLangs: Language[];
+};
+
+// Local de uma página: o slug e o idioma vão juntos ("reitoria:en"), porque o useApi aceita um argumento só.
+export type PlaceKey = `${string}:${Language}`;
+
+// O que o formulário do painel envia. Sem `id`, é um local novo (o servidor gera o slug a partir do nome).
+export type PlaceInput = Omit<
+  Place,
+  "id" | "services" | "courses" | "photoUrl" | "coordinatesSource" | "lang" | "machineTranslated" | "translatedLangs"
+> & {
+  id?: string;
+  coordinatesSource?: string;
+  serviceIds: number[];
+  courseIds: number[];
+};
+
+// Primeira visita: "últimos acessos" começa com estes locais do campus (todos existem no banco).
+const DEFAULT_RECENT_IDS = ["reitoria", "ceagri-1", "biblioteca", "dc"];
+
+// Origem padrão para distância e tempo exibidos no cartão do local (RN-UC02.01).
+// É o slug do Prédio Central (Reitoria) no banco.
+export const DEFAULT_ORIGIN_ID = "reitoria";
+
+// Espelha PlaceResponseDTO do backend.
 type PlaceDto = {
   slug: string;
   name: string;
   shortName: string | null;
   category: string;
+  status: string;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: string | null;
   address: string | null;
   hours: string | null;
   description: string | null;
-  phone: string | null;
-  email: string | null;
+  contacts: { name: string; email: string | null }[];
+  services: PlaceLink[];
+  courses: PlaceLink[];
+  photoUrl: string | null;
+  lang: string;
+  machineTranslated: boolean;
+  translatedLangs: string[];
 };
 
 function toPlace(dto: PlaceDto): Place {
@@ -30,23 +108,32 @@ function toPlace(dto: PlaceDto): Place {
     name: dto.name,
     shortName: dto.shortName ?? dto.name,
     category: dto.category as PlaceCategory,
-    status: "publicado",
+    status: dto.status as PlaceStatus,
     position: dto.latitude !== null && dto.longitude !== null ? { lat: dto.latitude, lng: dto.longitude } : null,
+    coordinatesSource: dto.coordinatesSource ?? undefined,
     address: dto.address ?? "",
     hours: dto.hours ?? "",
-    accessibility: [],
     description: dto.description ?? "",
-    courseIds: [],
-    phone: dto.phone ?? undefined,
-    email: dto.email ?? undefined,
-    services: [],
+    contacts: dto.contacts.map((c) => ({ name: c.name, email: c.email ?? undefined })),
+    services: dto.services,
+    courses: dto.courses,
+    photoUrl: dto.photoUrl ?? undefined,
+    lang: dto.lang as Language,
+    machineTranslated: dto.machineTranslated,
+    translatedLangs: dto.translatedLangs as Language[],
   };
 }
 
-// A lista pública é pequena e muda pouco: uma busca por sessão. Em caso de falha o cache é descartado
-// para que "tentar novamente" refaça a requisição.
-let publicCache: Promise<Place[]> | null = null;
-let publicLoaded: Place[] | null = null;
+// A lista pública é pequena e muda pouco: uma busca por idioma e por sessão. Em caso de falha o cache daquele
+// idioma é descartado para que "tentar novamente" refaça a requisição.
+const publicCache: Partial<Record<Language, Promise<Place[]>>> = {};
+const publicLoaded: Partial<Record<Language, Place[]>> = {};
+
+// Depois de criar, editar, excluir, trocar a foto ou desfazer pelo histórico, o mapa e a busca precisam ler a lista de novo.
+export function resetPublicCache() {
+  for (const language of Object.keys(publicCache) as Language[]) delete publicCache[language];
+  for (const language of Object.keys(publicLoaded) as Language[]) delete publicLoaded[language];
+}
 
 const RECENT_KEY = "guiarural.recentPlaces";
 const SAVED_KEY = "guiarural.savedPlaces";
@@ -64,40 +151,51 @@ function isPublic(p: Place): p is Place & { position: NonNullable<Place["positio
   return p.status === "publicado" && p.position !== null;
 }
 
-export async function searchPlaces(query: string): Promise<Place[]> {
+const matches = (place: Place | undefined, q: string) =>
+  place !== undefined && (normalize(place.name).includes(q) || normalize(place.shortName).includes(q));
+
+// A lista sai no idioma da tela, mas a busca também casa com o nome em português, que o estudante pode digitar
+// de qualquer jeito (a lista em português é buscada uma vez por sessão).
+export async function searchPlaces(query: string, language: Language = "pt"): Promise<Place[]> {
   const q = normalize(query.trim());
   if (q.length < MIN_SEARCH_CHARS) return [];
-  return (await getPublicPlaces())
-    .filter((p) => normalize(p.name).includes(q) || normalize(p.shortName).includes(q))
-    .slice(0, 5);
+  const [shown, portuguese] = await Promise.all([
+    getPublicPlaces(language),
+    language === "pt" ? Promise.resolve<Place[]>([]) : getPublicPlaces("pt"),
+  ]);
+  const byId = new Map(portuguese.map((p) => [p.id, p]));
+  return shown.filter((p) => matches(p, q) || matches(byId.get(p.id), q)).slice(0, 5);
 }
 
-export function getPublicPlaces(): Promise<Place[]> {
-  publicCache ??= apiGet<PlaceDto[]>("/places")
+export function getPublicPlaces(language: Language = "pt"): Promise<Place[]> {
+  publicCache[language] ??= apiGet<PlaceDto[]>(`/places?lang=${language}`)
     .then((list) => {
-      publicLoaded = list.map(toPlace).filter(isPublic);
-      return publicLoaded;
+      const places = list.map(toPlace).filter(isPublic);
+      publicLoaded[language] = places;
+      return places;
     })
     .catch((error) => {
-      publicCache = null;
+      delete publicCache[language];
       throw error;
     });
-  return publicCache;
+  return publicCache[language];
 }
 
-export async function getPlace(id: string): Promise<Place | null> {
-  return (await getPublicPlaces()).find((p) => p.id === id) ?? null;
+export async function getPlace(key: PlaceKey): Promise<Place | null> {
+  const at = key.lastIndexOf(":");
+  const id = key.slice(0, at);
+  return (await getPublicPlaces(key.slice(at + 1) as Language)).find((p) => p.id === id) ?? null;
 }
 
-export async function getRecentPlaces(): Promise<Place[]> {
-  const all = await getPublicPlaces();
-  const ids = readJson<string[]>(RECENT_KEY, MOCK_RECENT_IDS);
+export async function getRecentPlaces(language: Language = "pt"): Promise<Place[]> {
+  const all = await getPublicPlaces(language);
+  const ids = readJson<string[]>(RECENT_KEY, DEFAULT_RECENT_IDS);
   return ids.map((id) => all.find((p) => p.id === id)).filter((p): p is Place => Boolean(p));
 }
 
 // RN-UC02.02: a lista de últimos acessos é atualizada a cada local consultado.
 export function addRecentPlace(id: string) {
-  const ids = readJson<string[]>(RECENT_KEY, MOCK_RECENT_IDS).filter((x) => x !== id);
+  const ids = readJson<string[]>(RECENT_KEY, DEFAULT_RECENT_IDS).filter((x) => x !== id);
   writeJson(RECENT_KEY, [id, ...ids].slice(0, MAX_RECENT));
 }
 
@@ -112,100 +210,120 @@ export function toggleSavedPlace(id: string): boolean {
   return next.includes(id);
 }
 
-// ---- Área do administrador ----
-
-export async function listAllPlaces(): Promise<Place[]> {
-  await delay();
-  return [...places];
-}
-
-export async function getPlaceForAdmin(id: string): Promise<Place | null> {
-  await delay(150);
-  return places.find((p) => p.id === id) ?? null;
-}
-
-function slugify(name: string) {
-  return normalize(name).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "local";
-}
+// ---- Área do administrador (exige login; o servidor confere o perfil) ----
 
 export class PlaceValidationError extends Error {}
 
-export async function savePlace(input: Omit<Place, "id"> & { id?: string }, author: string): Promise<Place> {
-  await delay(400);
-  // RN-UC14.01: publicar exige georreferenciamento.
-  if (input.status === "publicado" && !input.position) {
-    throw new PlaceValidationError("Um local só pode ser publicado com latitude e longitude preenchidas.");
+// 400 (regra do UC14 ou campo inválido) e 409 (identificador repetido) viram uma mensagem para o formulário.
+function asValidationError(error: unknown): unknown {
+  if (error instanceof ApiError && (error.status === 400 || error.status === 409)) {
+    const fieldMessage = Object.values(error.fields ?? {})[0];
+    return new PlaceValidationError(error.detail ?? fieldMessage ?? "Dados do local inválidos.");
   }
-  const existing = input.id ? places.find((p) => p.id === input.id) : undefined;
-  let id = input.id ?? slugify(input.shortName || input.name);
-  if (!existing) {
-    const base = id;
-    for (let n = 2; places.some((p) => p.id === id); n++) id = `${base}-${n}`;
-  }
-  const place: Place = { ...input, id };
-  places = existing ? places.map((p) => (p.id === id ? place : p)) : [...places, place];
-  recordChange({
-    author,
-    entity: "Local",
-    entityId: id,
-    entityName: place.name,
-    action: existing ? "editado" : "criado",
-    before: snapshot(existing),
-    after: snapshot(place),
-  });
-  return place;
+  return error;
 }
 
-export async function setPlaceStatus(id: string, status: PlaceStatus, author: string): Promise<void> {
-  await delay();
-  const existing = places.find((p) => p.id === id);
-  if (!existing) return;
-  if (status === "publicado" && !existing.position) {
-    throw new PlaceValidationError("Georreferencie o local antes de publicá-lo.");
-  }
-  const updated = { ...existing, status };
-  places = places.map((p) => (p.id === id ? updated : p));
-  recordChange({
-    author,
-    entity: "Local",
-    entityId: id,
-    entityName: existing.name,
-    action: "editado",
-    before: snapshot(existing),
-    after: snapshot(updated),
-  });
+export async function listAllPlaces(): Promise<Place[]> {
+  return (await apiGet<PlaceDto[]>("/admin/places")).map(toPlace);
 }
 
-export async function deletePlace(id: string, author: string): Promise<void> {
-  await delay();
-  const existing = places.find((p) => p.id === id);
-  if (!existing) return;
-  places = places.filter((p) => p.id !== id);
-  recordChange({
-    author,
-    entity: "Local",
-    entityId: id,
-    entityName: existing.name,
-    action: "deletado",
-    before: snapshot(existing),
-    after: null,
-  });
+export async function getPlaceForAdmin(id: string): Promise<Place | null> {
+  try {
+    return toPlace(await apiGet<PlaceDto>(`/admin/places/${encodeURIComponent(id)}`));
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    throw error;
+  }
 }
 
-// Usado pelo "Desfazer" do histórico: volta o registro ao snapshot anterior (ou remove, se não existia).
-export function restorePlace(id: string, previous: Record<string, unknown> | null): Place | null {
-  const current = places.find((p) => p.id === id) ?? null;
-  if (!previous) {
-    places = places.filter((p) => p.id !== id);
-    return current;
+function payloadOf(input: PlaceInput) {
+  const optional = (value?: string) => value?.trim() || null;
+  return {
+    name: input.name.trim(),
+    shortName: optional(input.shortName),
+    category: input.category,
+    status: input.status,
+    latitude: input.position?.lat ?? null,
+    longitude: input.position?.lng ?? null,
+    coordinatesSource: optional(input.coordinatesSource),
+    address: optional(input.address),
+    hours: optional(input.hours),
+    description: optional(input.description),
+    serviceIds: input.serviceIds,
+    courseIds: input.courseIds,
+    contacts: input.contacts.map((c) => ({ name: c.name.trim(), email: optional(c.email) })),
+  };
+}
+
+// RN-UC14.01 e as demais regras são conferidas no servidor; o erro volta como PlaceValidationError.
+export async function savePlace(input: PlaceInput): Promise<Place> {
+  try {
+    const dto = input.id
+      ? await apiPut<PlaceDto>(`/places/${encodeURIComponent(input.id)}`, payloadOf(input))
+      : await apiPost<PlaceDto>("/places", payloadOf(input));
+    resetPublicCache();
+    return toPlace(dto);
+  } catch (error) {
+    throw asValidationError(error);
   }
-  const restored = { ...(current ?? {}), ...previous, photoDataUrl: current?.photoDataUrl } as Place;
-  places = current ? places.map((p) => (p.id === id ? restored : p)) : [...places, restored];
-  return current;
+}
+
+// Volta o local ao formato do formulário, para reenviá-lo com uma mudança (ex.: só o status).
+export function toInput(place: Place): PlaceInput {
+  return {
+    id: place.id,
+    name: place.name,
+    shortName: place.shortName,
+    category: place.category,
+    status: place.status,
+    position: place.position,
+    coordinatesSource: place.coordinatesSource,
+    address: place.address,
+    hours: place.hours,
+    description: place.description,
+    contacts: place.contacts,
+    serviceIds: place.services.map((s) => s.id),
+    courseIds: place.courses.map((c) => c.id),
+  };
+}
+
+export async function setPlaceStatus(id: string, status: PlaceStatus): Promise<void> {
+  const place = await getPlaceForAdmin(id);
+  if (!place) return;
+  await savePlace({ ...toInput(place), status });
+}
+
+// Já excluído em outra aba (404) é tratado como sucesso: o resultado desejado já existe.
+export async function deletePlace(id: string): Promise<void> {
+  try {
+    await apiDelete(`/places/${encodeURIComponent(id)}`);
+  } catch (error) {
+    if (!(error instanceof ApiError && error.status === 404)) throw error;
+  } finally {
+    resetPublicCache();
+  }
+}
+
+// O servidor reduz a imagem e a grava em JPEG; aqui só vai o arquivo escolhido.
+export async function uploadPlacePhoto(id: string, file: File): Promise<Place> {
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const dto = await apiPutForm<PlaceDto>(`/places/${encodeURIComponent(id)}/photo`, form);
+    resetPublicCache();
+    return toPlace(dto);
+  } catch (error) {
+    throw asValidationError(error);
+  }
+}
+
+export async function deletePlacePhoto(id: string): Promise<void> {
+  await apiDelete(`/places/${encodeURIComponent(id)}/photo`);
+  resetPublicCache();
 }
 
 // RN-UC02.01: distância e tempo do cartão partem da origem padrão do campus (Prédio Central).
 // Lê do cache da lista pública, que as telas já carregaram antes de mostrar um local; null se ainda não houver.
-export function getDefaultOrigin(): Place | null {
-  return publicLoaded?.find((p) => p.id === DEFAULT_ORIGIN_ID) ?? null;
+export function getDefaultOrigin(language: Language = "pt"): Place | null {
+  return (publicLoaded[language] ?? publicLoaded.pt)?.find((p) => p.id === DEFAULT_ORIGIN_ID) ?? null;
 }

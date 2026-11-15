@@ -10,15 +10,15 @@ import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import PlacePhoto from "../../components/places/PlacePhoto";
 import Modal from "../../components/ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
 import { isOpenNow } from "../../lib/hours";
-import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace } from "../../services/placesService";
-import { computeRoute, getCurrentCampusPosition } from "../../services/routeService";
+import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace, type Place, type PlaceKey } from "../../services/placesService";
+import TranslationNotice from "../../components/common/TranslationNotice";
+import { NO_ROUTE, getCurrentCampusPosition, getRoute, routeKey } from "../../services/routeService";
 
 export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
   const { id } = use(params);
-  const { t } = useLanguage();
-  const state = useApi(getPlace, id);
+  const { t, language } = useLanguage();
+  const state = useApi(getPlace, `${id}:${language}` satisfies PlaceKey);
 
   return (
     <AppShell>
@@ -47,15 +47,16 @@ export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
 }
 
 function PlaceDetails({ place }: { place: Place }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
   const [copied, setCopied] = useState(false);
   const [locating, setLocating] = useState(false);
   const [originIssue, setOriginIssue] = useState<"denied" | "outside" | null>(null);
 
-  const origin = getDefaultOrigin();
-  const fromGate = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
+  const origin = getDefaultOrigin(language);
+  const routeState = useApi(getRoute, place.position && origin?.position && origin.id !== place.id ? routeKey(origin.position, place.position) : NO_ROUTE);
+  const fromGate = routeState.status === "ready" ? routeState.data : null;
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
   const coords = place.position;
@@ -101,7 +102,10 @@ function PlaceDetails({ place }: { place: Place }) {
       <header className="flex flex-wrap items-end justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{t.categories[place.category]}</p>
-          <h1 className="text-2xl font-bold text-navy-900">{place.name}</h1>
+          <h1 lang={place.lang !== language ? place.lang : undefined} className="text-2xl font-bold text-navy-900">
+            {place.name}
+          </h1>
+          <TranslationNotice lang={place.lang} machineTranslated={place.machineTranslated} />
           <p className="text-sm text-slate-600">{place.address}</p>
         </div>
         <div className="flex gap-2">
@@ -128,6 +132,12 @@ function PlaceDetails({ place }: { place: Place }) {
               {fromGate.meters} {t.common.meters} {t.placePage.fromGate} · {fromGate.minutes} {t.common.minutes} {t.placeCard.walk}
             </p>
           )}
+          {fromGate?.source === "straight" && <p className="text-xs font-semibold text-amber-800">{t.route.estimate}</p>}
+          {fromGate && fromGate.stepsMeters > 0 && (
+            <p className="text-xs text-slate-600">
+              {t.route.steps}: {fromGate.stepsMeters} {t.common.meters}
+            </p>
+          )}
           <p className="text-xs text-slate-600">{t.placePage.externalOnly}</p>
         </div>
         <div className="flex gap-2">
@@ -149,18 +159,10 @@ function PlaceDetails({ place }: { place: Place }) {
         <div className="space-y-4 md:col-span-2">
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="font-bold text-navy-900">{t.placePage.about}</h2>
-            {place.description && <p className="mt-2 text-sm text-slate-700">{place.description}</p>}
-            {place.accessibility.length > 0 && (
-              <>
-                <h3 className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">{t.accessibility.title}</h3>
-                <ul className="mt-2 flex flex-wrap gap-2">
-                  {place.accessibility.map((a) => (
-                    <li key={a} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                      {t.accessibility[a]}
-                    </li>
-                  ))}
-                </ul>
-              </>
+            {place.description && (
+              <p lang={place.lang !== language ? place.lang : undefined} className="mt-2 text-sm text-slate-700">
+                {place.description}
+              </p>
             )}
           </section>
 
@@ -171,15 +173,31 @@ function PlaceDetails({ place }: { place: Place }) {
             ) : (
               <ul className="mt-3 grid gap-3 sm:grid-cols-2">
                 {place.services.map((s) => (
-                  <li key={s.name} className="rounded-xl border border-slate-200 p-3">
-                    <p className="font-semibold text-slate-900">{s.name}</p>
-                    <p className="text-xs text-slate-600">{s.description}</p>
-                    <p className="mt-1 text-xs font-semibold text-amber-800">{s.hours.replaceAll("-", "–")}</p>
+                  <li key={s.id}>
+                    {/* O serviço fica no catálogo (/servicos), onde estão os passos e requisitos. */}
+                    <Link href="/servicos" className="block rounded-xl border border-slate-200 p-3 font-semibold text-navy-900 hover:bg-slate-50">
+                      {s.name}
+                    </Link>
                   </li>
                 ))}
               </ul>
             )}
           </section>
+
+          {place.courses.length > 0 && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="font-bold text-navy-900">{t.placePage.courses}</h2>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {place.courses.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/cursos/${c.id}`} className="block rounded-xl border border-slate-200 p-3 font-semibold text-navy-900 hover:bg-slate-50">
+                      {c.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         <aside className="space-y-4">
@@ -189,23 +207,20 @@ function PlaceDetails({ place }: { place: Place }) {
               <p className="mt-1 text-xl font-bold text-navy-900">{place.hours.replaceAll("-", "–")}</p>
             </section>
           )}
-          {(place.phone || place.email || place.officeHours) && (
+          {place.contacts.length > 0 && (
             <section className="rounded-2xl bg-white p-5 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.placePage.contact}</h2>
-              <ul className="mt-2 space-y-1 text-sm text-slate-800">
-                {place.phone && <li>{place.phone}</li>}
-                {place.email && (
-                  <li>
-                    <a href={`mailto:${place.email}`} className="text-navy-700 underline">
-                      {place.email}
-                    </a>
+              <ul className="mt-2 space-y-2 text-sm text-slate-800">
+                {place.contacts.map((c) => (
+                  <li key={`${c.name}-${c.email ?? ""}`}>
+                    <p className="font-semibold">{c.name}</p>
+                    {c.email && (
+                      <a href={`mailto:${c.email}`} className="text-navy-700 underline">
+                        {c.email}
+                      </a>
+                    )}
                   </li>
-                )}
-                {place.officeHours && (
-                  <li className="text-xs text-slate-600">
-                    {t.placePage.officeHours}: {place.officeHours}
-                  </li>
-                )}
+                ))}
               </ul>
             </section>
           )}
@@ -243,13 +258,13 @@ function OriginPicker({
   onCancel: () => void;
   onConfirm: (originId: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [options, setOptions] = useState<Place[]>([]);
   const [choice, setChoice] = useState("");
 
   useEffect(() => {
-    if (issue) getPublicPlaces().then((all) => setOptions(all.filter((p) => p.id !== destinationId)));
-  }, [issue, destinationId]);
+    if (issue) getPublicPlaces(language).then((all) => setOptions(all.filter((p) => p.id !== destinationId)));
+  }, [issue, destinationId, language]);
 
   const gates = options.filter((p) => p.category === "portaria");
   const buildings = options.filter((p) => p.category !== "portaria");

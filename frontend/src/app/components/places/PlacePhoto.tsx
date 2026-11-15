@@ -1,14 +1,14 @@
-import type { Place } from "../../data/mockPlaces";
+import type { Place } from "../../services/placesService";
 
 // Sem foto cadastrada, mostra um bloco com a sigla do local no lugar da fachada.
 export default function PlacePhoto({ place, className = "" }: { place: Place; className?: string }) {
-  if (place.photoDataUrl) {
+  if (place.photoUrl) {
     return (
       <div
         role="img"
         aria-label={`Fachada — ${place.name}`}
         className={`bg-cover bg-center ${className}`}
-        style={{ backgroundImage: `url(${place.photoDataUrl})` }}
+        style={{ backgroundImage: `url(${place.photoUrl})` }}
       />
     );
   }

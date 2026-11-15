@@ -1,6 +1,7 @@
-import type { GuideSection, GuideStage } from "../data/mockGuides";
-import type { AccessibilityFeature, PlaceCategory } from "../data/mockPlaces";
+import type { GuideSection, GuideStage } from "../services/guidesService";
+import type { PlaceCategory } from "../services/placesService";
 import type { CourseType } from "../services/coursesService";
+import type { AuditEntityKey } from "../services/auditService";
 
 export const LANGUAGES = ["pt", "en", "es"] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -26,7 +27,6 @@ export type Dictionary = {
     recifeGuide: string;
     supportSection: string;
     contactTeam: string;
-    accessibility: string;
     admin: string;
     openMenu: string;
     closeMenu: string;
@@ -55,11 +55,19 @@ export type Dictionary = {
     recenter: string;
   };
   language: { label: string; open: string };
-  common: { close: string; cancel: string; loading: string; minutes: string; meters: string };
+  common: {
+    close: string;
+    cancel: string;
+    loading: string;
+    minutes: string;
+    meters: string;
+    machineTranslated: string;
+    notTranslated: string;
+  };
   categories: Record<PlaceCategory, string>;
-  accessibility: Record<AccessibilityFeature, string> & { title: string; none: string };
   serviceCard: {
     howToApply: string;
+    whereToFind: string;
     requirements: string;
     deadline: string;
     openLink: string;
@@ -87,10 +95,10 @@ export type Dictionary = {
     viewOnMap: string;
     hours: string;
     contact: string;
-    officeHours: string;
     about: string;
     services: string;
     noServices: string;
+    courses: string;
     share: string;
     linkCopied: string;
     address: string;
@@ -110,6 +118,9 @@ export type Dictionary = {
     gates: string;
     buildings: string;
     confirm: string;
+    estimate: string;
+    steps: string;
+    attribution: string;
   };
   guide: {
     breadcrumbLabel: string;
@@ -170,6 +181,30 @@ export type Dictionary = {
     retry: string;
     portugueseOnly: string;
   };
+  services: {
+    title: string;
+    subtitle: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    categoryFilter: string;
+    allCategories: string;
+    resultsCount: string;
+    empty: string;
+    noResults: string;
+    clearFilters: string;
+    error: string;
+    retry: string;
+    portugueseOnly: string;
+  };
+  placeLists: {
+    subtitle: { stops: string; eat: string; study: string };
+    stopsSoon: string;
+    portugueseOnly: string;
+    empty: string;
+    error: string;
+    retry: string;
+    viewDetails: string;
+  };
   weeklyMenu: {
     title: string;
     subtitle: string;
@@ -183,6 +218,8 @@ export type Dictionary = {
     drink: string;
     empty: string;
     today: string;
+    error: string;
+    retry: string;
   };
   courses: {
     title: string;
@@ -226,6 +263,8 @@ export type Dictionary = {
     totalWorkload: string;
     period: string;
     electives: string;
+    machineTranslated: string;
+    notTranslated: string;
     subjectCode: string;
     subject: string;
     workload: string;
@@ -236,6 +275,10 @@ export type Dictionary = {
     obligatory: string;
     optional: string;
     noSubjects: string;
+  };
+  // Painel: tipo de registro no histórico (UC23).
+  audit: {
+    entities: Record<AuditEntityKey, string>;
   };
 };
 
@@ -261,7 +304,6 @@ export const dictionaries: Record<Language, Dictionary> = {
       recifeGuide: "Guia de Recife",
       supportSection: "Gestão e apoio",
       contactTeam: "Falar com a equipe",
-      accessibility: "Acessibilidade",
       admin: "Área do administrador",
       openMenu: "Abrir menu",
       closeMenu: "Fechar menu",
@@ -290,7 +332,15 @@ export const dictionaries: Record<Language, Dictionary> = {
       recenter: "Centralizar mapa",
     },
     language: { label: "Idioma", open: "Trocar idioma" },
-    common: { close: "Fechar", cancel: "Cancelar", loading: "Carregando...", minutes: "min", meters: "m" },
+    common: {
+      close: "Fechar",
+      cancel: "Cancelar",
+      loading: "Carregando...",
+      minutes: "min",
+      meters: "m",
+      machineTranslated: "Tradução automática, aguardando revisão.",
+      notTranslated: "Este conteúdo ainda não tem tradução.",
+    },
     categories: {
       departamento: "Departamento acadêmico",
       administrativo: "Prédio administrativo",
@@ -303,21 +353,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Saúde",
       auditorio: "Auditório / teatro",
       esporte: "Parque esportivo",
-      laboratorio: "Laboratório especializado",
-    },
-    accessibility: {
-      title: "Acessibilidade",
-      none: "Não informada",
-      rampa: "Rampa de acesso",
-      elevador: "Elevador",
-      piso_tatil: "Piso tátil",
-      banheiro: "Banheiro adaptado",
-      vaga: "Vaga reservada",
-      portas: "Portas com vão livre (90 cm)",
-      libras: "Intérprete de Libras",
     },
     serviceCard: {
       howToApply: "Como solicitar",
+      whereToFind: "Onde encontrar",
       requirements: "Requisitos e documentos",
       deadline: "Prazo",
       openLink: "Consultar edital ou guia",
@@ -345,10 +384,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewOnMap: "Ver no mapa",
       hours: "Horário de funcionamento",
       contact: "Contato",
-      officeHours: "Atendimento",
       about: "Sobre o local",
       services: "Serviços no local",
       noServices: "Nenhum serviço cadastrado neste local.",
+      courses: "Cursos neste local",
       share: "Compartilhar",
       linkCopied: "Link copiado",
       address: "Endereço",
@@ -368,6 +407,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Portarias",
       buildings: "Prédios",
       confirm: "Traçar rota",
+      estimate: "Estimativa em linha reta: o caminho pelas vias não está disponível.",
+      steps: "Inclui escada",
+      attribution: "Caminhos: © colaboradores do OpenStreetMap",
     },
     guide: {
       breadcrumbLabel: "Trilha de navegação",
@@ -434,6 +476,34 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Tentar novamente",
       portugueseOnly: "",
     },
+    services: {
+      title: "Serviços",
+      subtitle: "Serviços estudantis da UFRPE: como solicitar, requisitos, prazos e links oficiais.",
+      searchLabel: "Buscar serviço",
+      searchPlaceholder: "Buscar por nome, setor ou assunto",
+      categoryFilter: "Filtrar por categoria",
+      allCategories: "Todas",
+      resultsCount: "serviço(s)",
+      empty: "Nenhum serviço publicado no momento.",
+      noResults: "Nenhum serviço encontrado com esses filtros.",
+      clearFilters: "Limpar filtros",
+      error: "Não foi possível carregar os serviços.",
+      retry: "Tentar novamente",
+      portugueseOnly: "",
+    },
+    placeLists: {
+      subtitle: {
+        stops: "Entradas do campus Dois Irmãos.",
+        eat: "Onde fazer refeições no campus.",
+        study: "Salas de aula e bibliotecas do campus.",
+      },
+      stopsSoon: "As paradas de ônibus serão adicionadas em breve.",
+      portugueseOnly: "",
+      empty: "Nenhum local cadastrado nesta categoria ainda.",
+      error: "Não foi possível carregar os locais.",
+      retry: "Tentar novamente",
+      viewDetails: "Ver detalhes",
+    },
     weeklyMenu: {
       title: "Cardápio da semana",
       subtitle: "Restaurante Universitário · almoço 11h–14h · jantar 17h30–19h30",
@@ -447,6 +517,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Suco",
       empty: "Nenhum cardápio publicado para esta semana.",
       today: "Hoje",
+      error: "Não foi possível carregar o cardápio.",
+      retry: "Tentar novamente",
     },
     courses: {
       title: "Cursos e departamentos",
@@ -490,6 +562,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       totalWorkload: "de carga horária total",
       period: "Período",
       electives: "Optativas / Eletivas",
+      machineTranslated: "Tradução automática, aguardando revisão.",
+      notTranslated: "Este curso ainda não tem tradução.",
       subjectCode: "Código",
       subject: "Disciplina",
       workload: "Carga horária",
@@ -500,6 +574,17 @@ export const dictionaries: Record<Language, Dictionary> = {
       obligatory: "Obrigatória",
       optional: "Optativa",
       noSubjects: "Nenhuma disciplina cadastrada neste período.",
+    },
+    audit: {
+      entities: {
+        local: "Local",
+        servico: "Serviço",
+        cardapio: "Cardápio",
+        aviso: "Aviso",
+        acolhimento: "Acolhimento",
+        administrador: "Administrador",
+        curso: "Curso",
+      },
     },
   },
   en: {
@@ -523,7 +608,6 @@ export const dictionaries: Record<Language, Dictionary> = {
       recifeGuide: "Recife guide",
       supportSection: "Support",
       contactTeam: "Contact the team",
-      accessibility: "Accessibility",
       admin: "Administrator area",
       openMenu: "Open menu",
       closeMenu: "Close menu",
@@ -552,7 +636,15 @@ export const dictionaries: Record<Language, Dictionary> = {
       recenter: "Recenter map",
     },
     language: { label: "Language", open: "Change language" },
-    common: { close: "Close", cancel: "Cancel", loading: "Loading...", minutes: "min", meters: "m" },
+    common: {
+      close: "Close",
+      cancel: "Cancel",
+      loading: "Loading...",
+      minutes: "min",
+      meters: "m",
+      machineTranslated: "Automatic translation, pending human review.",
+      notTranslated: "This content is not translated yet; it is shown in Portuguese.",
+    },
     categories: {
       departamento: "Academic department",
       administrativo: "Administrative building",
@@ -565,21 +657,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Health",
       auditorio: "Auditorium",
       esporte: "Sports area",
-      laboratorio: "Specialized laboratory",
-    },
-    accessibility: {
-      title: "Accessibility",
-      none: "Not provided",
-      rampa: "Access ramp",
-      elevador: "Elevator",
-      piso_tatil: "Tactile paving",
-      banheiro: "Accessible restroom",
-      vaga: "Reserved parking",
-      portas: "Wide doorways (90 cm)",
-      libras: "Sign language interpreter",
     },
     serviceCard: {
       howToApply: "How to apply",
+      whereToFind: "Where to find it",
       requirements: "Requirements and documents",
       deadline: "Deadline",
       openLink: "View notice or guide",
@@ -607,10 +688,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewOnMap: "View on map",
       hours: "Opening hours",
       contact: "Contact",
-      officeHours: "Office hours",
       about: "About this place",
       services: "Services here",
       noServices: "No services registered at this place.",
+      courses: "Courses held here",
       share: "Share",
       linkCopied: "Link copied",
       address: "Address",
@@ -630,6 +711,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Gates",
       buildings: "Buildings",
       confirm: "Show route",
+      estimate: "Straight-line estimate: the walking path is not available.",
+      steps: "Includes stairs",
+      attribution: "Paths: © OpenStreetMap contributors",
     },
     guide: {
       breadcrumbLabel: "Breadcrumb",
@@ -696,6 +780,34 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       portugueseOnly: "Notices are published in Portuguese.",
     },
+    services: {
+      title: "Services",
+      subtitle: "UFRPE student services: how to apply, requirements, deadlines and official links.",
+      searchLabel: "Search services",
+      searchPlaceholder: "Search by name, office or subject",
+      categoryFilter: "Filter by category",
+      allCategories: "All",
+      resultsCount: "service(s)",
+      empty: "No services published at the moment.",
+      noResults: "No services match these filters.",
+      clearFilters: "Clear filters",
+      error: "Could not load the services.",
+      retry: "Try again",
+      portugueseOnly: "Services are published in Portuguese.",
+    },
+    placeLists: {
+      subtitle: {
+        stops: "Entrances to the Dois Irmãos campus.",
+        eat: "Where to have meals on campus.",
+        study: "Classrooms and libraries on campus.",
+      },
+      stopsSoon: "Bus stops will be added soon.",
+      portugueseOnly: "Addresses are shown in Portuguese.",
+      empty: "No places registered in this category yet.",
+      error: "Could not load the places.",
+      retry: "Try again",
+      viewDetails: "View details",
+    },
     weeklyMenu: {
       title: "Weekly menu",
       subtitle: "University Restaurant · lunch 11am–2pm · dinner 5:30pm–7:30pm",
@@ -709,6 +821,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Juice",
       empty: "No menu published for this week.",
       today: "Today",
+      error: "Could not load the menu.",
+      retry: "Try again",
     },
     courses: {
       title: "Courses and departments",
@@ -752,6 +866,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       totalWorkload: "total workload",
       period: "Term",
       electives: "Electives",
+      machineTranslated: "Automatic translation, pending human review.",
+      notTranslated: "This course is not translated yet; its content is shown in Portuguese.",
       subjectCode: "Code",
       subject: "Subject",
       workload: "Workload",
@@ -762,6 +878,17 @@ export const dictionaries: Record<Language, Dictionary> = {
       obligatory: "Required",
       optional: "Elective",
       noSubjects: "No subjects registered for this term.",
+    },
+    audit: {
+      entities: {
+        local: "Place",
+        servico: "Service",
+        cardapio: "Menu",
+        aviso: "Notice",
+        acolhimento: "Welcome guide",
+        administrador: "Administrator",
+        curso: "Course",
+      },
     },
   },
   es: {
@@ -785,7 +912,6 @@ export const dictionaries: Record<Language, Dictionary> = {
       recifeGuide: "Guía de Recife",
       supportSection: "Gestión y apoyo",
       contactTeam: "Hablar con el equipo",
-      accessibility: "Accesibilidad",
       admin: "Área del administrador",
       openMenu: "Abrir menú",
       closeMenu: "Cerrar menú",
@@ -814,7 +940,15 @@ export const dictionaries: Record<Language, Dictionary> = {
       recenter: "Centrar mapa",
     },
     language: { label: "Idioma", open: "Cambiar idioma" },
-    common: { close: "Cerrar", cancel: "Cancelar", loading: "Cargando...", minutes: "min", meters: "m" },
+    common: {
+      close: "Cerrar",
+      cancel: "Cancelar",
+      loading: "Cargando...",
+      minutes: "min",
+      meters: "m",
+      machineTranslated: "Traducción automática, pendiente de revisión humana.",
+      notTranslated: "Este contenido aún no está traducido; se muestra en portugués.",
+    },
     categories: {
       departamento: "Departamento académico",
       administrativo: "Edificio administrativo",
@@ -827,21 +961,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       saude: "Salud",
       auditorio: "Auditorio",
       esporte: "Área deportiva",
-      laboratorio: "Laboratorio especializado",
-    },
-    accessibility: {
-      title: "Accesibilidad",
-      none: "No informada",
-      rampa: "Rampa de acceso",
-      elevador: "Ascensor",
-      piso_tatil: "Piso táctil",
-      banheiro: "Baño adaptado",
-      vaga: "Plaza reservada",
-      portas: "Puertas con vano libre (90 cm)",
-      libras: "Intérprete de lengua de señas",
     },
     serviceCard: {
       howToApply: "Cómo solicitar",
+      whereToFind: "Dónde encontrarlo",
       requirements: "Requisitos y documentos",
       deadline: "Plazo",
       openLink: "Consultar convocatoria o guía",
@@ -869,10 +992,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       viewOnMap: "Ver en el mapa",
       hours: "Horario de atención",
       contact: "Contacto",
-      officeHours: "Atención",
       about: "Sobre el lugar",
       services: "Servicios en el lugar",
       noServices: "No hay servicios registrados en este lugar.",
+      courses: "Cursos en este lugar",
       share: "Compartir",
       linkCopied: "Enlace copiado",
       address: "Dirección",
@@ -892,6 +1015,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Porterías",
       buildings: "Edificios",
       confirm: "Trazar ruta",
+      estimate: "Estimación en línea recta: el camino por las vías no está disponible.",
+      steps: "Incluye escaleras",
+      attribution: "Caminos: © colaboradores de OpenStreetMap",
     },
     guide: {
       breadcrumbLabel: "Ruta de navegación",
@@ -958,6 +1084,34 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Intentar de nuevo",
       portugueseOnly: "Los avisos se publican en portugués.",
     },
+    services: {
+      title: "Servicios",
+      subtitle: "Servicios estudiantiles de la UFRPE: cómo solicitarlos, requisitos, plazos y enlaces oficiales.",
+      searchLabel: "Buscar servicio",
+      searchPlaceholder: "Buscar por nombre, sector o tema",
+      categoryFilter: "Filtrar por categoría",
+      allCategories: "Todas",
+      resultsCount: "servicio(s)",
+      empty: "No hay servicios publicados por el momento.",
+      noResults: "Ningún servicio coincide con estos filtros.",
+      clearFilters: "Limpiar filtros",
+      error: "No fue posible cargar los servicios.",
+      retry: "Intentar de nuevo",
+      portugueseOnly: "Los servicios se publican en portugués.",
+    },
+    placeLists: {
+      subtitle: {
+        stops: "Entradas del campus Dois Irmãos.",
+        eat: "Dónde comer en el campus.",
+        study: "Aulas y bibliotecas del campus.",
+      },
+      stopsSoon: "Las paradas de autobús se añadirán pronto.",
+      portugueseOnly: "Las direcciones se muestran en portugués.",
+      empty: "Aún no hay lugares registrados en esta categoría.",
+      error: "No fue posible cargar los lugares.",
+      retry: "Intentar de nuevo",
+      viewDetails: "Ver detalles",
+    },
     weeklyMenu: {
       title: "Menú de la semana",
       subtitle: "Restaurante Universitario · almuerzo 11h–14h · cena 17h30–19h30",
@@ -971,6 +1125,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       drink: "Jugo",
       empty: "No hay menú publicado para esta semana.",
       today: "Hoy",
+      error: "No fue posible cargar el menú.",
+      retry: "Intentar de nuevo",
     },
     courses: {
       title: "Cursos y departamentos",
@@ -1014,6 +1170,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       totalWorkload: "de carga horaria total",
       period: "Período",
       electives: "Optativas / Electivas",
+      machineTranslated: "Traducción automática, pendiente de revisión humana.",
+      notTranslated: "Este curso aún no está traducido; su contenido se muestra en portugués.",
       subjectCode: "Código",
       subject: "Asignatura",
       workload: "Carga horaria",
@@ -1024,6 +1182,17 @@ export const dictionaries: Record<Language, Dictionary> = {
       obligatory: "Obligatoria",
       optional: "Optativa",
       noSubjects: "No hay asignaturas registradas en este período.",
+    },
+    audit: {
+      entities: {
+        local: "Lugar",
+        servico: "Servicio",
+        cardapio: "Menú",
+        aviso: "Aviso",
+        acolhimento: "Acogida",
+        administrador: "Administrador",
+        curso: "Curso",
+      },
     },
   },
 };

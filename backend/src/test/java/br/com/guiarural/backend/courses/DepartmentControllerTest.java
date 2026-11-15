@@ -23,6 +23,8 @@ import java.util.List;
 
 import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,8 +53,8 @@ class DepartmentControllerTest {
     void shouldReturnDepartmentCourses() throws Exception {
         CourseSummaryDTO course = new CourseSummaryDTO(1L, 10L, "104", "Ciência da Computação",
                 CourseLevel.GRADUACAO, CourseType.BACHARELADO, "Presencial", "Diurno",
-                (short) 8, (short) 5, null, null, "Sala 204");
-        when(departmentService.findCourses(10L)).thenReturn(new DepartmentCoursesResponseDTO(
+                (short) 8, (short) 5, null, null, "Sala 204", true, "pt");
+        when(departmentService.findCourses(eq(10L), any())).thenReturn(new DepartmentCoursesResponseDTO(
                 10L, 1, List.of(new CourseGroupDTO(CourseLevel.GRADUACAO, List.of(course))), List.of()));
 
         mockMvc.perform(get("/api/departments/10/courses"))
@@ -65,7 +67,7 @@ class DepartmentControllerTest {
     @Test
     @DisplayName("Deve responder 404 quando o departamento não existe")
     void shouldReturnNotFoundForUnknownDepartment() throws Exception {
-        when(departmentService.findById(99L))
+        when(departmentService.findById(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("Departamento não encontrado com ID: 99"));
 
         mockMvc.perform(get("/api/departments/99"))
@@ -76,7 +78,7 @@ class DepartmentControllerTest {
     @Test
     @DisplayName("Deve responder 404 quando o curso não existe")
     void shouldReturnNotFoundForUnknownCourse() throws Exception {
-        when(courseService.findById(99L))
+        when(courseService.findById(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("Curso não encontrado com ID: 99"));
 
         mockMvc.perform(get("/api/courses/99"))

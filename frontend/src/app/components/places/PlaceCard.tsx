@@ -3,20 +3,21 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import type { Place } from "../../data/mockPlaces";
 import { isOpenNow } from "../../lib/hours";
-import { getDefaultOrigin, isPlaceSaved, toggleSavedPlace } from "../../services/placesService";
-import { computeRoute } from "../../services/routeService";
+import { getDefaultOrigin, isPlaceSaved, toggleSavedPlace, type Place } from "../../services/placesService";
+import { useApi } from "../../hooks/useApi";
+import { NO_ROUTE, getRoute, routeKey } from "../../services/routeService";
 import PlacePhoto from "./PlacePhoto";
 
 // Cartão de informações resumidas (UC02, passo 4). Renderizar com key={place.id}.
 export default function PlaceCard({ place, onClose }: { place: Place; onClose: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
-  const origin = getDefaultOrigin();
+  const origin = getDefaultOrigin(language);
   // A própria origem não mostra distância (seria "0 m").
-  const route = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
-  // Horário e acessibilidade podem não estar cadastrados: sem o dado, a tela não afirma "fechado" nem "sem recursos".
+  const routeState = useApi(getRoute, place.position && origin?.position && origin.id !== place.id ? routeKey(origin.position, place.position) : NO_ROUTE);
+  const route = routeState.status === "ready" ? routeState.data : null;
+  // O horário pode não estar cadastrado: sem o dado, a tela não afirma "fechado".
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
 
@@ -42,7 +43,11 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
         </button>
         <div className="absolute inset-x-3 bottom-2 flex items-center justify-between text-[11px] font-semibold">
           {route && (
-            <span className="rounded-full bg-navy-900/85 px-2 py-0.5 text-white" title={t.placeCard.fromOrigin}>
+            <span
+              className="rounded-full bg-navy-900/85 px-2 py-0.5 text-white"
+              title={route.source === "straight" ? `${t.placeCard.fromOrigin} · ${t.route.estimate}` : t.placeCard.fromOrigin}
+            >
+              {route.source === "straight" ? "≈ " : ""}
               {route.minutes} {t.common.minutes} {t.placeCard.walk} • {route.meters} {t.common.meters}
             </span>
           )}
@@ -57,7 +62,9 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h2 className="font-bold leading-tight text-navy-900">{place.name}</h2>
+            <h2 lang={place.lang !== language ? place.lang : undefined} className="font-bold leading-tight text-navy-900">
+              {place.name}
+            </h2>
             <p className="text-xs text-slate-600">{place.address}</p>
           </div>
           {/* FA-02.02: salvar local a partir do mapa */}
@@ -75,26 +82,20 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
           </button>
         </div>
 
-        {(hasHours || place.accessibility.length > 0) && (
-          <dl className="grid grid-cols-2 gap-2 text-xs">
-            {hasHours && (
-              <div className="rounded-lg bg-slate-50 p-2">
-                <dt className="text-slate-500">{t.placeCard.hours}</dt>
-                <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
-              </div>
-            )}
-            {place.accessibility.length > 0 && (
-              <div className="rounded-lg bg-slate-50 p-2">
-                <dt className="text-slate-500">{t.accessibility.title}</dt>
-                <dd className="font-semibold text-slate-900">
-                  {place.accessibility.map((a) => t.accessibility[a]).join(", ")}
-                </dd>
-              </div>
-            )}
+        {hasHours && (
+          <dl className="text-xs">
+            <div className="rounded-lg bg-slate-50 p-2">
+              <dt className="text-slate-500">{t.placeCard.hours}</dt>
+              <dd className="font-semibold text-slate-900">{place.hours.replaceAll("-", "–")}</dd>
+            </div>
           </dl>
         )}
 
-        {place.description && <p className="line-clamp-3 text-xs text-slate-700">{place.description}</p>}
+        {place.description && (
+          <p lang={place.lang !== language ? place.lang : undefined} className="line-clamp-3 text-xs text-slate-700">
+            {place.description}
+          </p>
+        )}
 
         <Link
           href={`/locais/${place.id}`}

@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { useAdmin } from "../../../components/admin/AdminShell";
 import PageHeader, { primaryButton, secondaryButton } from "../../../components/admin/PageHeader";
 import Modal, { ConfirmModal } from "../../../components/ui/Modal";
-import type { AuditAction, AuditEntity, AuditLog } from "../../../data/mockAuditLogs";
-import { listLogs } from "../../../services/auditService";
+import { useLanguage } from "../../../context/LanguageContext";
+import { ENTITY_KEYS, listLogs, type AuditAction, type AuditEntity, type AuditLog } from "../../../services/auditService";
 import { canRestore, restoreFromLog } from "../../../services/restoreService";
 
-const ENTITIES: ("todos" | AuditEntity)[] = ["todos", "Local", "Aviso", "Cardápio", "Acolhimento", "Serviço", "Administrador"];
+const ENTITIES: ("todos" | AuditEntity)[] = ["todos", "Local", "Aviso", "Cardápio", "Acolhimento", "Serviço", "Curso", "Administrador"];
 
 const ACTIONS: Record<AuditAction, [string, string]> = {
   criado: ["Criado", "bg-emerald-50 text-emerald-800 border-emerald-200"],
@@ -91,6 +91,10 @@ function diffRows(log: AuditLog) {
 // UC23 — Visualizar logs de mudanças
 export default function HistoryPage() {
   const { session } = useAdmin();
+  const { t } = useLanguage();
+  const entityLabel = (e: AuditEntity) => t.audit.entities[ENTITY_KEYS[e]];
+  // Desfazer é uma escrita: o perfil "leitura" só consulta o histórico.
+  const canWrite = session.permission !== "leitura";
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [entity, setEntity] = useState<(typeof ENTITIES)[number]>("todos");
@@ -124,7 +128,7 @@ export default function HistoryPage() {
     if (!selected) return;
     setRestoring(true);
     try {
-      await restoreFromLog(selected, session.name);
+      await restoreFromLog(selected);
       setMessage({ kind: "ok", text: `"${selected.entityName}" voltou à versão anterior. A restauração foi registrada no histórico.` });
       setSelected(null);
       setPage(1);
@@ -157,7 +161,7 @@ export default function HistoryPage() {
     <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
       <PageHeader
         title="Histórico de mudanças"
-        subtitle="Quem criou, editou ou deletou locais, avisos, cardápios, conteúdos de acolhimento e administradores. Os registros não podem ser apagados."
+        subtitle="Quem criou, editou ou deletou locais, avisos, cardápios, serviços, cursos, conteúdos de acolhimento e administradores. Os registros não podem ser apagados."
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -174,7 +178,7 @@ export default function HistoryPage() {
               }}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${entity === key ? "bg-navy-900 text-white" : "text-slate-700 hover:bg-white"}`}
             >
-              {key === "todos" ? "Todos" : key}
+              {key === "todos" ? "Todos" : entityLabel(key)}
             </button>
           ))}
         </div>
@@ -242,7 +246,7 @@ export default function HistoryPage() {
                 <tr key={l.id} onClick={() => setSelected(l)} className="cursor-pointer hover:bg-amber-50/40">
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{new Date(l.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
                   <td className="px-4 py-3 font-semibold text-slate-900">{l.entityName}</td>
-                  <td className="px-4 py-3 text-slate-700">{l.entity}</td>
+                  <td className="px-4 py-3 text-slate-700">{entityLabel(l.entity)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${ACTIONS[l.action][1]}`}>{ACTIONS[l.action][0]}</span>
                   </td>
@@ -296,7 +300,7 @@ export default function HistoryPage() {
         open={selected !== null && !confirming}
         onClose={() => setSelected(null)}
         title="Detalhes da alteração"
-        description={selected ? `${selected.entity} · ${selected.entityName}` : undefined}
+        description={selected ? `${entityLabel(selected.entity)} · ${selected.entityName}` : undefined}
         size="lg"
       >
         {selected && (
@@ -342,15 +346,21 @@ export default function HistoryPage() {
             </div>
             {selected.before === null && <p className="text-xs text-slate-500">O registro não existia antes desta mudança: desfazer remove o registro.</p>}
             {selected.after === null && <p className="text-xs text-slate-500">O registro foi deletado nesta mudança: desfazer traz o registro de volta.</p>}
-            {!canRestore(selected) && (
-              <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">A restauração de serviços ainda não é suportada pelo backend.</p>
+            {selected.entity === "Local" && selected.before !== null && (
+              <p className="text-xs text-slate-500">A foto do local não faz parte do histórico: desfazer mantém a foto atual (e um local excluído volta sem foto).</p>
+            )}
+            {!canWrite && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Seu perfil é somente leitura: não permite desfazer mudanças.</p>}
+            {canWrite && !canRestore(selected) && (
+              <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                Mudanças em administradores não podem ser desfeitas. Aprove ou revogue a conta na tela de Administradores.
+              </p>
             )}
 
             <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setSelected(null)} className={`${secondaryButton} justify-center`}>
                 Fechar
               </button>
-              <button type="button" disabled={!canRestore(selected)} onClick={() => setConfirming(true)} className={`${primaryButton} justify-center`}>
+              <button type="button" disabled={!canWrite || !canRestore(selected)} onClick={() => setConfirming(true)} className={`${primaryButton} justify-center`}>
                 <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 7v6h6" />
                   <path d="M3 13a9 9 0 1 0 3-7.7L3 8" />

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAdmin } from "../../../../../components/admin/AdminShell";
-import type { Menu, Shift } from "../../../../../data/mockMenus";
 import { setFlash } from "../../../../../lib/flash";
 import { primaryButton, secondaryButton } from "../../../../../components/admin/PageHeader";
 import {
@@ -12,9 +11,11 @@ import {
   SHIFT_LABELS,
   getMenuById,
   updateMenu,
+  type MenuInput,
+  type Shift,
 } from "../../../../../services/menuService";
 
-type Fields = Omit<Menu, "id">;
+type Fields = MenuInput;
 const EMPTY: Fields = { date: "", shift: "almoco", main: "", vegetarian: "", sides: "", salad: "", dessert: "", drink: "" };
 
 const DISHES: { key: keyof Fields; label: string; placeholder: string; required?: boolean }[] = [
@@ -36,18 +37,26 @@ export default function EditMenuPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // Só salva o que foi carregado do servidor: sem isso, "Salvar" mandaria o formulário vazio.
+  const [menuId, setMenuId] = useState<number | null>(null);
 
   useEffect(() => {
-    getMenuById(id).then((menu) => {
-      if (!menu) {
-        setSummary("Cardápio não encontrado.");
+    getMenuById(id).then(
+      (menu) => {
+        if (!menu) {
+          setSummary("Cardápio não encontrado. Ele pode ter sido excluído por outro administrador.");
+        } else {
+          const { id: loadedId, ...rest } = menu;
+          setMenuId(loadedId);
+          setFields(rest);
+        }
         setLoading(false);
-        return;
-      }
-      const { id: _, ...rest } = menu;
-      setFields(rest);
-      setLoading(false);
-    });
+      },
+      () => {
+        setSummary("Não foi possível carregar o cardápio. Recarregue a página para tentar novamente.");
+        setLoading(false);
+      },
+    );
   }, [id]);
 
   function update<K extends keyof Fields>(key: K, value: Fields[K]) {
@@ -66,15 +75,14 @@ export default function EditMenuPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
+    if (menuId === null) return;
+
     setSaving(true);
     setSummary(null);
 
     try {
-      await updateMenu(
-        id,
-        Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v])) as Fields,
-        session.name
-      );
+      // O servidor registra quem editou (sessão) e grava o antes e o depois no histórico.
+      await updateMenu(menuId, fields);
 
       setDirty(false);
       setFlash("Cardápio atualizado com sucesso!");
@@ -140,7 +148,7 @@ export default function EditMenuPage({ params }: { params: Promise<{ id: string 
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || menuId === null}
               className={`${primaryButton} h-10 gap-2`}
             >
               {saving && <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
