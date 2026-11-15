@@ -19,6 +19,7 @@ const NAV: { title?: string; items: NavItem[] }[] = [
       { href: "/admin/locais", label: "Locais e prédios" },
       { href: "/admin/avisos", label: "Avisos do campus" },
       { href: "/admin/servicos", label: "Serviços" },
+      { href: "/admin/cursos", label: "Cursos" },
       { href: "/admin/cardapio", label: "Cardápio do RU" },
     ],
   },

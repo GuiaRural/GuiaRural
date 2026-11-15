@@ -194,7 +194,7 @@ Dividida em três entregas: **5a** API de escrita (sem matriz e sem telas), **5b
 - [x] Frontend mínimo: histórico mostra "Curso" (rótulo das entidades vem do dicionário `audit.entities`, PT/EN/ES) e não oferece desfazer para curso.
 
 **5b — Telas do painel**
-- [ ] Telas do painel para cursos (casos de uso `[UC35]` e `[UC36]` em `docs/`), usando `/api/admin/courses` para ler e `/api/courses` para escrever. Confirmação explícita antes de excluir (RN-UC36-02).
+- [x] Telas do painel para cursos (casos de uso `[UC35]` e `[UC36]` em `docs/`), implementadas em 15/11/2026 no branch `feat/cursos-telas-painel`: `/admin/cursos` (lista com busca, filtro de situação e selo de inativo), `/admin/cursos/novo` e `/admin/cursos/[id]` (formulário com dados gerais e coordenação; excluir só depois do modal de confirmação com aviso de exclusão definitiva, RN-UC36-02). Leitura por `/api/admin/courses` e escrita por `/api/courses`. Conta `leitura` vê, mas não altera. Textos do painel em português fixo, como nas outras telas do painel. Fica para a 5c a edição da matriz.
 
 **5c — Matriz curricular**
 - [ ] **Matriz curricular no formulário de curso (D10):** edição da lista de disciplinas (`curriculum_subjects`: período, código etc.; `null` = bloco "Optativas / Eletivas") junto com o curso, na mesma transação. Excluir o curso remove a matriz (UC36; já feito na 5a).
