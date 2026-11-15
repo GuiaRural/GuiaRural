@@ -131,9 +131,30 @@ export type CourseInput = {
   extension: string;
   email: string;
   secondaryEmail: string;
+  // Matriz curricular (5c): enviada inteira a cada salvamento; ela substitui a anterior.
+  subjects: SubjectInput[];
 };
 
-export type CourseField = Exclude<keyof CourseInput, "active">;
+// Uma disciplina no formulário. `key` só identifica a linha na tela; `period` vazio = "Optativas / Eletivas".
+export type SubjectInput = {
+  key: number;
+  period: string;
+  code: string;
+  name: string;
+  // Ainda sem campo na tela: é devolvido como veio para não se perder ao salvar.
+  syllabus: string;
+  workloadHours: string;
+  credits: string;
+  nature: SubjectNature;
+  // Códigos separados por vírgula, como o administrador digita.
+  prerequisites: string;
+};
+
+export type SubjectField = "code" | "name" | "workloadHours" | "credits" | "prerequisites";
+// Erros por posição da disciplina na lista (a tela mostra só as de um período por vez).
+export type SubjectErrors = Record<number, Partial<Record<SubjectField, string>>>;
+
+export type CourseField = Exclude<keyof CourseInput, "active" | "subjects">;
 export type CourseErrors = Partial<Record<CourseField, string>>;
 
 // D14: nível × tipo.
@@ -189,6 +210,7 @@ export const emptyCourseInput = (): CourseInput => ({
   extension: "",
   email: "",
   secondaryEmail: "",
+  subjects: [],
 });
 
 // Do que a API devolveu para o que o formulário edita (campos vazios viram texto vazio).
@@ -219,6 +241,17 @@ export function inputOf(course: CourseDetail): CourseInput {
     extension: text(c.extension),
     email: text(c.email),
     secondaryEmail: text(c.secondaryEmail),
+    subjects: (course.subjects ?? []).map((subject) => ({
+      key: subject.id,
+      period: num(subject.period),
+      code: subject.code,
+      name: subject.name,
+      syllabus: text(subject.syllabus),
+      workloadHours: num(subject.workloadHours),
+      credits: num(subject.credits),
+      nature: subject.nature,
+      prerequisites: subject.prerequisites.join(", "),
+    })),
   };
 }
 
@@ -227,6 +260,7 @@ export class CourseValidationError extends Error {
     readonly errors: CourseErrors,
     // Problema que não é de um campo só (ex.: departamento inativo): a tela mostra no resumo.
     readonly summary?: string,
+    readonly subjectErrors: SubjectErrors = {},
   ) {
     super("Curso com campos inválidos.");
   }
@@ -260,6 +294,42 @@ export function validateCourse(input: CourseInput): CourseErrors {
   return errors;
 }
 
+// Pré-requisitos digitados como "AGR101, AGR102" viram a lista de códigos (vazios são descartados).
+export function splitPrerequisites(text: string): string[] {
+  return text.split(",").map((code) => code.trim()).filter(Boolean);
+}
+
+// FA-35.01: confere cada disciplina da matriz; devolve só as linhas com problema, pela posição na lista.
+export function validateSubjects(subjects: SubjectInput[]): SubjectErrors {
+  const errors: SubjectErrors = {};
+  const seen = new Map<string, number>();
+  subjects.forEach((subject, index) => {
+    const row: Partial<Record<SubjectField, string>> = {};
+    const code = subject.code.trim();
+    if (!code) row.code = "Informe o código.";
+    else if (code.length > 30) row.code = "Código com no máximo 30 caracteres.";
+    else if (seen.has(code.toLowerCase())) row.code = "Código repetido na matriz.";
+    else seen.set(code.toLowerCase(), index);
+    const name = subject.name.trim();
+    if (!name) row.name = "Informe o nome da disciplina.";
+    else if (name.length > 200) row.name = "Nome com no máximo 200 caracteres.";
+    const hours = Number(subject.workloadHours.trim());
+    if (!subject.workloadHours.trim() || !Number.isInteger(hours) || hours < 1 || hours > 32767) {
+      row.workloadHours = "Carga horária de 1 a 32767.";
+    }
+    const credits = subject.credits.trim();
+    if (credits && (!Number.isInteger(Number(credits)) || Number(credits) < 0 || Number(credits) > 100)) {
+      row.credits = "Créditos de 0 a 100.";
+    }
+    const prerequisites = splitPrerequisites(subject.prerequisites);
+    if (prerequisites.length > 30 || prerequisites.some((c) => c.length > 30)) {
+      row.prerequisites = "No máximo 30 pré-requisitos, com até 30 caracteres cada.";
+    }
+    if (Object.keys(row).length) errors[index] = row;
+  });
+  return errors;
+}
+
 // Campo opcional vazio vai como nulo (o servidor também trata texto vazio como nulo).
 function payloadOf(input: CourseInput) {
   const optional = (value: string) => value.trim() || null;
@@ -287,25 +357,50 @@ function payloadOf(input: CourseInput) {
     extension: optional(input.extension),
     email: optional(input.email),
     secondaryEmail: optional(input.secondaryEmail),
+    subjects: input.subjects.map((subject) => ({
+      period: optionalNumber(subject.period),
+      code: subject.code.trim(),
+      name: subject.name.trim(),
+      syllabus: optional(subject.syllabus),
+      workloadHours: Number(subject.workloadHours),
+      credits: optionalNumber(subject.credits),
+      nature: subject.nature,
+      prerequisites: splitPrerequisites(subject.prerequisites),
+    })),
   };
 }
 
-const COURSE_FIELDS = Object.keys(emptyCourseInput()).filter((k) => k !== "active") as CourseField[];
+const SUBJECT_FIELDS: SubjectField[] = ["code", "name", "workloadHours", "credits", "prerequisites"];
+
+const COURSE_FIELDS = Object.keys(emptyCourseInput()).filter((k) => k !== "active" && k !== "subjects") as CourseField[];
 
 // Valida no cliente e, se o servidor recusar (400), devolve o erro no campo certo; o que não é de campo vira resumo.
 async function send(input: CourseInput, request: () => Promise<CourseDetail>): Promise<CourseDetail> {
   const errors = validateCourse(input);
-  if (Object.keys(errors).length) throw new CourseValidationError(errors);
+  const subjectErrors = validateSubjects(input.subjects);
+  if (Object.keys(errors).length || Object.keys(subjectErrors).length) {
+    throw new CourseValidationError(errors, undefined, subjectErrors);
+  }
   try {
     return await request();
   } catch (error) {
     if (error instanceof ApiError && error.status === 400) {
       const fieldErrors: CourseErrors = {};
+      const rowErrors: SubjectErrors = {};
       for (const [key, message] of Object.entries(error.fields ?? {})) {
+        // Erro de uma disciplina vem como "subjects[3].code".
+        const row = key.match(/^subjects\[(\d+)\]\.(\w+)/);
+        if (row) {
+          const field = row[2] as SubjectField;
+          if (SUBJECT_FIELDS.includes(field)) (rowErrors[Number(row[1])] ??= {})[field] = message;
+          continue;
+        }
         const field = key as CourseField;
         if (COURSE_FIELDS.includes(field)) fieldErrors[field] = message;
       }
-      if (Object.keys(fieldErrors).length || error.detail) throw new CourseValidationError(fieldErrors, error.detail);
+      if (Object.keys(fieldErrors).length || Object.keys(rowErrors).length || error.detail) {
+        throw new CourseValidationError(fieldErrors, error.detail, rowErrors);
+      }
     }
     throw error;
   }
