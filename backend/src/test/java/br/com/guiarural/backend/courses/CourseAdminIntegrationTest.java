@@ -209,4 +209,82 @@ class CourseAdminIntegrationTest {
         assertEquals(0, count("select count(*) from curriculum_subjects where course_id = ?", id));
         assertEquals(0, count("select count(*) from courses where id = ?", id));
     }
+
+    private static String subject(String code, Integer period, String prerequisites) {
+        return "{\"period\":" + period + ",\"code\":\"" + code + "\",\"name\":\"Disciplina " + code
+                + "\",\"workloadHours\":60,\"credits\":4,\"nature\":\"OBRIGATORIA\",\"prerequisites\":" + prerequisites + "}";
+    }
+
+    private static String courseWithSubjects(String name, String subjects) {
+        String base = course(name);
+        return base.substring(0, base.length() - 1) + ",\"subjects\":" + subjects + "}";
+    }
+
+    @Test
+    @DisplayName("Fase 5c: cadastro e edição gravam a matriz; sem `subjects` ela fica como está; lista vazia limpa")
+    void writesCurriculum() throws Exception {
+        Auth editor = login("editor.cursos@ufrpe.br");
+        long id = create(editor, courseWithSubjects("Agronomia",
+                "[" + subject("AGR101", 1, "[]") + "," + subject("AGR201", 2, "[\"AGR101\"]") + "]"));
+        assertEquals(2, count("select count(*) from curriculum_subjects where course_id = ?", id));
+        assertEquals("AGR101", jdbc.queryForObject(
+                "select prerequisites from curriculum_subjects where course_id = ? and code = 'AGR201'", String.class, id));
+
+        mvc.perform(get("/api/courses/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subjects.length()").value(2))
+                .andExpect(jsonPath("$.subjects[1].prerequisites[0]").value("AGR101"));
+
+        // Sem `subjects`: a matriz não muda.
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(course("Agronomia")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subjects.length()").value(2));
+        assertEquals(2, count("select count(*) from curriculum_subjects where course_id = ?", id));
+
+        // Com `subjects`: substitui a matriz inteira.
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(courseWithSubjects("Agronomia", "[" + subject("AGR999", 8, "[]") + "]")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subjects.length()").value(1))
+                .andExpect(jsonPath("$.subjects[0].code").value("AGR999"));
+        assertEquals(1, count("select count(*) from curriculum_subjects where course_id = ?", id));
+
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(courseWithSubjects("Agronomia", "[]")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subjects.length()").value(0));
+        assertEquals(0, count("select count(*) from curriculum_subjects where course_id = ?", id));
+    }
+
+    @Test
+    @DisplayName("Fase 5c: matriz inválida dá 400 (campo dentro da lista, código repetido) e não grava nada")
+    void rejectsInvalidCurriculum() throws Exception {
+        Auth editor = login("editor.cursos@ufrpe.br");
+        long id = create(editor, courseWithSubjects("Agronomia", "[" + subject("AGR101", 1, "[]") + "]"));
+
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(courseWithSubjects("Agronomia",
+                        "[{\"code\":\" \",\"name\":\"X\",\"workloadHours\":60,\"nature\":\"OBRIGATORIA\"}]")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields['subjects[0].code']").exists());
+
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(courseWithSubjects("Agronomia",
+                        "[" + subject("AGR200", 1, "[]") + "," + subject("agr200", 2, "[]") + "]")))
+                .andExpect(status().isBadRequest());
+
+        // A matriz de antes continua intacta.
+        assertEquals(1, count("select count(*) from curriculum_subjects where course_id = ? and code = 'AGR101'", id));
+        assertEquals(1, count("select count(*) from curriculum_subjects where course_id = ?", id));
+    }
+
+    @Test
+    @DisplayName("Fase 5c: o histórico da edição guarda a matriz antes e depois")
+    void auditKeepsCurriculum() throws Exception {
+        Auth editor = login("editor.cursos@ufrpe.br");
+        long id = create(editor, courseWithSubjects("Agronomia", "[" + subject("AGR101", 1, "[]") + "]"));
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(courseWithSubjects("Agronomia", "[" + subject("AGR777", 3, "[]") + "]")))
+                .andExpect(status().isOk());
+
+        String before = jdbc.queryForObject("select before_state from audit_logs where entity = 'curso' and action = 'editado'", String.class);
+        String after = jdbc.queryForObject("select after_state from audit_logs where entity = 'curso' and action = 'editado'", String.class);
+        assertEquals("AGR101", jsonMapper.readTree(before).get("subjects").get(0).get("code").asText());
+        assertEquals("AGR777", jsonMapper.readTree(after).get("subjects").get(0).get("code").asText());
+    }
 }

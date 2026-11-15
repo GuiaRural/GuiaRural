@@ -2,6 +2,7 @@ package br.com.guiarural.backend.courses.dto;
 
 import br.com.guiarural.backend.courses.model.CourseLevel;
 import br.com.guiarural.backend.courses.model.CourseType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -9,7 +10,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-// Cadastro e edição de curso pelo painel (UC35). Sem matriz curricular (Fase 5c) e sem traduções (Fase 6).
+import java.util.List;
+
+// Cadastro e edição de curso pelo painel (UC35). Sem traduções (Fase 6).
 // Os limites de tamanho são do formulário: o banco só exige nome não vazio, nível, tipo e departamento.
 // Nível × tipo e departamento ativo são conferidos no CourseService.
 public record CourseRequestDTO(
@@ -42,6 +45,9 @@ public record CourseRequestDTO(
         @Size(max = 10, message = "Ramal com no máximo 10 caracteres.") String extension,
         @Email(message = "E-mail inválido.") @Size(max = 254, message = "E-mail longo demais.") String email,
         @Email(message = "E-mail secundário inválido.")
-        @Size(max = 254, message = "E-mail secundário longo demais.") String secondaryEmail
+        @Size(max = 254, message = "E-mail secundário longo demais.") String secondaryEmail,
+        // Matriz curricular (Fase 5c). Nulo: a matriz não é tocada. Lista (mesmo vazia): substitui a matriz inteira,
+        // na mesma transação do curso.
+        @Size(max = 300, message = "No máximo 300 disciplinas por curso.") List<@Valid @NotNull(message = "Disciplina em branco.") SubjectRequestDTO> subjects
 ) {
 }
