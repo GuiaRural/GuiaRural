@@ -6,6 +6,7 @@ import br.com.guiarural.backend.map.dto.PlaceResponseDTO;
 import br.com.guiarural.backend.map.model.PlacePhotoEntity;
 import br.com.guiarural.backend.map.service.PlaceAdminService;
 import br.com.guiarural.backend.map.service.PlaceService;
+import br.com.guiarural.backend.info.model.Language;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -32,13 +33,14 @@ public class PlaceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PlaceResponseDTO>> findPublished() {
-        return ResponseEntity.ok(service.findPublished());
+    // ?lang=pt|en|es (padrão pt); nome e descrição sem tradução vêm em português.
+    public ResponseEntity<List<PlaceResponseDTO>> findPublished(@RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findPublished(Language.from(lang)));
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<PlaceResponseDTO> findBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(service.findBySlug(slug));
+    public ResponseEntity<PlaceResponseDTO> findBySlug(@PathVariable String slug, @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findBySlug(slug, Language.from(lang)));
     }
 
     // A URL traz ?v=<versão> (photoUrl do local): trocar a foto muda a versão, então o navegador pode guardar por muito tempo.

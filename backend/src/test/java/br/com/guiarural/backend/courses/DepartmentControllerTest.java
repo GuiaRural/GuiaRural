@@ -67,7 +67,7 @@ class DepartmentControllerTest {
     @Test
     @DisplayName("Deve responder 404 quando o departamento não existe")
     void shouldReturnNotFoundForUnknownDepartment() throws Exception {
-        when(departmentService.findById(99L))
+        when(departmentService.findById(eq(99L), any()))
                 .thenThrow(new ResourceNotFoundException("Departamento não encontrado com ID: 99"));
 
         mockMvc.perform(get("/api/departments/99"))

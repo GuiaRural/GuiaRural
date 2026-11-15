@@ -280,4 +280,49 @@ class PlaceAdminIntegrationTest {
         assertEquals(1, count("select count(*) from audit_logs where entity = 'local' and action = 'deletado' and before_state is not null and after_state is null"));
         mvc.perform(editor.write(delete("/api/places/casa"))).andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("Fase 6: ?lang= traduz local e busca com fallback; editar pelo painel mantém as traduções")
+    void servesLanguageAndKeepsTranslations() throws Exception {
+        Auth editor = login("editor.locais@ufrpe.br");
+        mvc.perform(editor.write(post("/api/places")).contentType(MediaType.APPLICATION_JSON)
+                        .content(place("Biblioteca Central", "publicado", "\"slug\":\"biblioteca\"")))
+                .andExpect(status().isCreated());
+        // As traduções entram fora do sistema (SQL), como o time vai fazer; o painel só edita o português.
+        jdbc.update("update places set name_en = 'Central Library', description_en = 'Reading rooms', machine_translated_langs = ARRAY['en'] where slug = 'biblioteca'");
+
+        mvc.perform(get("/api/places/biblioteca").param("lang", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Central Library"))
+                .andExpect(jsonPath("$.description").value("Reading rooms"))
+                .andExpect(jsonPath("$.lang").value("en"))
+                .andExpect(jsonPath("$.machineTranslated").value(true));
+        // Sem tradução em espanhol, em francês (não suportado) ou sem idioma: português.
+        for (String lang : new String[]{"es", "fr", ""}) {
+            mvc.perform(get("/api/places/biblioteca").param("lang", lang))
+                    .andExpect(jsonPath("$.name").value("Biblioteca Central"))
+                    .andExpect(jsonPath("$.lang").value("pt"))
+                    .andExpect(jsonPath("$.machineTranslated").value(false));
+        }
+        mvc.perform(get("/api/places").param("lang", "en")).andExpect(jsonPath("$[0].name").value("Central Library"));
+
+        // A busca devolve o nome no idioma da tela e acha tanto pelo nome traduzido quanto pelo português.
+        mvc.perform(get("/api/search").param("q", "central lib").param("lang", "en"))
+                .andExpect(jsonPath("$[0].name").value("Central Library"));
+        mvc.perform(get("/api/search").param("q", "biblioteca").param("lang", "en"))
+                .andExpect(jsonPath("$[0].name").value("Central Library"));
+
+        // O painel lê em português e fica sabendo que existe tradução em inglês.
+        mvc.perform(get("/api/admin/places/biblioteca").session(editor.session()))
+                .andExpect(jsonPath("$.name").value("Biblioteca Central"))
+                .andExpect(jsonPath("$.translatedLangs[0]").value("en"));
+
+        // Editar o português não apaga as traduções.
+        mvc.perform(editor.write(put("/api/places/biblioteca")).contentType(MediaType.APPLICATION_JSON)
+                        .content(place("Biblioteca Central do Campus", "publicado", null)))
+                .andExpect(status().isOk());
+        assertEquals("Central Library", jdbc.queryForObject("select name_en from places where slug = 'biblioteca'", String.class));
+        assertEquals("Reading rooms", jdbc.queryForObject("select description_en from places where slug = 'biblioteca'", String.class));
+        assertEquals(1, count("select count(*) from places where slug = 'biblioteca' and machine_translated_langs = ARRAY['en']"));
+    }
 }

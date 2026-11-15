@@ -6,6 +6,7 @@ import br.com.guiarural.backend.map.model.PlaceEntity;
 import br.com.guiarural.backend.map.model.PlacePhotoEntity;
 import br.com.guiarural.backend.map.repository.PlacePhotoRepository;
 import br.com.guiarural.backend.map.repository.PlaceRepository;
+import br.com.guiarural.backend.info.model.Language;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,15 +29,15 @@ public class PlaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlaceResponseDTO> findPublished() {
-        return assembler.assemble(repository.findByStatusOrderByNameAsc(PUBLISHED), true);
+    public List<PlaceResponseDTO> findPublished(Language language) {
+        return assembler.assemble(repository.findByStatusOrderByNameAsc(PUBLISHED), true, language);
     }
 
     @Transactional(readOnly = true)
-    public PlaceResponseDTO findBySlug(String slug) {
+    public PlaceResponseDTO findBySlug(String slug, Language language) {
         PlaceEntity entity = repository.findBySlugAndStatus(slug, PUBLISHED)
                 .orElseThrow(() -> new ResourceNotFoundException("Local não encontrado: " + slug));
-        return assembler.assemble(entity, true);
+        return assembler.assemble(entity, true, language);
     }
 
     // Painel: todos os locais, inclusive rascunhos e inativos.

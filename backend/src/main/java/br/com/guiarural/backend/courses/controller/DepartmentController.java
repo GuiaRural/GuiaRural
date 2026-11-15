@@ -19,13 +19,14 @@ public class DepartmentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DepartmentResponseDTO>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    // ?lang=pt|en|es (padrão pt); nome e descrição sem tradução vêm em português.
+    public ResponseEntity<List<DepartmentResponseDTO>> findAll(@RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findAll(Language.from(lang)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DepartmentResponseDTO> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findById(id));
+    public ResponseEntity<DepartmentResponseDTO> findById(@PathVariable Long id, @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findById(id, Language.from(lang)));
     }
 
     @GetMapping("/{id}/courses")
