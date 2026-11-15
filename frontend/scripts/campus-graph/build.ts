@@ -3,29 +3,14 @@
 // qualidade. Sem rede e sem arquivos aqui; quem lê e grava é scripts/build-campus-graph.ts.
 import { CAMPUS_BOUNDS } from "../../src/app/data/mapConfig";
 import { metersBetween, nearestOnSegment, type LatLng } from "../../src/app/lib/geo";
+import { FLAG_STEPS, GRAPH_SCALE, type CampusGraph, type GraphEdge } from "../../src/app/lib/routing/format";
 
 export type OsmNode = { type: "node"; id: number; lat: number; lon: number };
 export type OsmWay = { type: "way"; id: number; nodes: number[]; tags?: Record<string, string> };
 export type OsmElement = OsmNode | OsmWay | { type: string; id: number };
 
-// Coordenadas inteiras em 1e-5 grau (~1,1 m): é a precisão do OSM que importa para o encaixe.
-export const GRAPH_SCALE = 100_000;
-
-// edges: [de, para, metros, flags, pontos intermediários [lat, lng, lat, lng, ...]]. flags: 1 = escada.
-export type GraphEdge = [number, number, number, number, number[]];
-export const FLAG_STEPS = 1;
-
-export type CampusGraph = {
-  version: 1;
-  generatedAt: string;
-  source: string;
-  // [sul, oeste, norte, leste] da área consultada.
-  bbox: [number, number, number, number];
-  scale: number;
-  // [lat, lng, lat, lng, ...] dos cruzamentos e pontas.
-  nodes: number[];
-  edges: GraphEdge[];
-};
+// O formato do arquivo é definido por lib/routing/format.ts (o roteador lê o que este gerador grava).
+export { FLAG_STEPS, GRAPH_SCALE, type CampusGraph, type GraphEdge };
 
 export type BuildOptions = {
   // Folga (graus) além de CAMPUS_BOUNDS, para pegar as ruas das portarias.
