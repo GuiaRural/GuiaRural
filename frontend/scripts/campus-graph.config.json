@@ -1,0 +1,7 @@
+{
+  "notes": "Decisões de revisão do grafo do campus (D19.3). includePrivateWays: ids de vias OSM com access restrito que na prática são caminháveis. excludeWays: vias que devem ficar de fora. padding: folga em graus além de CAMPUS_BOUNDS. Depois de mudar, rode npm run graph e revise o relatório em docs/rota-malha-relatorio.md.",
+  "padding": 0.0015,
+  "includePrivateWays": [],
+  "excludeWays": [],
+  "keepIslands": false
+}
