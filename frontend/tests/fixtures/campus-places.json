@@ -1,0 +1,167 @@
+[
+{
+"slug": "aduferpe",
+"latitude": -8.0180939,
+"longitude": -34.9503556
+},
+{
+"slug": "agronomia",
+"latitude": -8.0175184,
+"longitude": -34.9457482
+},
+{
+"slug": "apoio-administrativo",
+"latitude": -8.0146262,
+"longitude": -34.9473549
+},
+{
+"slug": "ariano-suassuna",
+"latitude": -8.0192671,
+"longitude": -34.949742
+},
+{
+"slug": "biblioteca",
+"latitude": -8.0135867,
+"longitude": -34.9487799
+},
+{
+"slug": "biblioteca-setorial",
+"latitude": -8.0162581,
+"longitude": -34.9492657
+},
+{
+"slug": "casa-maria-de-fatima",
+"latitude": -8.0168305,
+"longitude": -34.9511314
+},
+{
+"slug": "ceagri-1",
+"latitude": -8.0178142,
+"longitude": -34.9441041
+},
+{
+"slug": "cegen",
+"latitude": -8.0159833,
+"longitude": -34.9512226
+},
+{
+"slug": "cegoe",
+"latitude": -8.0175648,
+"longitude": -34.9498627
+},
+{
+"slug": "complexo-biologia",
+"latitude": -8.0137303,
+"longitude": -34.9506149
+},
+{
+"slug": "condominio-luiz-gonzaga",
+"latitude": -8.0158903,
+"longitude": -34.9438836
+},
+{
+"slug": "dc",
+"latitude": -8.0176682,
+"longitude": -34.9445171
+},
+{
+"slug": "deagri",
+"latitude": -8.0174039,
+"longitude": -34.9468107
+},
+{
+"slug": "def",
+"latitude": -8.0179786,
+"longitude": -34.9493715
+},
+{
+"slug": "dqv",
+"latitude": -8.0141151,
+"longitude": -34.9471799
+},
+{
+"slug": "editora",
+"latitude": -8.0196163,
+"longitude": -34.9483981
+},
+{
+"slug": "educacao",
+"latitude": -8.0185858,
+"longitude": -34.9495995
+},
+{
+"slug": "horta",
+"latitude": -8.0181368,
+"longitude": -34.9524507
+},
+{
+"slug": "hovet",
+"latitude": -8.014845,
+"longitude": -34.94878
+},
+{
+"slug": "ipe",
+"latitude": -8.0169292,
+"longitude": -34.9495915
+},
+{
+"slug": "medvet",
+"latitude": -8.0148713,
+"longitude": -34.948655
+},
+{
+"slug": "portaria-dois-irmaos",
+"latitude": -8.016355,
+"longitude": -34.945249
+},
+{
+"slug": "portaria-principal",
+"latitude": -8.016542,
+"longitude": -34.950887
+},
+{
+"slug": "prefeitura-universitaria",
+"latitude": -8.0197973,
+"longitude": -34.94849
+},
+{
+"slug": "proexc",
+"latitude": -8.0146518,
+"longitude": -34.9474609
+},
+{
+"slug": "propesq",
+"latitude": -8.0136774,
+"longitude": -34.94817
+},
+{
+"slug": "quimica",
+"latitude": -8.014584,
+"longitude": -34.950678
+},
+{
+"slug": "reitoria",
+"latitude": -8.0142355,
+"longitude": -34.9508648
+},
+{
+"slug": "ru",
+"latitude": -8.014052,
+"longitude": -34.951108
+},
+{
+"slug": "sintufepe",
+"latitude": -8.0172202,
+"longitude": -34.9508772
+},
+{
+"slug": "uaeadtec",
+"latitude": -8.0197969,
+"longitude": -34.9483818
+},
+{
+"slug": "zootecnia",
+"latitude": -8.0202232,
+"longitude": -34.9543923
+}
+]
