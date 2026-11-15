@@ -27,7 +27,7 @@
 
 **Etapa 2 — Biblioteca de roteamento pura (`lib/routing`).** Montar o grafo, encaixar o ponto na via mais próxima (projeção no segmento, com nó virtual) e rodar A*. Sem caminho ou sem grafo: linha reta marcada como estimativa. Testes com `node:test` em grafos sintéticos (menor caminho, encaixe, desconexão, determinismo, tempo). **Feita em 15/11/2026** (`feat/rota-biblioteca`): ver `## 8`.
 
-**Etapa 3 — Facade assíncrona.** `getRoute(origem, destino): Promise<Route>`, com `source: "network" | "straight"`. O grafo carrega sob demanda, fora do bundle principal. `MapExplorer`, `PlaceCard` e `locais/[id]` passam a usar `useApi` com chave `origem|destino`.
+**Etapa 3 — Facade assíncrona.** `getRoute(origem, destino): Promise<Route>`, com `source: "network" | "straight"`. O grafo carrega sob demanda, fora do bundle principal. `MapExplorer`, `PlaceCard` e `locais/[id]` passam a usar `useApi` com chave `origem|destino`. **Feita em 15/11/2026** (`feat/rota-facade-telas`): ver `## 9`. A etapa 4 (interface) entrou junto: o trecho tracejado, o aviso de estimativa e a atribuição já estão nas telas.
 
 **Etapa 4 — Interface.** Trecho final tracejado do ponto da via até o prédio (o local é um ponto, não uma entrada), aviso "estimativa em linha reta" e atribuição ao OSM nos três idiomas (dicionário, EN/ES para revisão humana).
 
@@ -115,4 +115,26 @@ Bicicleta e acessível (D19.2) · instruções passo a passo (só valem com vias
 **Para conferir em campo ou no OSM (razão rota/reta alta):** `hovet` (239 m em reta, 694 m de rota, 2,9x), `medvet` (254 → 699 m, 2,75x) e `cegen` (197 → 511 m, 2,6x). Podem ser desvios reais (cerca, prédio no meio) ou atalhos que faltam no OSM; é o mesmo conjunto de locais que passou de 40 m de via no relatório do grafo. `quimica` tem razão 2,7x, mas em 44 m de reta (119 m de rota), o que pesa pouco.
 
 **Limites:** o grafo ainda não é carregado por nenhuma tela (etapa 3); a velocidade a pé segue em 80 m/min até a validação em campo (etapa 5); o encaixe percorre todos os segmentos (~2 mil), suficiente neste tamanho de grafo.
+
+## 9. Resultado da etapa 3 (15/11/2026)
+**Facade (`services/routeService.ts`):** `computeRoute(origem, destino)` agora é **assíncrona** e devolve `Route` com `points` (desenho completo), `solid` (vias, linha cheia), `dashed` (trechos que não são via mapeada), `meters`, `minutes`, `stepsMeters` e `source` (`"network"` ou `"straight"`).
+- O grafo é buscado em `/campus-graph.json` **uma vez por sessão** (várias rotas ao mesmo tempo compartilham a mesma busca) e montado por `buildNetwork`. Fica fora do bundle principal.
+- **Nunca rejeita.** Sem o arquivo (404), com o arquivo corrompido ou de outra versão, sem caminho, ou com origem/destino a mais de 150 m de via, devolve a **linha reta marcada como estimativa** (`source: "straight"`, toda tracejada). Falha de rede não fica gravada: a próxima rota tenta de novo.
+- `getRoute(chave)` existe porque o `useApi` aceita um argumento só: a chave é `"lat,lng>lat,lng"` (6 casas); chave vazia (`NO_ROUTE`) = sem rota.
+
+**Telas** (as três que usavam a rota em linha reta):
+- `MapExplorer`: pede a rota quando há `?rota=` e **só monta o mapa depois que ela fica pronta**, porque o `CampusMap` enquadra o trajeto apenas na montagem. O painel mostra o aviso de estimativa (âmbar), os metros de escada quando houver e a atribuição ao OSM quando a rota veio da malha.
+- `CampusMap`: `routeSolid` (linha cheia com contorno branco) e `routeDashed` (azul pontilhado); sem eles, `route` vai todo em linha cheia como antes.
+- `PlaceCard` e `locais/[id]`: distância e tempo desde a Reitoria pela malha; na estimativa, o cartão mostra "≈" e a página mostra o aviso.
+- Dicionário (PT/EN/ES): `route.estimate`, `route.steps` e `route.attribution`. EN e ES precisam de revisão humana.
+
+**Verificado no navegador** (Next em modo dev com um servidor de mentira para `/api/places` servindo os 33 locais reais; não toquei no banco nem no backend):
+- Reitoria → Biblioteca Central: linha cheia pelas vias com um trecho pontilhado em cada ponta, painel com **313 m e 4 min** e a atribuição "Caminhos: © colaboradores do OpenStreetMap".
+- Origem em (-8.0300, -34.9400), fora do campus: linha reta tracejada, **2.057 m e 26 min**, aviso "Estimativa em linha reta: o caminho pelas vias não está disponível." e sem atribuição.
+- Página do local e cartão da Biblioteca: **313 m, 4 min**, os mesmos números do painel.
+- Console sem erros.
+
+**Testes** (`tests/route-service.test.ts`, 7 novos, 139 no total): rota pela malha com acessos tracejados, uma única busca do grafo, 404, grafo corrompido, falha de rede seguida de recuperação, ponto fora do campus e a chave de texto.
+
+**Não verificado:** a troca de idioma na tela da rota (EN/ES); o toque no celular; o comportamento com o backend real (só o servidor de mentira); nada foi conferido a pé no campus (etapa 5). O mapa remonta quando a rota muda de origem pela URL (carrega de novo o enquadramento), como já remontava ao trocar de idioma.
 

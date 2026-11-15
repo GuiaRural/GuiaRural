@@ -222,7 +222,7 @@ Depende da Fase 1. **Implementada** no branch `feat/telas-publicas-locais` (14/1
 - Pendente: confirmar D17 com o PO. Paradas de ônibus ficam para quando o projeto comportar o circular.
 
 ## 5. Backlog fora do banco (sem detalhamento)
-Rota pela malha viária atrás de uma Facade (RNF08; `services/routeService.ts` hoje liga origem e destino em linha reta) · cache offline persistente (RNF03) · Dockerfile e GitHub Actions (CI/CD, 4 ambientes) · testes de página no frontend · GPS no botão da busca (FA-38.02) · "manter conectado" com cookie persistente.
+Rota pela malha viária: **feita** (grafo do campus no navegador atrás da Facade `services/routeService.ts`; ver `docs/plano-rota-malha-viaria.md`, falta só a validação em campo) · cache offline persistente (RNF03) · Dockerfile e GitHub Actions (CI/CD, 4 ambientes) · testes de página no frontend · GPS no botão da busca (FA-38.02) · "manter conectado" com cookie persistente.
 
 ## 6. Mapa de dependências e paralelização
 

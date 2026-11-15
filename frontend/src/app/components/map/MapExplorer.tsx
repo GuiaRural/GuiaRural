@@ -9,7 +9,7 @@ import { useApi } from "../../hooks/useApi";
 import { useSelectedPlaceId } from "../../hooks/useSelectedPlaceId";
 import type { LatLng } from "../../lib/geo";
 import { addRecentPlace, getPublicPlaces } from "../../services/placesService";
-import { computeRoute } from "../../services/routeService";
+import { NO_ROUTE, getRoute, routeKey } from "../../services/routeService";
 import ApiFailure from "../courses/ApiFailure";
 import LanguageSwitcher from "../common/LanguageSwitcher";
 import MapLoading from "../common/MapLoading";
@@ -34,6 +34,12 @@ function parseOrigin(raw: string | undefined, places: Place[]): { label: string 
 export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?: string; routeTo?: string; routeFrom?: string }) {
   const { t, language } = useLanguage();
   const state = useApi(getPublicPlaces, language);
+  // A rota depende dos locais (destino e origem vêm da URL) e é calculada pelo roteador. Chave vazia = sem rota.
+  const readyPlaces = state.status === "ready" ? state.data : null;
+  const routeDestination = routeTo && readyPlaces ? readyPlaces.find((p) => p.id === routeTo) : undefined;
+  const routeOrigin = readyPlaces ? parseOrigin(routeFrom, readyPlaces) : null;
+  const key = routeDestination?.position && routeOrigin ? routeKey(routeOrigin.point, routeDestination.position) : NO_ROUTE;
+  const routeState = useApi(getRoute, key);
   const { selectedId: urlLocal, select: setSelectedPlaceInUrl } = useSelectedPlaceId();
   const [selectedId, setSelectedId] = useState<string | null>(routeTo ?? focusId ?? null);
   const [seenUrlLocal, setSeenUrlLocal] = useState(urlLocal);
@@ -51,7 +57,7 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
     setSelectedPlaceInUrl(null);
   }
 
-  if (state.status === "loading") {
+  if (state.status === "loading" || (key !== NO_ROUTE && routeState.status === "loading")) {
     return <div className="absolute inset-0 grid place-items-center bg-[#e6efdc] text-sm text-slate-600">{t.common.loading}</div>;
   }
   if (state.status === "error") {
@@ -64,9 +70,9 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
   const places = state.data;
 
   const selected = places.find((p) => p.id === selectedId) ?? null;
-  const destination = routeTo ? places.find((p) => p.id === routeTo) : undefined;
-  const origin = parseOrigin(routeFrom, places);
-  const route = destination?.position && origin ? computeRoute(origin.point, destination.position) : null;
+  const destination = routeDestination;
+  const origin = routeOrigin;
+  const route = routeState.status === "ready" ? routeState.data : null;
 
   const markers: MapMarker[] = places.map((p) => ({
     id: p.id,
@@ -97,6 +103,8 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
           }}
           onBackgroundClick={deselect}
           route={route?.points}
+          routeSolid={route?.solid}
+          routeDashed={route?.dashed}
           initialCenter={selected?.position ?? undefined}
           focus={focus}
         />
@@ -135,7 +143,14 @@ export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?:
               </dd>
             </div>
           </dl>
+          {route.source === "straight" && <p className="mt-2 text-[11px] font-semibold text-amber-800">{t.route.estimate}</p>}
+          {route.stepsMeters > 0 && (
+            <p className="mt-1 text-[11px] text-slate-600">
+              {t.route.steps}: {route.stepsMeters} {t.common.meters}
+            </p>
+          )}
           <p className="mt-2 text-[11px] text-slate-500">{t.placePage.externalOnly}</p>
+          {route.source === "network" && <p className="mt-1 text-[10px] text-slate-500">{t.route.attribution}</p>}
           <Link
             href="/"
             className="mt-3 block rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-800 hover:bg-slate-50"

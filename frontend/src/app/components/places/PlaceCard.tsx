@@ -5,7 +5,8 @@ import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { isOpenNow } from "../../lib/hours";
 import { getDefaultOrigin, isPlaceSaved, toggleSavedPlace, type Place } from "../../services/placesService";
-import { computeRoute } from "../../services/routeService";
+import { useApi } from "../../hooks/useApi";
+import { NO_ROUTE, getRoute, routeKey } from "../../services/routeService";
 import PlacePhoto from "./PlacePhoto";
 
 // Cartão de informações resumidas (UC02, passo 4). Renderizar com key={place.id}.
@@ -14,7 +15,8 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
   const origin = getDefaultOrigin(language);
   // A própria origem não mostra distância (seria "0 m").
-  const route = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
+  const routeState = useApi(getRoute, place.position && origin?.position && origin.id !== place.id ? routeKey(origin.position, place.position) : NO_ROUTE);
+  const route = routeState.status === "ready" ? routeState.data : null;
   // O horário pode não estar cadastrado: sem o dado, a tela não afirma "fechado".
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
@@ -41,7 +43,11 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
         </button>
         <div className="absolute inset-x-3 bottom-2 flex items-center justify-between text-[11px] font-semibold">
           {route && (
-            <span className="rounded-full bg-navy-900/85 px-2 py-0.5 text-white" title={t.placeCard.fromOrigin}>
+            <span
+              className="rounded-full bg-navy-900/85 px-2 py-0.5 text-white"
+              title={route.source === "straight" ? `${t.placeCard.fromOrigin} · ${t.route.estimate}` : t.placeCard.fromOrigin}
+            >
+              {route.source === "straight" ? "≈ " : ""}
               {route.minutes} {t.common.minutes} {t.placeCard.walk} • {route.meters} {t.common.meters}
             </span>
           )}

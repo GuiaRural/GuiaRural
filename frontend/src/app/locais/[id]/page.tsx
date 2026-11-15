@@ -13,7 +13,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { isOpenNow } from "../../lib/hours";
 import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace, type Place, type PlaceKey } from "../../services/placesService";
 import TranslationNotice from "../../components/common/TranslationNotice";
-import { computeRoute, getCurrentCampusPosition } from "../../services/routeService";
+import { NO_ROUTE, getCurrentCampusPosition, getRoute, routeKey } from "../../services/routeService";
 
 export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
   const { id } = use(params);
@@ -55,7 +55,8 @@ function PlaceDetails({ place }: { place: Place }) {
   const [originIssue, setOriginIssue] = useState<"denied" | "outside" | null>(null);
 
   const origin = getDefaultOrigin(language);
-  const fromGate = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
+  const routeState = useApi(getRoute, place.position && origin?.position && origin.id !== place.id ? routeKey(origin.position, place.position) : NO_ROUTE);
+  const fromGate = routeState.status === "ready" ? routeState.data : null;
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
   const coords = place.position;
@@ -129,6 +130,12 @@ function PlaceDetails({ place }: { place: Place }) {
           {fromGate && (
             <p className="text-lg font-bold text-navy-900">
               {fromGate.meters} {t.common.meters} {t.placePage.fromGate} · {fromGate.minutes} {t.common.minutes} {t.placeCard.walk}
+            </p>
+          )}
+          {fromGate?.source === "straight" && <p className="text-xs font-semibold text-amber-800">{t.route.estimate}</p>}
+          {fromGate && fromGate.stepsMeters > 0 && (
+            <p className="text-xs text-slate-600">
+              {t.route.steps}: {fromGate.stepsMeters} {t.common.meters}
             </p>
           )}
           <p className="text-xs text-slate-600">{t.placePage.externalOnly}</p>
