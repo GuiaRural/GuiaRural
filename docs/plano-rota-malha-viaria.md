@@ -25,7 +25,7 @@
 
 **Etapa 1 — Gerador do grafo.** Script de desenvolvimento que gera `frontend/public/campus-graph.json`: nós de grau 2 colapsados em polilinhas, coordenadas inteiras (1e-5), data da extração, caixa e atribuição ODbL. Gera também um relatório de qualidade (ilhas desconectadas, locais longe de vias). **Feita em 15/11/2026** (`feat/rota-gerador-grafo`): ver `## 7`.
 
-**Etapa 2 — Biblioteca de roteamento pura (`lib/routing`).** Montar o grafo, encaixar o ponto na via mais próxima (projeção no segmento, com nó virtual) e rodar A*. Sem caminho ou sem grafo: linha reta marcada como estimativa. Testes com `node:test` em grafos sintéticos (menor caminho, encaixe, desconexão, determinismo, tempo).
+**Etapa 2 — Biblioteca de roteamento pura (`lib/routing`).** Montar o grafo, encaixar o ponto na via mais próxima (projeção no segmento, com nó virtual) e rodar A*. Sem caminho ou sem grafo: linha reta marcada como estimativa. Testes com `node:test` em grafos sintéticos (menor caminho, encaixe, desconexão, determinismo, tempo). **Feita em 15/11/2026** (`feat/rota-biblioteca`): ver `## 8`.
 
 **Etapa 3 — Facade assíncrona.** `getRoute(origem, destino): Promise<Route>`, com `source: "network" | "straight"`. O grafo carrega sob demanda, fora do bundle principal. `MapExplorer`, `PlaceCard` e `locais/[id]` passam a usar `useApi` com chave `origem|destino`.
 
@@ -96,4 +96,23 @@ Bicicleta e acessível (D19.2) · instruções passo a passo (só valem com vias
 - `propesq` deixou de ter a via mais próxima numa ilha e saiu da lista de locais a mais de 40 m (44 m → dentro do limite); acima de 40 m ficam 4 (`teste`, `teste-2`, `medvet`, `hovet`).
 - Resta a ilha de 273 m (vias `service` sem nome, folga de 74 m), a mais de 1 km de qualquer local com problema; segue sem ação até alguém confirmar no local se existe uma entrada.
 - Os números de "vias lidas" (490 → 371) e "access restrito" (25 → 10) caíram porque a primeira geração usou o download da etapa 0, que cobria a caixa maior do mapa; o grafo em si cresceu (+6 nós, +7 arestas).
+
+## 8. Resultado da etapa 2 (15/11/2026)
+**O que existe** (`frontend/src/app/lib/routing/`, puro, sem rede nem DOM, sem dependência nova):
+- `format.ts`: o contrato do arquivo (`CampusGraph`, `GRAPH_SCALE`, `FLAG_STEPS`) e `parseGraph`, que recusa versão errada, escala errada, pares de coordenadas incompletos e índices fora da lista. O gerador (`scripts/campus-graph/build.ts`) passou a importar daqui: um só dono do formato.
+- `network.ts`: `buildNetwork` decodifica o arquivo (graus, geometria de ponta a ponta, arestas por nó); `snapToNetwork` encaixa um ponto na via mais próxima **em qualquer ponto da aresta**, não só nos cruzamentos; `pointsBetween` devolve o trecho de uma aresta na ordem percorrida.
+- `router.ts`: `findRoute(rede, origem, destino)`. Origem e destino viram dois nós virtuais ligados às pontas da aresta em que caíram, e a busca é um A* com heap binário (heurística: linha reta até o destino). Devolve `points` prontos para desenhar (origem, trecho de acesso, vias, trecho de acesso, destino), `meters`, `networkMeters`, `accessMeters` (o trecho em linha reta entre o ponto e a via, que não é via mapeada), `network` e `stepsMeters` (escada, só informativo). Devolve **null** quando não há caminho ou quando origem ou destino ficam a mais de 150 m de qualquer via: é o sinal para a Facade (etapa 3) cair na linha reta marcada como estimativa.
+- Posições nas arestas usam os metros do arquivo; a geometria quantizada (1e-5 grau) pode diferir centímetros do comprimento gravado, e uma razão converte entre as duas medidas.
+
+**Testes** (`tests/routing.test.ts`, 16 novos, 132 no total): grafos pequenos montados à mão (L, meio de via, mesma via, dois caminhos, geometria, desconexão, limite de encaixe, escada, validação do formato) e **conferência contra o grafo real** (`public/campus-graph.json` e `tests/fixtures/campus-places.json`, os 33 locais publicados reais, sem os de teste):
+- todo local publicado tem rota desde a Reitoria, nunca menor que a linha reta (menos a folga de encaixe);
+- ida e volta dão a mesma distância (±1 m);
+- o A* dá o mesmo comprimento que o Dijkstra puro em mais de 50 pares;
+- **0,55 ms por rota em média** (limite do teste: 25 ms).
+
+**Números reais, partindo da Reitoria (32 locais):** razão rota/linha reta mínima 1,12, **mediana 1,30**, máxima 2,90. Rota mais longa: `deagri`, 1.085 m. Só `cegen` tem escada no caminho (7 m).
+
+**Para conferir em campo ou no OSM (razão rota/reta alta):** `hovet` (239 m em reta, 694 m de rota, 2,9x), `medvet` (254 → 699 m, 2,75x) e `cegen` (197 → 511 m, 2,6x). Podem ser desvios reais (cerca, prédio no meio) ou atalhos que faltam no OSM; é o mesmo conjunto de locais que passou de 40 m de via no relatório do grafo. `quimica` tem razão 2,7x, mas em 44 m de reta (119 m de rota), o que pesa pouco.
+
+**Limites:** o grafo ainda não é carregado por nenhuma tela (etapa 3); a velocidade a pé segue em 80 m/min até a validação em campo (etapa 5); o encaixe percorre todos os segmentos (~2 mil), suficiente neste tamanho de grafo.
 
