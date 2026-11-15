@@ -91,3 +91,9 @@ Bicicleta e acessível (D19.2) · instruções passo a passo (só valem com vias
 
 **Limites:** o Overpass é instável (502 e timeouts em 3 de 4 tentativas hoje); o script tenta dois espelhos e falha sem gravar nada se nenhum responder. O arquivo gerado hoje usou o download da etapa 0, feito no mesmo dia com a mesma consulta (`--input`).
 
+**Atualização do grafo em 15/11/2026** (depois da correção no OSM): download direto do Overpass pelo próprio `npm run graph` (valida o caminho de rede que a primeira geração não exercitou). 498 nós, 615 arestas, 44,9 km, 46 KB.
+- A ilha de 193 m (calçadas perto de `propesq`, `medvet` e `hovet`) **foi ligada ao resto**: componentes 10 → 9, ilhas dentro do campus 2 → 1.
+- `propesq` deixou de ter a via mais próxima numa ilha e saiu da lista de locais a mais de 40 m (44 m → dentro do limite); acima de 40 m ficam 4 (`teste`, `teste-2`, `medvet`, `hovet`).
+- Resta a ilha de 273 m (vias `service` sem nome, folga de 74 m), a mais de 1 km de qualquer local com problema; segue sem ação até alguém confirmar no local se existe uma entrada.
+- Os números de "vias lidas" (490 → 371) e "access restrito" (25 → 10) caíram porque a primeira geração usou o download da etapa 0, que cobria a caixa maior do mapa; o grafo em si cresceu (+6 nós, +7 arestas).
+
