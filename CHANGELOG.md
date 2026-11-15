@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/GuiaRural/GuiaRural/compare/v1.1.0...v1.2.0) (2026-11-15)
+
+
+### Features
+
+* **deploy:** endereço do backend por variável de ambiente para o deploy na Vercel ([14c40e3](https://github.com/GuiaRural/GuiaRural/commit/14c40e3a23b58929023a1c7894edaa00328f8e53))
+
 # [1.1.0](https://github.com/GuiaRural/GuiaRural/compare/v1.0.0...v1.1.0) (2026-11-15)
 
 
