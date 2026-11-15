@@ -1,7 +1,9 @@
+import type { Language } from "../i18n/dictionaries";
 import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 
 // Ponto único de acesso a departamentos e cursos (backend: /api/departments e /api/courses).
-// Os tipos espelham os DTOs do backend; o conteúdo vem em português (sem modelo de tradução ainda).
+// Os tipos espelham os DTOs do backend. Cursos têm tradução (?lang=, com o português quando falta); departamentos
+// ainda vêm só em português.
 
 export type CourseLevel = "GRADUACAO" | "POS";
 export type CourseType = "BACHARELADO" | "LICENCIATURA" | "STRICTO_SENSU";
@@ -39,6 +41,8 @@ export type CourseSummary = {
   officeLocation: string | null;
   // Sempre true nas rotas públicas; só o painel recebe os cursos inativos.
   active: boolean;
+  // Idioma em que `name` de fato veio (pt quando faltou a tradução), para o atributo lang do elemento.
+  lang: Language;
 };
 
 export type Coordination = {
@@ -71,6 +75,10 @@ export type Subject = {
 };
 
 export type CourseDetail = Omit<CourseSummary, "departmentId" | "officeLocation"> & {
+  // O texto veio de uma tradução automática que ainda espera revisão humana.
+  machineTranslated: boolean;
+  // Idiomas em que o curso tem tradução do nome (o painel usa para avisar que o texto pode defasar).
+  translatedLangs: Language[];
   totalWorkloadHours: number | null;
   departmentId: number;
   departmentName: string;
@@ -97,10 +105,23 @@ export const getDepartments = () => apiGet<Department[]>("/departments");
 
 export const getDepartment = (id: string) => apiGet<Department>(`/departments/${encodeURIComponent(id)}`);
 
-export const getDepartmentCourses = (id: string) =>
-  apiGet<DepartmentCourses>(`/departments/${encodeURIComponent(id)}/courses`);
+// useApi aceita um argumento só: o id e o idioma vão juntos ("12:en"), e a página refaz a chamada ao trocar de idioma.
+export type CourseKey = `${string}:${Language}`;
 
-export const getCourse = (id: string) => apiGet<CourseDetail>(`/courses/${encodeURIComponent(id)}`);
+function splitKey(key: CourseKey): { id: string; lang: Language } {
+  const at = key.lastIndexOf(":");
+  return { id: key.slice(0, at), lang: key.slice(at + 1) as Language };
+}
+
+export function getDepartmentCourses(key: CourseKey) {
+  const { id, lang } = splitKey(key);
+  return apiGet<DepartmentCourses>(`/departments/${encodeURIComponent(id)}/courses?lang=${lang}`);
+}
+
+export function getCourse(key: CourseKey) {
+  const { id, lang } = splitKey(key);
+  return apiGet<CourseDetail>(`/courses/${encodeURIComponent(id)}?lang=${lang}`);
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Painel (UC35, UC36): ler pelas rotas /admin (incluem inativos) e escrever em /courses. Os limites e as regras

@@ -5,7 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { CourseSummary } from "../../services/coursesService";
 
 export default function CourseCard({ course }: { course: CourseSummary }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const details = [
     course.modality,
     course.shift,
@@ -21,7 +21,9 @@ export default function CourseCard({ course }: { course: CourseSummary }) {
         {course.mecGrade && <span className="text-xs font-semibold text-emerald-700">MEC {course.mecGrade}</span>}
         {course.capesGrade && <span className="text-xs font-semibold text-emerald-700">CAPES {course.capesGrade}</span>}
       </div>
-      <h3 className="mt-2 font-bold text-navy-900">{course.name}</h3>
+      <h3 lang={course.lang !== language ? course.lang : undefined} className="mt-2 font-bold text-navy-900">
+        {course.name}
+      </h3>
       {details.length > 0 && <p className="mt-1 text-xs text-slate-600">{details.join(" • ")}</p>}
       {course.description && <p className="mt-1 text-xs text-slate-600">{course.description}</p>}
       <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs">
