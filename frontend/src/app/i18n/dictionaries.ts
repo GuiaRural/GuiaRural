@@ -27,7 +27,6 @@ export type Dictionary = {
     recifeGuide: string;
     supportSection: string;
     contactTeam: string;
-    accessibility: string;
     admin: string;
     openMenu: string;
     closeMenu: string;
@@ -186,6 +185,15 @@ export type Dictionary = {
     retry: string;
     portugueseOnly: string;
   };
+  placeLists: {
+    subtitle: { stops: string; eat: string; study: string };
+    stopsSoon: string;
+    portugueseOnly: string;
+    empty: string;
+    error: string;
+    retry: string;
+    viewDetails: string;
+  };
   weeklyMenu: {
     title: string;
     subtitle: string;
@@ -283,7 +291,6 @@ export const dictionaries: Record<Language, Dictionary> = {
       recifeGuide: "Guia de Recife",
       supportSection: "Gestão e apoio",
       contactTeam: "Falar com a equipe",
-      accessibility: "Acessibilidade",
       admin: "Área do administrador",
       openMenu: "Abrir menu",
       closeMenu: "Fechar menu",
@@ -460,6 +467,19 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Tentar novamente",
       portugueseOnly: "",
     },
+    placeLists: {
+      subtitle: {
+        stops: "Entradas do campus Dois Irmãos.",
+        eat: "Onde fazer refeições no campus.",
+        study: "Salas de aula e bibliotecas do campus.",
+      },
+      stopsSoon: "As paradas de ônibus serão adicionadas em breve.",
+      portugueseOnly: "",
+      empty: "Nenhum local cadastrado nesta categoria ainda.",
+      error: "Não foi possível carregar os locais.",
+      retry: "Tentar novamente",
+      viewDetails: "Ver detalhes",
+    },
     weeklyMenu: {
       title: "Cardápio da semana",
       subtitle: "Restaurante Universitário · almoço 11h–14h · jantar 17h30–19h30",
@@ -562,7 +582,6 @@ export const dictionaries: Record<Language, Dictionary> = {
       recifeGuide: "Recife guide",
       supportSection: "Support",
       contactTeam: "Contact the team",
-      accessibility: "Accessibility",
       admin: "Administrator area",
       openMenu: "Open menu",
       closeMenu: "Close menu",
@@ -739,6 +758,19 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       portugueseOnly: "Services are published in Portuguese.",
     },
+    placeLists: {
+      subtitle: {
+        stops: "Entrances to the Dois Irmãos campus.",
+        eat: "Where to have meals on campus.",
+        study: "Classrooms and libraries on campus.",
+      },
+      stopsSoon: "Bus stops will be added soon.",
+      portugueseOnly: "Place names and addresses are shown in Portuguese.",
+      empty: "No places registered in this category yet.",
+      error: "Could not load the places.",
+      retry: "Try again",
+      viewDetails: "View details",
+    },
     weeklyMenu: {
       title: "Weekly menu",
       subtitle: "University Restaurant · lunch 11am–2pm · dinner 5:30pm–7:30pm",
@@ -841,7 +873,6 @@ export const dictionaries: Record<Language, Dictionary> = {
       recifeGuide: "Guía de Recife",
       supportSection: "Gestión y apoyo",
       contactTeam: "Hablar con el equipo",
-      accessibility: "Accesibilidad",
       admin: "Área del administrador",
       openMenu: "Abrir menú",
       closeMenu: "Cerrar menú",
@@ -1017,6 +1048,19 @@ export const dictionaries: Record<Language, Dictionary> = {
       error: "No fue posible cargar los servicios.",
       retry: "Intentar de nuevo",
       portugueseOnly: "Los servicios se publican en portugués.",
+    },
+    placeLists: {
+      subtitle: {
+        stops: "Entradas del campus Dois Irmãos.",
+        eat: "Dónde comer en el campus.",
+        study: "Aulas y bibliotecas del campus.",
+      },
+      stopsSoon: "Las paradas de autobús se añadirán pronto.",
+      portugueseOnly: "Los nombres y direcciones de los lugares se muestran en portugués.",
+      empty: "Aún no hay lugares registrados en esta categoría.",
+      error: "No fue posible cargar los lugares.",
+      retry: "Intentar de nuevo",
+      viewDetails: "Ver detalles",
     },
     weeklyMenu: {
       title: "Menú de la semana",
