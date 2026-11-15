@@ -23,7 +23,7 @@
 ## 3. Etapas
 **Etapa 0 — Viabilidade dos dados.** Medir no OSM: quantas vias, de que tipo, quantas com `foot=no` ou `access=private`, componentes desconectados, e quantos locais publicados ficam a mais de 40 m de uma via. Decide se o OSM basta ou se precisa ser corrigido antes. Resultado em `## 5`.
 
-**Etapa 1 — Gerador do grafo.** Script de desenvolvimento que gera `frontend/public/campus-graph.json`: nós de grau 2 colapsados em polilinhas, coordenadas inteiras (1e-5), data da extração, caixa e atribuição ODbL. Gera também um relatório de qualidade (ilhas desconectadas, locais longe de vias).
+**Etapa 1 — Gerador do grafo.** Script de desenvolvimento que gera `frontend/public/campus-graph.json`: nós de grau 2 colapsados em polilinhas, coordenadas inteiras (1e-5), data da extração, caixa e atribuição ODbL. Gera também um relatório de qualidade (ilhas desconectadas, locais longe de vias). **Feita em 15/11/2026** (`feat/rota-gerador-grafo`): ver `## 7`.
 
 **Etapa 2 — Biblioteca de roteamento pura (`lib/routing`).** Montar o grafo, encaixar o ponto na via mais próxima (projeção no segmento, com nó virtual) e rodar A*. Sem caminho ou sem grafo: linha reta marcada como estimativa. Testes com `node:test` em grafos sintéticos (menor caminho, encaixe, desconexão, determinismo, tempo).
 
@@ -72,3 +72,22 @@ Bicicleta e acessível (D19.2) · instruções passo a passo (só valem com vias
 2. **Duas ligações faltando no OSM dentro do campus** precisam ser conferidas e, se confirmadas, corrigidas no OpenStreetMap (a correção entra no grafo na próxima extração). Enquanto não forem, o roteador cai em linha reta para quem estiver nessas ilhas, e o relatório da etapa 1 lista cada uma.
 3. **D19.3:** revisar as 25 vias `private` uma a uma no relatório. O relatório da etapa 1 vai listar todas por id.
 4. Locais a mais de 40 m de uma via (`medvet`, `propesq`, `hovet`) ganham o trecho final tracejado; conferir em campo junto com a conferência das coordenadas que já está pendente.
+
+## 7. Resultado da etapa 1 (15/11/2026)
+**O que existe:** `npm run graph` (em `frontend`) lê o OSM e grava `frontend/public/campus-graph.json` e `docs/rota-malha-relatorio.md`.
+- Código: `frontend/scripts/campus-graph/build.ts` (funções puras, testadas sem rede), `report.ts` (Markdown) e `frontend/scripts/build-campus-graph.ts` (leitura, gravação e Overpass). Sem dependência nova.
+- Decisões de revisão em `frontend/scripts/campus-graph.config.json`: `includePrivateWays`, `excludeWays`, `padding` e `keepIslands`. Hoje: nada liberado, nada excluído, ilhas fora do arquivo.
+- Opções: `--places <arquivo|url>` confere os locais (arquivo JSON ou `GET /api/places`), `--input` usa um download já salvo, `--save-raw` guarda o que veio do OSM.
+- Saída determinística (nós ordenados pelo id do OSM): atualizar o grafo gera um diff pequeno e revisável no PR.
+
+**Formato do arquivo (`version` 1):** `nodes` = `[lat, lng, ...]` inteiros em 1e-5 grau (cruzamentos e pontas) e `edges` = `[de, para, metros, flags, [lat, lng, ...]]`, com os pontos do meio da via como geometria. `flags`: 1 = escada. Sem sentido único (a pé). Cabeçalho com data, fonte (ODbL) e caixa consultada.
+
+**Grafo gerado hoje:** 492 nós, 608 arestas, 44,7 km, **46 KB (14 KB comprimido)**, um só componente. Os números do relatório batem com os da etapa 0 (35 locais publicados, mediana de 17 m até a via, p90 44 m, 5 acima de 40 m).
+
+**O que o relatório mostra e ainda precisa de gente:**
+1. **Ilhas dentro do campus** (D19, "ligações que faltam no OSM"): a de 193 m em (-8.01412, -34.94780) tem **folga de só 3,4 m** até o componente principal, quase certamente um nó que falta ligar; a de 273 m em (-8.02220, -34.94345) tem folga de **74 m**, então ali pode haver um caminho de fato não mapeado. As outras 7 ilhas ficam fora do campus.
+2. **Vias `access` restrito:** 25 na caixa, **10 passam pelo campus**: 3 `service` sem nome (24, 37 e 40 m) e 7 ruas nomeadas do entorno (Priverde, Avenida Arnaldo Paes de Andrade, Rua do Afeto, entre outras). **Nenhuma liga duas partes do grafo**, então não liberar nenhuma não isola ninguém; liberar só faz sentido onde se confirmar que o pedestre passa.
+3. **Locais longe da via** (acima de 40 m): `teste`, `teste-2` (locais de teste publicados), `medvet` 55 m, `propesq` 44 m, `hovet` 42 m.
+
+**Limites:** o Overpass é instável (502 e timeouts em 3 de 4 tentativas hoje); o script tenta dois espelhos e falha sem gravar nada se nenhum responder. O arquivo gerado hoje usou o download da etapa 0, feito no mesmo dia com a mesma consulta (`--input`).
+
