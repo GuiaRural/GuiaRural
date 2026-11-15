@@ -22,6 +22,12 @@ public record PlaceResponseDTO(
         List<PlaceContactDTO> contacts,
         List<PlaceLinkDTO> services,
         List<PlaceLinkDTO> courses,
-        String photoUrl
+        String photoUrl,
+        // Idioma em que name veio (pt quando faltou a tradução), para o atributo lang da página.
+        String lang,
+        // true quando o texto veio de uma tradução automática que ainda espera revisão humana.
+        boolean machineTranslated,
+        // Idiomas (en, es) em que o nome tem tradução. O painel usa para avisar que o texto pode defasar.
+        List<String> translatedLangs
 ) {
 }

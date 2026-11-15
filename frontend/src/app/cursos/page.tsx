@@ -8,11 +8,9 @@ import { useLanguage } from "../context/LanguageContext";
 import { useApi } from "../hooks/useApi";
 import { getDepartments } from "../services/coursesService";
 
-const noArg = null;
-
 export default function CoursesAndDepartmentsPage() {
-  const { t } = useLanguage();
-  const state = useApi(getDepartments, noArg);
+  const { t, language } = useLanguage();
+  const state = useApi(getDepartments, language);
 
   return (
     <AppShell>
@@ -45,7 +43,9 @@ export default function CoursesAndDepartmentsPage() {
                           {department.academicCenter}
                         </p>
                       )}
-                      <h2 className="mt-1 font-bold text-navy-900">{department.name}</h2>
+                      <h2 lang={department.lang !== language ? department.lang : undefined} className="mt-1 font-bold text-navy-900">
+                        {department.name}
+                      </h2>
                       {department.shortName && <p className="text-sm text-slate-600">{department.shortName}</p>}
                     </Link>
                   </li>

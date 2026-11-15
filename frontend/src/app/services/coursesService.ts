@@ -2,8 +2,7 @@ import type { Language } from "../i18n/dictionaries";
 import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 
 // Ponto único de acesso a departamentos e cursos (backend: /api/departments e /api/courses).
-// Os tipos espelham os DTOs do backend. Cursos têm tradução (?lang=, com o português quando falta); departamentos
-// ainda vêm só em português.
+// Os tipos espelham os DTOs do backend. Cursos, departamentos e locais têm tradução (?lang=, com o português quando falta).
 
 export type CourseLevel = "GRADUACAO" | "POS";
 export type CourseType = "BACHARELADO" | "LICENCIATURA" | "STRICTO_SENSU";
@@ -23,6 +22,12 @@ export type Department = {
   foundedYear: number | null;
   // Local onde o departamento funciona; null se não houver local publicado vinculado.
   placeSlug: string | null;
+  // Idioma em que `name` de fato veio (pt quando faltou a tradução), para o atributo lang do elemento.
+  lang: Language;
+  // O texto veio de uma tradução automática que ainda espera revisão humana.
+  machineTranslated: boolean;
+  // Idiomas em que o departamento tem tradução do nome.
+  translatedLangs: Language[];
 };
 
 export type CourseSummary = {
@@ -101,9 +106,7 @@ export type CourseDetail = Omit<CourseSummary, "departmentId" | "officeLocation"
 // Lista plana dos cursos ativos (ex.: seletor de "cursos vinculados" do formulário de local).
 export const getCourses = () => apiGet<CourseSummary[]>("/courses");
 
-export const getDepartments = () => apiGet<Department[]>("/departments");
-
-export const getDepartment = (id: string) => apiGet<Department>(`/departments/${encodeURIComponent(id)}`);
+export const getDepartments = (language: Language = "pt") => apiGet<Department[]>(`/departments?lang=${language}`);
 
 // useApi aceita um argumento só: o id e o idioma vão juntos ("12:en"), e a página refaz a chamada ao trocar de idioma.
 export type CourseKey = `${string}:${Language}`;
@@ -111,6 +114,11 @@ export type CourseKey = `${string}:${Language}`;
 function splitKey(key: CourseKey): { id: string; lang: Language } {
   const at = key.lastIndexOf(":");
   return { id: key.slice(0, at), lang: key.slice(at + 1) as Language };
+}
+
+export function getDepartment(key: CourseKey) {
+  const { id, lang } = splitKey(key);
+  return apiGet<Department>(`/departments/${encodeURIComponent(id)}?lang=${lang}`);
 }
 
 export function getDepartmentCourses(key: CourseKey) {

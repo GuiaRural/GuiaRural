@@ -1,3 +1,4 @@
+import type { Language } from "../i18n/dictionaries";
 import { apiGet } from "../lib/api";
 
 // Backend: GET /api/search (locais, departamentos e cursos, já ordenados e limitados pelo servidor).
@@ -15,8 +16,9 @@ export const MAX_SUGGESTIONS = 8;
 
 // Os locais já vêm de placesService (a mesma lista /api/places que o mapa usa, filtrada no navegador);
 // por isso daqui só entram departamentos e cursos, e o resultado do tipo PLACE é descartado.
-export async function searchDepartmentsAndCourses(query: string): Promise<Suggestion[]> {
-  const found = await apiGet<Suggestion[]>(`/search?q=${encodeURIComponent(query.trim())}`);
+// Os nomes voltam no idioma da tela, e a busca casa também com o nome em português.
+export async function searchDepartmentsAndCourses(query: string, language: Language = "pt"): Promise<Suggestion[]> {
+  const found = await apiGet<Suggestion[]>(`/search?q=${encodeURIComponent(query.trim())}&lang=${language}`);
   return found.filter((s) => s.type !== "PLACE");
 }
 

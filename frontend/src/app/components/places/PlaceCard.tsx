@@ -10,9 +10,9 @@ import PlacePhoto from "./PlacePhoto";
 
 // Cartão de informações resumidas (UC02, passo 4). Renderizar com key={place.id}.
 export default function PlaceCard({ place, onClose }: { place: Place; onClose: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
-  const origin = getDefaultOrigin();
+  const origin = getDefaultOrigin(language);
   // A própria origem não mostra distância (seria "0 m").
   const route = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
   // O horário pode não estar cadastrado: sem o dado, a tela não afirma "fechado".
@@ -56,7 +56,9 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h2 className="font-bold leading-tight text-navy-900">{place.name}</h2>
+            <h2 lang={place.lang !== language ? place.lang : undefined} className="font-bold leading-tight text-navy-900">
+              {place.name}
+            </h2>
             <p className="text-xs text-slate-600">{place.address}</p>
           </div>
           {/* FA-02.02: salvar local a partir do mapa */}
@@ -83,7 +85,11 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
           </dl>
         )}
 
-        {place.description && <p className="line-clamp-3 text-xs text-slate-700">{place.description}</p>}
+        {place.description && (
+          <p lang={place.lang !== language ? place.lang : undefined} className="line-clamp-3 text-xs text-slate-700">
+            {place.description}
+          </p>
+        )}
 
         <Link
           href={`/locais/${place.id}`}

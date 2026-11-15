@@ -4,6 +4,7 @@ import br.com.guiarural.backend.contacts.model.ContactEntity;
 import br.com.guiarural.backend.contacts.repository.ContactRepository;
 import br.com.guiarural.backend.courses.model.CourseEntity;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
+import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.map.dto.PlaceContactDTO;
 import br.com.guiarural.backend.map.dto.PlaceLinkDTO;
 import br.com.guiarural.backend.map.dto.PlaceResponseDTO;
@@ -14,6 +15,7 @@ import br.com.guiarural.backend.services.repository.ServiceRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -45,7 +47,14 @@ public class PlaceAssembler {
     }
 
     // publicView: na leitura pública, serviços e cursos despublicados não aparecem; no painel aparecem todos.
+    // O painel e o histórico usam sempre o português.
     public List<PlaceResponseDTO> assemble(List<PlaceEntity> places, boolean publicView) {
+        return assemble(places, publicView, Language.PT);
+    }
+
+    // Leitura pública com ?lang=: nome e descrição do local e nome dos cursos ligados no idioma pedido, com o
+    // português quando falta a tradução. Os serviços ainda vêm só em português.
+    public List<PlaceResponseDTO> assemble(List<PlaceEntity> places, boolean publicView, Language language) {
         if (places.isEmpty()) {
             return List.of();
         }
@@ -71,14 +80,15 @@ public class PlaceAssembler {
         return places.stream().map(place -> {
             List<PlaceLinkDTO> serviceLinks = links(place.getServiceIds(), services, ServiceEntity::getName,
                     s -> !publicView || Boolean.TRUE.equals(s.getActive()));
-            List<PlaceLinkDTO> courseLinks = links(place.getCourseIds(), courses, CourseEntity::getName,
+            List<PlaceLinkDTO> courseLinks = links(place.getCourseIds(), courses, c -> language.pick(c.getName(), c.getNameEn(), c.getNameEs()),
                     c -> !publicView || Boolean.TRUE.equals(c.getActive()));
             Long version = photoVersions.get(place.getId());
             String photoUrl = version == null ? null : "/api/places/" + place.getSlug() + "/photo?v=" + version;
+            Language effective = language.effective(place.getNameEn(), place.getNameEs());
             return new PlaceResponseDTO(
                     place.getId(),
                     place.getSlug(),
-                    place.getName(),
+                    language.pick(place.getName(), place.getNameEn(), place.getNameEs()),
                     place.getShortName(),
                     place.getCategory(),
                     place.getStatus(),
@@ -87,19 +97,42 @@ public class PlaceAssembler {
                     place.getCoordinatesSource(),
                     place.getAddress(),
                     place.getHours(),
-                    place.getDescription(),
+                    language.pick(place.getDescription(), place.getDescriptionEn(), place.getDescriptionEs()),
                     place.getPhone(),
                     place.getEmail(),
                     contacts.getOrDefault(place.getId(), List.of()),
                     serviceLinks,
                     courseLinks,
-                    photoUrl
+                    photoUrl,
+                    effective.code(),
+                    effective != Language.PT && contains(place.getMachineTranslatedLangs(), effective.code()),
+                    translatedLangs(place)
             );
         }).toList();
     }
 
     public PlaceResponseDTO assemble(PlaceEntity place, boolean publicView) {
         return assemble(List.of(place), publicView).get(0);
+    }
+
+    public PlaceResponseDTO assemble(PlaceEntity place, boolean publicView, Language language) {
+        return assemble(List.of(place), publicView, language).get(0);
+    }
+
+    private static boolean contains(String[] values, String value) {
+        return values != null && Arrays.asList(values).contains(value);
+    }
+
+    // Idiomas em que o nome do local tem tradução, na ordem en, es.
+    private static List<String> translatedLangs(PlaceEntity place) {
+        List<String> langs = new ArrayList<>();
+        if (place.getNameEn() != null && !place.getNameEn().isBlank()) {
+            langs.add("en");
+        }
+        if (place.getNameEs() != null && !place.getNameEs().isBlank()) {
+            langs.add("es");
+        }
+        return langs;
     }
 
     private <T> Map<Long, T> byId(Collection<T> items, Function<T, Long> id) {

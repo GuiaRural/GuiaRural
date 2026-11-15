@@ -4,6 +4,7 @@ import br.com.guiarural.backend.courses.model.CourseEntity;
 import br.com.guiarural.backend.courses.model.DepartmentEntity;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
 import br.com.guiarural.backend.courses.repository.DepartmentRepository;
+import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.map.dto.SearchSuggestionDTO;
 import br.com.guiarural.backend.map.dto.SearchType;
 import br.com.guiarural.backend.map.model.PlaceEntity;
@@ -45,7 +46,7 @@ public class SearchService {
     // O catálogo do campus é pequeno, então o filtro roda em memória: assim a busca ignora acentos e
     // maiúsculas sem depender de extensão do Postgres (unaccent).
     @Transactional(readOnly = true)
-    public List<SearchSuggestionDTO> search(String query) {
+    public List<SearchSuggestionDTO> search(String query, Language language) {
         String q = normalize(query);
         if (q.length() < MIN_CHARS) {
             return List.of();
@@ -54,31 +55,36 @@ public class SearchService {
         List<Hit> hits = new ArrayList<>();
 
         for (PlaceEntity place : placeRepository.findByStatusOrderByNameAsc(PlaceService.PUBLISHED)) {
-            int rank = rank(q, place.getName(), place.getShortName());
+            // Casa com o nome no idioma pedido e também com o português, que o estudante pode digitar de qualquer jeito.
+            String name = language.pick(place.getName(), place.getNameEn(), place.getNameEs());
+            int rank = rank(q, name, place.getName(), place.getShortName());
             if (rank >= 0) {
                 hits.add(new Hit(new SearchSuggestionDTO(SearchType.PLACE, place.getId(), place.getSlug(),
-                        place.getName(), place.getCategory()), rank));
+                        name, place.getCategory()), rank));
             }
         }
 
         for (DepartmentEntity department : departmentRepository.findByActiveTrueOrderByNameAsc()) {
-            int rank = rank(q, department.getName(), department.getShortName());
+            String name = language.pick(department.getName(), department.getNameEn(), department.getNameEs());
+            int rank = rank(q, name, department.getName(), department.getShortName());
             if (rank >= 0) {
                 hits.add(new Hit(new SearchSuggestionDTO(SearchType.DEPARTMENT, department.getId(), null,
-                        department.getName(), null), rank));
+                        name, null), rank));
             }
         }
 
         List<CourseEntity> courses = courseRepository.findByActiveTrue().stream()
-                .filter(course -> rank(q, course.getName()) >= 0)
+                .filter(course -> rank(q, courseName(course, language), course.getName()) >= 0)
                 .toList();
         Set<Long> departmentIds = courses.stream().map(CourseEntity::getDepartmentId).collect(Collectors.toSet());
         Map<Long, String> departmentNames = new HashMap<>();
         departmentRepository.findAllById(departmentIds)
-                .forEach(department -> departmentNames.put(department.getId(), department.getName()));
+                .forEach(department -> departmentNames.put(department.getId(),
+                        language.pick(department.getName(), department.getNameEn(), department.getNameEs())));
         for (CourseEntity course : courses) {
-            hits.add(new Hit(new SearchSuggestionDTO(SearchType.COURSE, course.getId(), null, course.getName(),
-                    departmentNames.get(course.getDepartmentId())), rank(q, course.getName())));
+            String name = courseName(course, language);
+            hits.add(new Hit(new SearchSuggestionDTO(SearchType.COURSE, course.getId(), null, name,
+                    departmentNames.get(course.getDepartmentId())), rank(q, name, course.getName())));
         }
 
         return hits.stream()
@@ -88,6 +94,10 @@ public class SearchService {
                 .limit(MAX_SUGGESTIONS)
                 .map(Hit::suggestion)
                 .toList();
+    }
+
+    private static String courseName(CourseEntity course, Language language) {
+        return language.pick(course.getName(), course.getNameEn(), course.getNameEs());
     }
 
     // 0 = algum campo começa com o termo, 1 = algum campo contém o termo, -1 = não casa.

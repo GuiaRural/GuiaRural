@@ -28,7 +28,6 @@ import { useAdmin } from "./AdminShell";
 import CurriculumEditor from "./CurriculumEditor";
 import { primaryButton, secondaryButton } from "./PageHeader";
 
-const noArg = null;
 
 const LANGUAGE_NAMES: Record<string, string> = { en: "inglês", es: "espanhol" };
 
@@ -51,7 +50,7 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
   const { session, setDirty } = useAdmin();
   // Conta "Somente leitura" vê o curso, mas não altera.
   const canManage = session.permission !== "leitura";
-  const departments = useApi(getDepartments, noArg);
+  const departments = useApi(getDepartments, "pt");
   const [input, setInput] = useState<CourseInput>(() => (course ? inputOf(course) : emptyCourseInput()));
   const [errors, setErrors] = useState<CourseErrors>({});
   const [subjectErrors, setSubjectErrors] = useState<SubjectErrors>({});

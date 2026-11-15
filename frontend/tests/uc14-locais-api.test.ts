@@ -88,7 +88,7 @@ test("a lista pública mostra só locais publicados e georreferenciados, com os 
   ]);
   const places = await getPublicPlaces();
 
-  assert.equal(calls[0].url, "/api/places");
+  assert.equal(calls[0].url, "/api/places?lang=pt");
   assert.deepEqual(places.map((p) => p.id), ["ru", "sem-extras"]);
   const [ru, bare] = places;
   assert.deepEqual(ru.position, { lat: -8.014052, lng: -34.951108 });

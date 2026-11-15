@@ -17,20 +17,18 @@ const LISTS = {
 
 export type PlaceList = keyof typeof LISTS;
 
-const noArg = null;
-
 function belongsTo(list: PlaceList, place: Place) {
   const categories: readonly PlaceCategory[] = LISTS[list];
   return categories.includes(place.category);
 }
 
 export default function PlaceCategoryPage({ list }: { list: PlaceList }) {
-  const { t } = useLanguage();
-  const state = useApi(getPublicPlaces, noArg);
+  const { t, language } = useLanguage();
+  const state = useApi(getPublicPlaces, language);
 
   const places =
     state.status === "ready"
-      ? state.data.filter((p) => belongsTo(list, p)).sort((a, b) => a.name.localeCompare(b.name, "pt"))
+      ? state.data.filter((p) => belongsTo(list, p)).sort((a, b) => a.name.localeCompare(b.name, language))
       : null;
 
   return (
@@ -67,7 +65,7 @@ export default function PlaceCategoryPage({ list }: { list: PlaceList }) {
                     <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
                       {t.categories[place.category]}
                     </p>
-                    <h2 lang="pt" className="mt-1 font-bold text-navy-900">
+                    <h2 lang={place.lang !== language ? place.lang : undefined} className="mt-1 font-bold text-navy-900">
                       {place.name}
                     </h2>
                     {place.address && (
