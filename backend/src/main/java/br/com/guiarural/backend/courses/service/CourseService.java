@@ -20,12 +20,15 @@ import br.com.guiarural.backend.courses.model.SubjectEntity;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
 import br.com.guiarural.backend.courses.repository.DepartmentRepository;
 import br.com.guiarural.backend.courses.repository.SubjectRepository;
+import br.com.guiarural.backend.info.model.Language;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,14 +75,15 @@ public class CourseService {
         return repository.findAll()
                 .stream()
                 .sorted(DISPLAY_ORDER)
-                .map(this::mapToSummaryDTO)
+                .map(course -> mapToSummaryDTO(course, Language.PT))
                 .toList();
     }
 
+    // O painel edita só o português; a resposta diz em quais idiomas já há tradução (translatedLangs).
     @Transactional(readOnly = true)
     public CourseDetailResponseDTO findByIdForAdmin(Long id) {
         CourseEntity course = findAnyOrThrow(id);
-        return mapToDetailDTO(course, departmentOf(course), subjectsOf(id));
+        return mapToDetailDTO(course, departmentOf(course), subjectsOf(id, Language.PT), Language.PT);
     }
 
     @Transactional
@@ -198,7 +202,7 @@ public class CourseService {
 
     // Estado gravado no histórico: o curso com a matriz curricular.
     private CourseDetailResponseDTO snapshot(CourseEntity course, DepartmentEntity department) {
-        return mapToDetailDTO(course, department, subjectsOf(course.getId()));
+        return mapToDetailDTO(course, department, subjectsOf(course.getId(), Language.PT), Language.PT);
     }
 
     // Duas regras que o banco só barraria com erro 500: código repetido na matriz (unique) e vírgula num
@@ -219,15 +223,30 @@ public class CourseService {
         }
     }
 
-    // A matriz enviada substitui a anterior inteira: apaga e regrava, na transação do curso.
+    // A matriz enviada vale inteira: disciplina que ficou de fora sai, e as outras são atualizadas pelo código
+    // (sem diferenciar caixa) em vez de apagadas e recriadas, para manter o id e as traduções EN/ES delas.
     private void replaceSubjects(Long courseId, List<SubjectRequestDTO> subjects) {
-        subjectRepository.deleteByCourseId(courseId);
-        subjectRepository.saveAll(subjects.stream().map(subject -> toEntity(courseId, subject)).toList());
+        Map<String, SubjectEntity> existing = new HashMap<>();
+        for (SubjectEntity subject : subjectRepository.findByCourseId(courseId)) {
+            existing.putIfAbsent(codeKey(subject.getCode()), subject);
+        }
+        List<SubjectEntity> kept = new ArrayList<>();
+        for (SubjectRequestDTO dto : subjects) {
+            SubjectEntity entity = existing.remove(codeKey(dto.code()));
+            kept.add(apply(entity == null ? new SubjectEntity() : entity, courseId, dto));
+        }
+        // O que sobrou em `existing` não veio na requisição.
+        subjectRepository.deleteAll(existing.values());
+        subjectRepository.flush();
+        subjectRepository.saveAll(kept);
         subjectRepository.flush();
     }
 
-    private static SubjectEntity toEntity(Long courseId, SubjectRequestDTO dto) {
-        SubjectEntity entity = new SubjectEntity();
+    private static String codeKey(String code) {
+        return code.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static SubjectEntity apply(SubjectEntity entity, Long courseId, SubjectRequestDTO dto) {
         entity.setCourseId(courseId);
         entity.setPeriod(dto.period());
         entity.setCode(dto.code().trim());
@@ -243,35 +262,36 @@ public class CourseService {
         return entity;
     }
 
-    private List<SubjectResponseDTO> subjectsOf(Long courseId) {
+    private List<SubjectResponseDTO> subjectsOf(Long courseId, Language language) {
         return subjectRepository.findByCourseId(courseId)
                 .stream()
                 .sorted(SUBJECT_ORDER)
-                .map(this::mapToSubjectDTO)
+                .map(subject -> mapToSubjectDTO(subject, language))
                 .toList();
     }
 
+    // Leitura pública: ?lang=pt|en|es, com o texto em português quando falta a tradução (RF04).
     @Transactional(readOnly = true)
-    public List<CourseSummaryDTO> findAll() {
+    public List<CourseSummaryDTO> findAll(Language language) {
         return repository.findByActiveTrue()
                 .stream()
                 .sorted(DISPLAY_ORDER)
-                .map(this::mapToSummaryDTO)
+                .map(course -> mapToSummaryDTO(course, language))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public CourseDetailResponseDTO findById(Long id) {
+    public CourseDetailResponseDTO findById(Long id, Language language) {
         CourseEntity course = repository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + id));
         DepartmentEntity department = departmentRepository.findById(course.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Departamento não encontrado com ID: " + course.getDepartmentId()));
-        return mapToDetailDTO(course, department, subjectsOf(id));
+        return mapToDetailDTO(course, department, subjectsOf(id, language), language);
     }
 
     @Transactional(readOnly = true)
-    public DepartmentCoursesResponseDTO findByDepartment(Long departmentId) {
+    public DepartmentCoursesResponseDTO findByDepartment(Long departmentId, Language language) {
         List<CourseEntity> courses = repository.findByDepartmentIdAndActiveTrue(departmentId)
                 .stream()
                 .sorted(DISPLAY_ORDER)
@@ -279,7 +299,7 @@ public class CourseService {
 
         List<CourseGroupDTO> groups = courses.stream()
                 .collect(Collectors.groupingBy(CourseEntity::getLevel, LinkedHashMap::new,
-                        Collectors.mapping(this::mapToSummaryDTO, Collectors.toList())))
+                        Collectors.mapping(course -> mapToSummaryDTO(course, language), Collectors.toList())))
                 .entrySet()
                 .stream()
                 .map(entry -> new CourseGroupDTO(entry.getKey(), entry.getValue()))
@@ -287,19 +307,19 @@ public class CourseService {
 
         List<CoordinationDTO> coordinations = courses.stream()
                 .filter(course -> course.getCoordinatorName() != null)
-                .map(course -> new CoordinationDTO(course.getId(), course.getName(),
+                .map(course -> new CoordinationDTO(course.getId(), language.pick(course.getName(), course.getNameEn(), course.getNameEs()),
                         course.getCoordinatorName(), course.getExtension(), course.getEmail()))
                 .toList();
 
         return new DepartmentCoursesResponseDTO(departmentId, courses.size(), groups, coordinations);
     }
 
-    private CourseSummaryDTO mapToSummaryDTO(CourseEntity entity) {
+    private CourseSummaryDTO mapToSummaryDTO(CourseEntity entity, Language language) {
         return new CourseSummaryDTO(
                 entity.getId(),
                 entity.getDepartmentId(),
                 entity.getCode(),
-                entity.getName(),
+                language.pick(entity.getName(), entity.getNameEn(), entity.getNameEs()),
                 entity.getLevel(),
                 entity.getType(),
                 entity.getModality(),
@@ -307,14 +327,16 @@ public class CourseService {
                 entity.getDurationSemesters(),
                 entity.getMecGrade(),
                 entity.getCapesGrade(),
-                entity.getDescription(),
+                language.pick(entity.getDescription(), entity.getDescriptionEn(), entity.getDescriptionEs()),
                 entity.getOfficeLocation(),
-                Boolean.TRUE.equals(entity.getActive())
+                Boolean.TRUE.equals(entity.getActive()),
+                language.effective(entity.getNameEn(), entity.getNameEs()).code()
         );
     }
 
     private CourseDetailResponseDTO mapToDetailDTO(CourseEntity entity, DepartmentEntity department,
-                                                   List<SubjectResponseDTO> subjects) {
+                                                   List<SubjectResponseDTO> subjects, Language language) {
+        Language effective = language.effective(entity.getNameEn(), entity.getNameEs());
         CourseCoordinationDTO coordination = new CourseCoordinationDTO(
                 entity.getCoordinatorName(),
                 entity.getViceCoordinatorName(),
@@ -329,7 +351,7 @@ public class CourseService {
         return new CourseDetailResponseDTO(
                 entity.getId(),
                 entity.getCode(),
-                entity.getName(),
+                language.pick(entity.getName(), entity.getNameEn(), entity.getNameEs()),
                 entity.getLevel(),
                 entity.getType(),
                 entity.getModality(),
@@ -338,24 +360,43 @@ public class CourseService {
                 entity.getTotalWorkloadHours(),
                 entity.getMecGrade(),
                 entity.getCapesGrade(),
-                entity.getDescription(),
+                language.pick(entity.getDescription(), entity.getDescriptionEn(), entity.getDescriptionEs()),
                 department.getId(),
                 department.getName(),
                 department.getShortName(),
                 department.getAcademicCenter(),
                 coordination,
                 subjects,
-                Boolean.TRUE.equals(entity.getActive())
+                Boolean.TRUE.equals(entity.getActive()),
+                effective.code(),
+                effective != Language.PT && contains(entity.getMachineTranslatedLangs(), effective.code()),
+                translatedLangs(entity)
         );
     }
 
-    private SubjectResponseDTO mapToSubjectDTO(SubjectEntity entity) {
+    private static boolean contains(String[] values, String value) {
+        return values != null && Arrays.asList(values).contains(value);
+    }
+
+    // Idiomas em que o nome do curso tem tradução, na ordem en, es.
+    private static List<String> translatedLangs(CourseEntity entity) {
+        List<String> langs = new ArrayList<>();
+        if (entity.getNameEn() != null && !entity.getNameEn().isBlank()) {
+            langs.add("en");
+        }
+        if (entity.getNameEs() != null && !entity.getNameEs().isBlank()) {
+            langs.add("es");
+        }
+        return langs;
+    }
+
+    private SubjectResponseDTO mapToSubjectDTO(SubjectEntity entity, Language language) {
         return new SubjectResponseDTO(
                 entity.getId(),
                 entity.getPeriod(),
                 entity.getCode(),
-                entity.getName(),
-                entity.getSyllabus(),
+                language.pick(entity.getName(), entity.getNameEn(), entity.getNameEs()),
+                language.pick(entity.getSyllabus(), entity.getSyllabusEn(), entity.getSyllabusEs()),
                 entity.getWorkloadHours(),
                 entity.getCredits(),
                 entity.getNature(),

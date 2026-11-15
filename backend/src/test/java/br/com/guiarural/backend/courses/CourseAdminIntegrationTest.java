@@ -287,4 +287,54 @@ class CourseAdminIntegrationTest {
         assertEquals("AGR101", jsonMapper.readTree(before).get("subjects").get(0).get("code").asText());
         assertEquals("AGR777", jsonMapper.readTree(after).get("subjects").get(0).get("code").asText());
     }
+
+    @Test
+    @DisplayName("Fase 6: ?lang= traduz curso, lista, departamento e matriz com fallback; salvar pelo painel mantém as traduções")
+    void servesLanguageAndKeepsTranslations() throws Exception {
+        Auth editor = login("editor.cursos@ufrpe.br");
+        long id = create(editor, courseWithSubjects("Agronomia", "[" + subject("AGR101", 1, "[]") + "]"));
+        // As traduções entram fora do sistema (SQL), como o time vai fazer; o painel só edita o português.
+        jdbc.update("update courses set name_en = 'Agronomy', description_en = 'Agronomy program', machine_translated_langs = ARRAY['en'] where id = ?", id);
+        jdbc.update("update curriculum_subjects set name_en = 'Introduction' where course_id = ? and code = 'AGR101'", id);
+
+        mvc.perform(get("/api/courses/" + id).param("lang", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Agronomy"))
+                .andExpect(jsonPath("$.description").value("Agronomy program"))
+                .andExpect(jsonPath("$.lang").value("en"))
+                .andExpect(jsonPath("$.machineTranslated").value(true))
+                .andExpect(jsonPath("$.subjects[0].name").value("Introduction"));
+        // Sem tradução em espanhol, em francês (não suportado) ou sem idioma: português.
+        for (String lang : new String[]{"es", "fr", ""}) {
+            mvc.perform(get("/api/courses/" + id).param("lang", lang))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name").value("Agronomia"))
+                    .andExpect(jsonPath("$.lang").value("pt"))
+                    .andExpect(jsonPath("$.machineTranslated").value(false))
+                    .andExpect(jsonPath("$.subjects[0].name").value("Disciplina AGR101"));
+        }
+        mvc.perform(get("/api/courses").param("lang", "en"))
+                .andExpect(jsonPath("$[0].name").value("Agronomy"))
+                .andExpect(jsonPath("$[0].lang").value("en"));
+        mvc.perform(get("/api/departments/" + DEPARTMENT + "/courses").param("lang", "en"))
+                .andExpect(jsonPath("$.groups[0].courses[0].name").value("Agronomy"));
+
+        // O painel lê em português e fica sabendo que existe tradução em inglês.
+        mvc.perform(get("/api/admin/courses/" + id).session(editor.session()))
+                .andExpect(jsonPath("$.name").value("Agronomia"))
+                .andExpect(jsonPath("$.translatedLangs.length()").value(1))
+                .andExpect(jsonPath("$.translatedLangs[0]").value("en"));
+
+        // Editar o português (inclusive a matriz) não apaga as traduções nem muda o id da disciplina.
+        long subjectId = jdbc.queryForObject("select id from curriculum_subjects where course_id = ? and code = 'AGR101'", Long.class, id);
+        mvc.perform(editor.write(put("/api/courses/" + id)).content(courseWithSubjects("Agronomia e Zootecnia",
+                        "[" + subject("agr101", 1, "[]") + "," + subject("AGR202", 2, "[]") + "]")))
+                .andExpect(status().isOk());
+        assertEquals("Agronomy", jdbc.queryForObject("select name_en from courses where id = ?", String.class, id));
+        assertEquals("Agronomy program", jdbc.queryForObject("select description_en from courses where id = ?", String.class, id));
+        assertEquals(1, count("select count(*) from courses where id = ? and machine_translated_langs = ARRAY['en']", id));
+        assertEquals(subjectId, jdbc.queryForObject("select id from curriculum_subjects where course_id = ? and code = 'agr101'", Long.class, id));
+        assertEquals("Introduction", jdbc.queryForObject("select name_en from curriculum_subjects where id = ?", String.class, subjectId));
+        assertEquals(2, count("select count(*) from curriculum_subjects where course_id = ?", id));
+    }
 }

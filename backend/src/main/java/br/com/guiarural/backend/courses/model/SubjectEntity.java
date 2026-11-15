@@ -19,6 +19,10 @@ public class SubjectEntity {
     @Enumerated(EnumType.STRING)
     private SubjectNature nature;
     private String prerequisites;
+    private String nameEn;
+    private String nameEs;
+    private String syllabusEn;
+    private String syllabusEs;
 
     public SubjectEntity() {
     }
@@ -101,5 +105,37 @@ public class SubjectEntity {
 
     public void setPrerequisites(String prerequisites) {
         this.prerequisites = prerequisites;
+    }
+
+    public String getNameEn() {
+        return nameEn;
+    }
+
+    public void setNameEn(String nameEn) {
+        this.nameEn = nameEn;
+    }
+
+    public String getNameEs() {
+        return nameEs;
+    }
+
+    public void setNameEs(String nameEs) {
+        this.nameEs = nameEs;
+    }
+
+    public String getSyllabusEn() {
+        return syllabusEn;
+    }
+
+    public void setSyllabusEn(String syllabusEn) {
+        this.syllabusEn = syllabusEn;
+    }
+
+    public String getSyllabusEs() {
+        return syllabusEs;
+    }
+
+    public void setSyllabusEs(String syllabusEs) {
+        this.syllabusEs = syllabusEs;
     }
 }

@@ -17,6 +17,7 @@ import br.com.guiarural.backend.courses.model.SubjectNature;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
 import br.com.guiarural.backend.courses.repository.DepartmentRepository;
 import br.com.guiarural.backend.courses.repository.SubjectRepository;
+import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.courses.service.CourseService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -93,7 +94,7 @@ class CourseServiceTest {
                 course(4L, "Ciência da Computação", CourseLevel.GRADUACAO, CourseType.BACHARELADO, "Coord. CC")
         ));
 
-        DepartmentCoursesResponseDTO result = service.findByDepartment(10L);
+        DepartmentCoursesResponseDTO result = service.findByDepartment(10L, Language.PT);
 
         assertEquals(2, result.groups().size());
         assertEquals(CourseLevel.GRADUACAO, result.groups().get(0).level());
@@ -111,7 +112,7 @@ class CourseServiceTest {
                 course(2L, "Licenciatura em Computação", CourseLevel.GRADUACAO, CourseType.LICENCIATURA, null)
         ));
 
-        DepartmentCoursesResponseDTO result = service.findByDepartment(10L);
+        DepartmentCoursesResponseDTO result = service.findByDepartment(10L, Language.PT);
 
         assertEquals(2, result.programsOffered());
         assertEquals(1, result.coordinations().size());
@@ -123,7 +124,7 @@ class CourseServiceTest {
     void shouldReturnEmptyWhenDepartmentHasNoCourses() {
         when(repository.findByDepartmentIdAndActiveTrue(10L)).thenReturn(List.of());
 
-        DepartmentCoursesResponseDTO result = service.findByDepartment(10L);
+        DepartmentCoursesResponseDTO result = service.findByDepartment(10L, Language.PT);
 
         assertEquals(0, result.programsOffered());
         assertTrue(result.groups().isEmpty());
@@ -148,7 +149,7 @@ class CourseServiceTest {
                 subject(3L, (short) 1, "CC101", "")
         ));
 
-        CourseDetailResponseDTO result = service.findById(1L);
+        CourseDetailResponseDTO result = service.findById(1L, Language.PT);
 
         assertEquals("DC", result.departmentShortName());
         assertEquals((short) 3240, result.totalWorkloadHours());
@@ -163,7 +164,7 @@ class CourseServiceTest {
     void shouldThrowWhenCourseNotFound() {
         when(repository.findByIdAndActiveTrue(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> service.findById(99L));
+        assertThrows(ResourceNotFoundException.class, () -> service.findById(99L, Language.PT));
 
         verifyNoInteractions(subjectRepository);
     }
@@ -336,31 +337,63 @@ class CourseServiceTest {
     }
 
     @Test
-    @DisplayName("Fase 5c: edição com `subjects` apaga a matriz antiga e grava a nova, com texto limpo")
+    @DisplayName("Fase 5c: edição com `subjects` atualiza pelo código, cria o novo e apaga o que saiu, com texto limpo")
     void shouldReplaceCurriculumWhenSubjectsAreSent() {
         CourseEntity existing = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
         when(repository.findById(1L)).thenReturn(Optional.of(existing));
         when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
         saveGivesId();
+        when(subjectRepository.findByCourseId(1L)).thenReturn(List.of(
+                subject(7L, (short) 1, "AGR101", null), subject(8L, (short) 2, "AGR555", null)));
 
         service.update(1L, withSubjects(List.of(
-                subjectRequest((short) 1, " AGR101 ", List.of()),
+                subjectRequest((short) 1, " agr101 ", List.of()),
                 subjectRequest(null, "AGR900", List.of(" AGR101 ", "AGR102")))));
 
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Iterable<SubjectEntity>> removed = ArgumentCaptor.forClass(Iterable.class);
         InOrder order = inOrder(subjectRepository);
-        order.verify(subjectRepository).deleteByCourseId(1L);
+        order.verify(subjectRepository).deleteAll(removed.capture());
+        assertEquals(List.of("AGR555"), java.util.stream.StreamSupport.stream(removed.getValue().spliterator(), false)
+                .map(SubjectEntity::getCode).toList());
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<SubjectEntity>> saved = ArgumentCaptor.forClass(List.class);
         order.verify(subjectRepository).saveAll(saved.capture());
         List<SubjectEntity> rows = saved.getValue();
         assertEquals(2, rows.size());
+        // Mesmo código (sem diferenciar caixa): a linha existente é reaproveitada, com o id.
+        assertEquals(7L, rows.get(0).getId());
         assertEquals(1L, rows.get(0).getCourseId());
-        assertEquals("AGR101", rows.get(0).getCode());
-        assertEquals("Disciplina AGR101", rows.get(0).getName());
+        assertEquals("agr101", rows.get(0).getCode());
+        assertEquals("Disciplina agr101", rows.get(0).getName());
         assertNull(rows.get(0).getSyllabus());
         assertNull(rows.get(0).getPrerequisites());
+        assertNull(rows.get(1).getId());
         assertNull(rows.get(1).getPeriod());
         assertEquals("AGR101,AGR102", rows.get(1).getPrerequisites());
+        verify(subjectRepository, never()).deleteByCourseId(any());
+    }
+
+    @Test
+    @DisplayName("Fase 6: salvar a matriz mantém as traduções EN/ES das disciplinas que continuam")
+    void shouldKeepSubjectTranslationsWhenSavingCurriculum() {
+        CourseEntity existing = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        saveGivesId();
+        SubjectEntity translated = subject(7L, (short) 1, "AGR101", null);
+        translated.setNameEn("Introduction to Agronomy");
+        translated.setSyllabusEs("Ementa en español");
+        when(subjectRepository.findByCourseId(1L)).thenReturn(List.of(translated));
+
+        service.update(1L, withSubjects(List.of(subjectRequest((short) 1, "AGR101", List.of()))));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<SubjectEntity>> saved = ArgumentCaptor.forClass(List.class);
+        verify(subjectRepository).saveAll(saved.capture());
+        assertEquals("Introduction to Agronomy", saved.getValue().get(0).getNameEn());
+        assertEquals("Ementa en español", saved.getValue().get(0).getSyllabusEs());
+        assertEquals("Disciplina AGR101", saved.getValue().get(0).getName());
     }
 
     @Test
@@ -373,7 +406,7 @@ class CourseServiceTest {
 
         service.update(1L, valid());
 
-        verify(subjectRepository, never()).deleteByCourseId(any());
+        verify(subjectRepository, never()).deleteAll(any());
         verify(subjectRepository, never()).saveAll(any());
     }
 
@@ -385,9 +418,14 @@ class CourseServiceTest {
         when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
         saveGivesId();
 
+        when(subjectRepository.findByCourseId(1L)).thenReturn(List.of(subject(7L, (short) 1, "AGR101", null)));
+
         service.update(1L, withSubjects(List.of()));
 
-        verify(subjectRepository).deleteByCourseId(1L);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Iterable<SubjectEntity>> removed = ArgumentCaptor.forClass(Iterable.class);
+        verify(subjectRepository).deleteAll(removed.capture());
+        assertEquals(1, java.util.stream.StreamSupport.stream(removed.getValue().spliterator(), false).count());
     }
 
     @Test
@@ -429,6 +467,7 @@ class CourseServiceTest {
         saveGivesId();
         when(subjectRepository.findByCourseId(1L))
                 .thenReturn(List.of(subject(7L, (short) 1, "OLD101", null)))
+                .thenReturn(List.of(subject(7L, (short) 1, "OLD101", null)))
                 .thenReturn(List.of(subject(8L, (short) 1, "NEW101", null)));
 
         service.update(1L, withSubjects(List.of(subjectRequest((short) 1, "NEW101", List.of()))));
@@ -439,6 +478,138 @@ class CourseServiceTest {
                 before.capture(), after.capture());
         assertEquals("OLD101", ((CourseDetailResponseDTO) before.getValue()).subjects().get(0).code());
         assertEquals("NEW101", ((CourseDetailResponseDTO) after.getValue()).subjects().get(0).code());
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Idioma (Fase 6, RF04)
+    // ---------------------------------------------------------------------------------------------------------
+
+    private CourseEntity translatedCourse() {
+        CourseEntity course = course(1L, "Ciência da Computação", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        course.setDescription("Curso de computação.");
+        course.setNameEn("Computer Science");
+        course.setDescriptionEn("Computing program.");
+        // Só o nome foi traduzido para o espanhol; a descrição não.
+        course.setNameEs("Ciencia de la Computación");
+        return course;
+    }
+
+    @Test
+    @DisplayName("Fase 6: o curso sai no idioma pedido e cada texto sem tradução cai para o português")
+    void shouldResolveCourseInRequestedLanguageWithFallback() {
+        CourseEntity course = translatedCourse();
+        when(repository.findByIdAndActiveTrue(1L)).thenReturn(Optional.of(course));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        SubjectEntity subject = subject(7L, (short) 1, "CC101", null);
+        subject.setNameEn("Programming I");
+        subject.setSyllabus("Ementa em português");
+        subject.setSyllabusEn("English syllabus");
+        when(subjectRepository.findByCourseId(1L)).thenReturn(List.of(subject));
+
+        CourseDetailResponseDTO en = service.findById(1L, Language.EN);
+        assertEquals("Computer Science", en.name());
+        assertEquals("Computing program.", en.description());
+        assertEquals("en", en.lang());
+        assertEquals("Programming I", en.subjects().get(0).name());
+        assertEquals("English syllabus", en.subjects().get(0).syllabus());
+
+        CourseDetailResponseDTO es = service.findById(1L, Language.ES);
+        assertEquals("Ciencia de la Computación", es.name());
+        assertEquals("Curso de computação.", es.description());
+        assertEquals("es", es.lang());
+        // Disciplina sem tradução em espanhol: nome e ementa em português.
+        assertEquals("Disciplina CC101", es.subjects().get(0).name());
+        assertEquals("Ementa em português", es.subjects().get(0).syllabus());
+
+        CourseDetailResponseDTO pt = service.findById(1L, Language.PT);
+        assertEquals("Ciência da Computação", pt.name());
+        assertEquals("pt", pt.lang());
+    }
+
+    @Test
+    @DisplayName("Fase 6: curso sem tradução do nome volta em português e com lang pt")
+    void shouldFallBackToPortugueseWhenCourseHasNoTranslation() {
+        CourseEntity course = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        when(repository.findByIdAndActiveTrue(1L)).thenReturn(Optional.of(course));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+
+        CourseDetailResponseDTO en = service.findById(1L, Language.EN);
+
+        assertEquals("Agronomia", en.name());
+        assertEquals("pt", en.lang());
+        assertFalse(en.machineTranslated());
+        assertEquals(List.of(), en.translatedLangs());
+    }
+
+    @Test
+    @DisplayName("Fase 6: machineTranslated só vale para o idioma marcado e só quando o texto veio da tradução")
+    void shouldFlagMachineTranslation() {
+        CourseEntity course = translatedCourse();
+        course.setMachineTranslatedLangs(new String[]{"en"});
+        when(repository.findByIdAndActiveTrue(1L)).thenReturn(Optional.of(course));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+
+        assertTrue(service.findById(1L, Language.EN).machineTranslated());
+        assertFalse(service.findById(1L, Language.ES).machineTranslated());
+        assertFalse(service.findById(1L, Language.PT).machineTranslated());
+        assertEquals(List.of("en", "es"), service.findById(1L, Language.PT).translatedLangs());
+
+        // Marcado, mas sem texto traduzido: o que sai é português, então não é tradução automática.
+        course.setNameEn(null);
+        course.setMachineTranslatedLangs(new String[]{"en", "es"});
+        assertFalse(service.findById(1L, Language.EN).machineTranslated());
+        assertEquals(List.of("es"), service.findById(1L, Language.PT).translatedLangs());
+    }
+
+    @Test
+    @DisplayName("Fase 6: listas por idioma, inclusive a lista do departamento e a coordenação")
+    void shouldResolveListsInRequestedLanguage() {
+        CourseEntity course = translatedCourse();
+        course.setCoordinatorName("Profa. Coordenadora");
+        when(repository.findByActiveTrue()).thenReturn(List.of(course));
+        when(repository.findByDepartmentIdAndActiveTrue(10L)).thenReturn(List.of(course));
+
+        CourseSummaryDTO summary = service.findAll(Language.EN).get(0);
+        assertEquals("Computer Science", summary.name());
+        assertEquals("Computing program.", summary.description());
+        assertEquals("en", summary.lang());
+        assertEquals("Ciência da Computação", service.findAll(Language.PT).get(0).name());
+
+        DepartmentCoursesResponseDTO department = service.findByDepartment(10L, Language.ES);
+        assertEquals("Ciencia de la Computación", department.groups().get(0).courses().get(0).name());
+        assertEquals("Ciencia de la Computación", department.coordinations().get(0).courseName());
+    }
+
+    @Test
+    @DisplayName("Fase 6: o painel recebe o texto em português e a lista de idiomas já traduzidos")
+    void adminGetsPortugueseAndTranslatedLangs() {
+        CourseEntity course = translatedCourse();
+        when(repository.findById(1L)).thenReturn(Optional.of(course));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+
+        CourseDetailResponseDTO admin = service.findByIdForAdmin(1L);
+
+        assertEquals("Ciência da Computação", admin.name());
+        assertEquals("pt", admin.lang());
+        assertEquals(List.of("en", "es"), admin.translatedLangs());
+    }
+
+    @Test
+    @DisplayName("Fase 6: editar o português não apaga as traduções do curso")
+    void updateKeepsCourseTranslations() {
+        CourseEntity course = translatedCourse();
+        course.setMachineTranslatedLangs(new String[]{"en", "es"});
+        when(repository.findById(1L)).thenReturn(Optional.of(course));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        saveGivesId();
+
+        service.update(1L, valid());
+
+        assertEquals("Ciência da Computação", course.getName());
+        assertEquals("Computer Science", course.getNameEn());
+        assertEquals("Ciencia de la Computación", course.getNameEs());
+        assertEquals("Computing program.", course.getDescriptionEn());
+        assertEquals(2, course.getMachineTranslatedLangs().length);
     }
 
     @Test

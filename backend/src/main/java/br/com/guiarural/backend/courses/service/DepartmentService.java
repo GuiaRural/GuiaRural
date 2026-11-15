@@ -2,6 +2,7 @@ package br.com.guiarural.backend.courses.service;
 
 import br.com.guiarural.backend.core.exception.ResourceNotFoundException;
 import br.com.guiarural.backend.courses.dto.DepartmentCoursesResponseDTO;
+import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.courses.dto.DepartmentResponseDTO;
 import br.com.guiarural.backend.courses.model.DepartmentEntity;
 import br.com.guiarural.backend.courses.repository.DepartmentRepository;
@@ -46,9 +47,9 @@ public class DepartmentService {
     }
 
     @Transactional(readOnly = true)
-    public DepartmentCoursesResponseDTO findCourses(Long id) {
+    public DepartmentCoursesResponseDTO findCourses(Long id, Language language) {
         findActive(id);
-        return courseService.findByDepartment(id);
+        return courseService.findByDepartment(id, language);
     }
 
     private DepartmentEntity findActive(Long id) {

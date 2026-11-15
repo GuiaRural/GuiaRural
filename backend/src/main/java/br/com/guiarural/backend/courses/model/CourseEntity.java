@@ -1,6 +1,8 @@
 package br.com.guiarural.backend.courses.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "courses")
@@ -33,6 +35,14 @@ public class CourseEntity {
     private String extension;
     private String email;
     private String secondaryEmail;
+    // Traduções (RF04): o painel edita só o português; EN e ES são gravadas fora do sistema pelo time.
+    private String nameEn;
+    private String nameEs;
+    private String descriptionEn;
+    private String descriptionEs;
+    // Idiomas (en, es) traduzidos automaticamente que esperam revisão humana. Nunca nulo: a coluna é NOT NULL.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private String[] machineTranslatedLangs = new String[0];
 
     public CourseEntity() {
     }
@@ -219,5 +229,45 @@ public class CourseEntity {
 
     public void setSecondaryEmail(String secondaryEmail) {
         this.secondaryEmail = secondaryEmail;
+    }
+
+    public String getNameEn() {
+        return nameEn;
+    }
+
+    public void setNameEn(String nameEn) {
+        this.nameEn = nameEn;
+    }
+
+    public String getNameEs() {
+        return nameEs;
+    }
+
+    public void setNameEs(String nameEs) {
+        this.nameEs = nameEs;
+    }
+
+    public String getDescriptionEn() {
+        return descriptionEn;
+    }
+
+    public void setDescriptionEn(String descriptionEn) {
+        this.descriptionEn = descriptionEn;
+    }
+
+    public String getDescriptionEs() {
+        return descriptionEs;
+    }
+
+    public void setDescriptionEs(String descriptionEs) {
+        this.descriptionEs = descriptionEs;
+    }
+
+    public String[] getMachineTranslatedLangs() {
+        return machineTranslatedLangs;
+    }
+
+    public void setMachineTranslatedLangs(String[] machineTranslatedLangs) {
+        this.machineTranslatedLangs = machineTranslatedLangs;
     }
 }
