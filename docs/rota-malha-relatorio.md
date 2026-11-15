@@ -5,11 +5,11 @@ Não substitui a conferência em campo: é o que o OSM tem hoje.
 
 ## Resumo
 
-- Vias com `highway` lidas: **490**; caminháveis 448, com `access` restrito 25 (10 passam pelo campus e estão na tabela abaixo), descartadas 17.
+- Vias com `highway` lidas: **371**; caminháveis 351, com `access` restrito 10 (10 passam pelo campus e estão na tabela abaixo), descartadas 10.
 - Vias que passam pelo campus (com folga): 361. Nós ausentes na resposta do OSM: 0.
-- **Grafo gravado:** 492 nós, 608 arestas, 44.7 km, 46 KB (sem comprimir).
-- Componentes conexos: 10; o maior tem 44.7 km e é o único gravado (as ilhas ficam de fora).
-- Tipos de via: residential 167, service 114, footway 86, path 45, secondary 41, trunk 14, steps 9, tertiary 5, track 3, trunk_link 2, pedestrian 2, secondary_link 1, unclassified 1.
+- **Grafo gravado:** 498 nós, 615 arestas, 44.9 km, 46 KB (sem comprimir).
+- Componentes conexos: 9; o maior tem 44.9 km e é o único gravado (as ilhas ficam de fora).
+- Tipos de via: residential 128, service 97, footway 78, path 24, secondary 20, trunk 8, steps 6, tertiary 4, track 2, pedestrian 2, trunk_link 1, unclassified 1.
 
 ## Vias `access` restrito (revisar uma a uma, D19.3)
 
@@ -35,7 +35,6 @@ Uma ilha dentro do campus costuma ser uma ligação que falta no OSM. A folga é
 | Metros | Vias | Centro (lat, lng) | Dentro do campus | Folga até o principal (m) |
 |---|---|---|---|---|
 | 273 | 8 | -8.02220, -34.94345 | **sim** | 74.3 |
-| 193 | 4 | -8.01412, -34.94780 | **sim** | 3.4 |
 | 377 | 5 | -8.01786, -34.94216 | não | 35.2 |
 | 283 | 2 | -8.02098, -34.94252 | não | 215.3 |
 | 156 | 2 | -8.01062, -34.94492 | não | 82.2 |
@@ -46,15 +45,14 @@ Uma ilha dentro do campus costuma ser uma ligação que falta no OSM. A folga é
 
 ## Locais x via mais próxima
 
-Locais publicados com coordenada: **35**. Distância até a via do componente principal: mediana 17 m, p90 44 m, máxima 115 m.
+Locais publicados com coordenada: **35**. Distância até a via do componente principal: mediana 17 m, p90 42 m, máxima 115 m.
 
 Acima de 40 m (o trecho final até o prédio vai tracejado; conferir a coordenada em campo):
 
 - `teste`: 115 m
 - `teste-2`: 70 m
 - `medvet`: 55 m
-- `propesq`: 44 m
 - `hovet`: 42 m
 
-Locais cuja via mais próxima está numa ilha (a rota encaixa no componente principal, mais longe): `propesq`.
+Nenhum local tem a via mais próxima numa ilha.
 
