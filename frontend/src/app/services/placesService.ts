@@ -1,3 +1,4 @@
+import type { Language } from "../i18n/dictionaries";
 import { ApiError, apiDelete, apiGet, apiPost, apiPut, apiPutForm, isNotFound } from "../lib/api";
 import type { LatLng } from "../lib/geo";
 import { readJson, writeJson } from "../lib/storage";
@@ -50,10 +51,22 @@ export type Place = {
   courses: PlaceLink[];
   // Endereço da foto no backend (com a versão na URL); sem foto, a tela mostra a sigla do local.
   photoUrl?: string;
+  // Idioma em que `name` e `description` de fato vieram (pt quando faltou a tradução), para o atributo lang.
+  lang: Language;
+  // O texto veio de uma tradução automática que ainda espera revisão humana.
+  machineTranslated: boolean;
+  // Idiomas em que o nome tem tradução (o painel usa para avisar que o texto pode defasar).
+  translatedLangs: Language[];
 };
 
+// Local de uma página: o slug e o idioma vão juntos ("reitoria:en"), porque o useApi aceita um argumento só.
+export type PlaceKey = `${string}:${Language}`;
+
 // O que o formulário do painel envia. Sem `id`, é um local novo (o servidor gera o slug a partir do nome).
-export type PlaceInput = Omit<Place, "id" | "services" | "courses" | "photoUrl" | "coordinatesSource"> & {
+export type PlaceInput = Omit<
+  Place,
+  "id" | "services" | "courses" | "photoUrl" | "coordinatesSource" | "lang" | "machineTranslated" | "translatedLangs"
+> & {
   id?: string;
   coordinatesSource?: string;
   serviceIds: number[];
@@ -84,6 +97,9 @@ type PlaceDto = {
   services: PlaceLink[];
   courses: PlaceLink[];
   photoUrl: string | null;
+  lang: string;
+  machineTranslated: boolean;
+  translatedLangs: string[];
 };
 
 function toPlace(dto: PlaceDto): Place {
@@ -102,18 +118,21 @@ function toPlace(dto: PlaceDto): Place {
     services: dto.services,
     courses: dto.courses,
     photoUrl: dto.photoUrl ?? undefined,
+    lang: dto.lang as Language,
+    machineTranslated: dto.machineTranslated,
+    translatedLangs: dto.translatedLangs as Language[],
   };
 }
 
-// A lista pública é pequena e muda pouco: uma busca por sessão. Em caso de falha o cache é descartado
-// para que "tentar novamente" refaça a requisição.
-let publicCache: Promise<Place[]> | null = null;
-let publicLoaded: Place[] | null = null;
+// A lista pública é pequena e muda pouco: uma busca por idioma e por sessão. Em caso de falha o cache daquele
+// idioma é descartado para que "tentar novamente" refaça a requisição.
+const publicCache: Partial<Record<Language, Promise<Place[]>>> = {};
+const publicLoaded: Partial<Record<Language, Place[]>> = {};
 
 // Depois de criar, editar, excluir, trocar a foto ou desfazer pelo histórico, o mapa e a busca precisam ler a lista de novo.
 export function resetPublicCache() {
-  publicCache = null;
-  publicLoaded = null;
+  for (const language of Object.keys(publicCache) as Language[]) delete publicCache[language];
+  for (const language of Object.keys(publicLoaded) as Language[]) delete publicLoaded[language];
 }
 
 const RECENT_KEY = "guiarural.recentPlaces";
@@ -132,33 +151,44 @@ function isPublic(p: Place): p is Place & { position: NonNullable<Place["positio
   return p.status === "publicado" && p.position !== null;
 }
 
-export async function searchPlaces(query: string): Promise<Place[]> {
+const matches = (place: Place | undefined, q: string) =>
+  place !== undefined && (normalize(place.name).includes(q) || normalize(place.shortName).includes(q));
+
+// A lista sai no idioma da tela, mas a busca também casa com o nome em português, que o estudante pode digitar
+// de qualquer jeito (a lista em português é buscada uma vez por sessão).
+export async function searchPlaces(query: string, language: Language = "pt"): Promise<Place[]> {
   const q = normalize(query.trim());
   if (q.length < MIN_SEARCH_CHARS) return [];
-  return (await getPublicPlaces())
-    .filter((p) => normalize(p.name).includes(q) || normalize(p.shortName).includes(q))
-    .slice(0, 5);
+  const [shown, portuguese] = await Promise.all([
+    getPublicPlaces(language),
+    language === "pt" ? Promise.resolve<Place[]>([]) : getPublicPlaces("pt"),
+  ]);
+  const byId = new Map(portuguese.map((p) => [p.id, p]));
+  return shown.filter((p) => matches(p, q) || matches(byId.get(p.id), q)).slice(0, 5);
 }
 
-export function getPublicPlaces(): Promise<Place[]> {
-  publicCache ??= apiGet<PlaceDto[]>("/places")
+export function getPublicPlaces(language: Language = "pt"): Promise<Place[]> {
+  publicCache[language] ??= apiGet<PlaceDto[]>(`/places?lang=${language}`)
     .then((list) => {
-      publicLoaded = list.map(toPlace).filter(isPublic);
-      return publicLoaded;
+      const places = list.map(toPlace).filter(isPublic);
+      publicLoaded[language] = places;
+      return places;
     })
     .catch((error) => {
-      publicCache = null;
+      delete publicCache[language];
       throw error;
     });
-  return publicCache;
+  return publicCache[language];
 }
 
-export async function getPlace(id: string): Promise<Place | null> {
-  return (await getPublicPlaces()).find((p) => p.id === id) ?? null;
+export async function getPlace(key: PlaceKey): Promise<Place | null> {
+  const at = key.lastIndexOf(":");
+  const id = key.slice(0, at);
+  return (await getPublicPlaces(key.slice(at + 1) as Language)).find((p) => p.id === id) ?? null;
 }
 
-export async function getRecentPlaces(): Promise<Place[]> {
-  const all = await getPublicPlaces();
+export async function getRecentPlaces(language: Language = "pt"): Promise<Place[]> {
+  const all = await getPublicPlaces(language);
   const ids = readJson<string[]>(RECENT_KEY, DEFAULT_RECENT_IDS);
   return ids.map((id) => all.find((p) => p.id === id)).filter((p): p is Place => Boolean(p));
 }
@@ -294,6 +324,6 @@ export async function deletePlacePhoto(id: string): Promise<void> {
 
 // RN-UC02.01: distância e tempo do cartão partem da origem padrão do campus (Prédio Central).
 // Lê do cache da lista pública, que as telas já carregaram antes de mostrar um local; null se ainda não houver.
-export function getDefaultOrigin(): Place | null {
-  return publicLoaded?.find((p) => p.id === DEFAULT_ORIGIN_ID) ?? null;
+export function getDefaultOrigin(language: Language = "pt"): Place | null {
+  return (publicLoaded[language] ?? publicLoaded.pt)?.find((p) => p.id === DEFAULT_ORIGIN_ID) ?? null;
 }

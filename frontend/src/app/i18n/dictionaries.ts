@@ -55,7 +55,15 @@ export type Dictionary = {
     recenter: string;
   };
   language: { label: string; open: string };
-  common: { close: string; cancel: string; loading: string; minutes: string; meters: string };
+  common: {
+    close: string;
+    cancel: string;
+    loading: string;
+    minutes: string;
+    meters: string;
+    machineTranslated: string;
+    notTranslated: string;
+  };
   categories: Record<PlaceCategory, string>;
   serviceCard: {
     howToApply: string;
@@ -321,7 +329,15 @@ export const dictionaries: Record<Language, Dictionary> = {
       recenter: "Centralizar mapa",
     },
     language: { label: "Idioma", open: "Trocar idioma" },
-    common: { close: "Fechar", cancel: "Cancelar", loading: "Carregando...", minutes: "min", meters: "m" },
+    common: {
+      close: "Fechar",
+      cancel: "Cancelar",
+      loading: "Carregando...",
+      minutes: "min",
+      meters: "m",
+      machineTranslated: "Tradução automática, aguardando revisão.",
+      notTranslated: "Este conteúdo ainda não tem tradução.",
+    },
     categories: {
       departamento: "Departamento acadêmico",
       administrativo: "Prédio administrativo",
@@ -614,7 +630,15 @@ export const dictionaries: Record<Language, Dictionary> = {
       recenter: "Recenter map",
     },
     language: { label: "Language", open: "Change language" },
-    common: { close: "Close", cancel: "Cancel", loading: "Loading...", minutes: "min", meters: "m" },
+    common: {
+      close: "Close",
+      cancel: "Cancel",
+      loading: "Loading...",
+      minutes: "min",
+      meters: "m",
+      machineTranslated: "Automatic translation, pending human review.",
+      notTranslated: "This content is not translated yet; it is shown in Portuguese.",
+    },
     categories: {
       departamento: "Academic department",
       administrativo: "Administrative building",
@@ -769,7 +793,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         study: "Classrooms and libraries on campus.",
       },
       stopsSoon: "Bus stops will be added soon.",
-      portugueseOnly: "Place names and addresses are shown in Portuguese.",
+      portugueseOnly: "Addresses are shown in Portuguese.",
       empty: "No places registered in this category yet.",
       error: "Could not load the places.",
       retry: "Try again",
@@ -907,7 +931,15 @@ export const dictionaries: Record<Language, Dictionary> = {
       recenter: "Centrar mapa",
     },
     language: { label: "Idioma", open: "Cambiar idioma" },
-    common: { close: "Cerrar", cancel: "Cancelar", loading: "Cargando...", minutes: "min", meters: "m" },
+    common: {
+      close: "Cerrar",
+      cancel: "Cancelar",
+      loading: "Cargando...",
+      minutes: "min",
+      meters: "m",
+      machineTranslated: "Traducción automática, pendiente de revisión humana.",
+      notTranslated: "Este contenido aún no está traducido; se muestra en portugués.",
+    },
     categories: {
       departamento: "Departamento académico",
       administrativo: "Edificio administrativo",
@@ -1062,7 +1094,7 @@ export const dictionaries: Record<Language, Dictionary> = {
         study: "Aulas y bibliotecas del campus.",
       },
       stopsSoon: "Las paradas de autobús se añadirán pronto.",
-      portugueseOnly: "Los nombres y direcciones de los lugares se muestran en portugués.",
+      portugueseOnly: "Las direcciones se muestran en portugués.",
       empty: "Aún no hay lugares registrados en esta categoría.",
       error: "No fue posible cargar los lugares.",
       retry: "Intentar de nuevo",

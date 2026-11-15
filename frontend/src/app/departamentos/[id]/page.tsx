@@ -6,6 +6,7 @@ import AppShell from "../../components/common/AppShell";
 import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import ApiFailure from "../../components/courses/ApiFailure";
 import CourseCard from "../../components/courses/CourseCard";
+import TranslationNotice from "../../components/common/TranslationNotice";
 import { useLanguage } from "../../context/LanguageContext";
 import { useApi } from "../../hooks/useApi";
 import { getDepartment, getDepartmentCourses, type Department, type CourseKey } from "../../services/coursesService";
@@ -13,8 +14,8 @@ import { getDepartment, getDepartmentCourses, type Department, type CourseKey } 
 // UC37: o visitante consulta o departamento e os cursos vinculados a ele.
 export default function DepartmentPage({ params }: PageProps<"/departamentos/[id]">) {
   const { id } = use(params);
-  const { t } = useLanguage();
-  const state = useApi(getDepartment, id);
+  const { t, language } = useLanguage();
+  const state = useApi(getDepartment, `${id}:${language}` satisfies CourseKey);
 
   return (
     <AppShell>
@@ -36,7 +37,7 @@ export default function DepartmentPage({ params }: PageProps<"/departamentos/[id
 }
 
 function DepartmentDetails({ department, id }: { department: Department; id: string }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <div className="space-y-5">
@@ -44,7 +45,10 @@ function DepartmentDetails({ department, id }: { department: Department; id: str
         {department.academicCenter && (
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{department.academicCenter}</p>
         )}
-        <h1 className="mt-1 text-2xl font-bold text-navy-900">{department.name}</h1>
+        <h1 lang={department.lang !== language ? department.lang : undefined} className="mt-1 text-2xl font-bold text-navy-900">
+          {department.name}
+        </h1>
+        <TranslationNotice lang={department.lang} machineTranslated={department.machineTranslated} />
         {department.code && <p className="mt-1 text-xs text-slate-500">{department.code}</p>}
         {department.address && <p className="mt-2 text-sm text-slate-600">{department.address}</p>}
       </section>

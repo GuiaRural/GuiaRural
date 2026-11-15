@@ -11,13 +11,14 @@ import PlacePhoto from "../../components/places/PlacePhoto";
 import Modal from "../../components/ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
 import { isOpenNow } from "../../lib/hours";
-import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace, type Place } from "../../services/placesService";
+import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace, type Place, type PlaceKey } from "../../services/placesService";
+import TranslationNotice from "../../components/common/TranslationNotice";
 import { computeRoute, getCurrentCampusPosition } from "../../services/routeService";
 
 export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
   const { id } = use(params);
-  const { t } = useLanguage();
-  const state = useApi(getPlace, id);
+  const { t, language } = useLanguage();
+  const state = useApi(getPlace, `${id}:${language}` satisfies PlaceKey);
 
   return (
     <AppShell>
@@ -46,14 +47,14 @@ export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
 }
 
 function PlaceDetails({ place }: { place: Place }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
   const [copied, setCopied] = useState(false);
   const [locating, setLocating] = useState(false);
   const [originIssue, setOriginIssue] = useState<"denied" | "outside" | null>(null);
 
-  const origin = getDefaultOrigin();
+  const origin = getDefaultOrigin(language);
   const fromGate = place.position && origin?.position && origin.id !== place.id ? computeRoute(origin.position, place.position) : null;
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
@@ -100,7 +101,10 @@ function PlaceDetails({ place }: { place: Place }) {
       <header className="flex flex-wrap items-end justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">{t.categories[place.category]}</p>
-          <h1 className="text-2xl font-bold text-navy-900">{place.name}</h1>
+          <h1 lang={place.lang !== language ? place.lang : undefined} className="text-2xl font-bold text-navy-900">
+            {place.name}
+          </h1>
+          <TranslationNotice lang={place.lang} machineTranslated={place.machineTranslated} />
           <p className="text-sm text-slate-600">{place.address}</p>
         </div>
         <div className="flex gap-2">
@@ -148,7 +152,11 @@ function PlaceDetails({ place }: { place: Place }) {
         <div className="space-y-4 md:col-span-2">
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="font-bold text-navy-900">{t.placePage.about}</h2>
-            {place.description && <p className="mt-2 text-sm text-slate-700">{place.description}</p>}
+            {place.description && (
+              <p lang={place.lang !== language ? place.lang : undefined} className="mt-2 text-sm text-slate-700">
+                {place.description}
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -243,13 +251,13 @@ function OriginPicker({
   onCancel: () => void;
   onConfirm: (originId: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [options, setOptions] = useState<Place[]>([]);
   const [choice, setChoice] = useState("");
 
   useEffect(() => {
-    if (issue) getPublicPlaces().then((all) => setOptions(all.filter((p) => p.id !== destinationId)));
-  }, [issue, destinationId]);
+    if (issue) getPublicPlaces(language).then((all) => setOptions(all.filter((p) => p.id !== destinationId)));
+  }, [issue, destinationId, language]);
 
   const gates = options.filter((p) => p.category === "portaria");
   const buildings = options.filter((p) => p.category !== "portaria");

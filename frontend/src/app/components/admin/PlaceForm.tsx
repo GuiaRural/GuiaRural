@@ -93,6 +93,9 @@ export default function PlaceForm({ place }: { place?: Place }) {
   // Depois do primeiro salvamento (mesmo que a foto falhe) o formulário passa a editar o local que acabou de criar.
   const [savedId, setSavedId] = useState(place?.id);
   const editing = Boolean(savedId);
+  // O painel edita só o português; EN e ES são gravados fora do sistema (D9). Se o local já tem tradução e o nome ou a
+  // descrição em português mudam, a tradução pode ficar defasada: a tela avisa, não impede.
+  const translatedLangs = place?.translatedLangs ?? [];
   const initialCoords = place?.position ?? null;
   const initialHours = splitHours(place?.hours ?? "");
 
@@ -359,6 +362,20 @@ export default function PlaceForm({ place }: { place?: Place }) {
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {summary}
         </p>
+      )}
+      {translatedLangs.length > 0 && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p>
+            Este local tem tradução em {translatedLangs.map((lang) => (lang === "en" ? "inglês" : "espanhol")).join(" e ")}. O painel
+            edita só o português.
+          </p>
+          {place && (name.trim() !== place.name || description.trim() !== place.description) && (
+            <p className="mt-1 font-semibold">
+              Você alterou texto em português (nome ou descrição): a tradução pode ficar desatualizada. Avise quem cuida das
+              traduções depois de salvar.
+            </p>
+          )}
+        </div>
       )}
 
       {/* 1. Classificação */}

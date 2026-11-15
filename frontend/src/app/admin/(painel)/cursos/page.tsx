@@ -11,8 +11,6 @@ import { useApi } from "../../../hooks/useApi";
 import { takeFlash } from "../../../lib/flash";
 import { getDepartments, listCoursesAdmin } from "../../../services/coursesService";
 
-const noArg = null;
-
 type StatusFilter = "todos" | "ativos" | "inativos";
 
 // Busca sem diferença de maiúsculas nem acentos.
@@ -24,8 +22,8 @@ function normalize(text: string): string {
 export default function AdminCursosPage() {
   const { session } = useAdmin();
   const canManage = session.permission !== "leitura";
-  const courses = useApi(listCoursesAdmin, noArg);
-  const departments = useApi(getDepartments, noArg);
+  const courses = useApi(listCoursesAdmin, null);
+  const departments = useApi(getDepartments, "pt");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("todos");
   const [flash, setFlash] = useState<string | null>(null);

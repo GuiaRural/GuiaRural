@@ -32,8 +32,8 @@ function parseOrigin(raw: string | undefined, places: Place[]): { label: string 
 }
 
 export default function MapExplorer({ focusId, routeTo, routeFrom }: { focusId?: string; routeTo?: string; routeFrom?: string }) {
-  const { t } = useLanguage();
-  const state = useApi(getPublicPlaces, null);
+  const { t, language } = useLanguage();
+  const state = useApi(getPublicPlaces, language);
   const { selectedId: urlLocal, select: setSelectedPlaceInUrl } = useSelectedPlaceId();
   const [selectedId, setSelectedId] = useState<string | null>(routeTo ?? focusId ?? null);
   const [seenUrlLocal, setSeenUrlLocal] = useState(urlLocal);
