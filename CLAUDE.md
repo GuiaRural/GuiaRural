@@ -23,7 +23,7 @@ Requisitos funcionais: RF01 mapa · RF02 rotas · RF03 catálogo de serviços ·
 | Backend | Java 21, Spring Boot 4.1 (webmvc, validation, actuator, data-jpa, security), Maven Wrapper |
 | Dados | PostgreSQL no Supabase; schema versionado com o Supabase CLI em `supabase/migrations/` |
 | Mapas | Leaflet 1.9.4 + react-leaflet 5.0.0 + OpenStreetMap (integrado na Home; só cliente, via `dynamic`) |
-| Infra | Docker, GitHub Actions (CI/CD), 4 ambientes: dev, teste, homologação, produção — **planejado: ainda não há Dockerfile nem workflow no repositório** |
+| Infra | Frontend na **Vercel** (Root Directory `frontend`) e backend no **Render** (`backend/Dockerfile`); `release.yml` (semantic-release) na `main`. Os 4 ambientes (dev, teste, homologação, produção) ainda são **planejados**; hoje há só produção. Deploy e variáveis: `docs/deploy.md` |
 
 **Atenção ao Next.js:** esta versão tem mudanças em relação ao que a IA conhece. Antes de gerar código de Next, consulte `frontend/node_modules/next/dist/docs/` (regra do `frontend/AGENTS.md`).
 
@@ -35,7 +35,7 @@ Requisitos funcionais: RF01 mapa · RF02 rotas · RF03 catálogo de serviços ·
 - Frontend: componentes React tipados, separação apresentação / regra / dados.
 - APIs externas (mapas, rotas) **sempre atrás de uma Facade**, expondo só os métodos usados, para permitir trocar de provedor (RNF08).
 - Padrões previstos: Facade, Flyweight (reduzir memória no cliente), MVC.
-- O navegador chama `/api/...`, e o Next repassa ao backend em `http://localhost:8080` (rewrite em `frontend/next.config.ts`).
+- O navegador chama `/api/...`, e o Next repassa ao backend (rewrite em `frontend/next.config.ts`): `http://localhost:8080` em desenvolvimento e, no deploy, a URL HTTPS da variável `BACKEND_URL` (obrigatória na Vercel; o build falha sem ela). Sem CORS: não chame o backend direto do navegador (o cookie de sessão é `SameSite=Strict`).
 
 ## 5. Estrutura do repositório
 ```
