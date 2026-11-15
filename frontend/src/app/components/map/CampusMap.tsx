@@ -131,6 +131,8 @@ export default function CampusMap({
   onSelectMarker,
   onBackgroundClick,
   route,
+  routeSolid,
+  routeDashed,
   pin,
   onPinMove,
   initialCenter,
@@ -140,14 +142,21 @@ export default function CampusMap({
   selectedId?: string | null;
   onSelectMarker?: (id: string) => void;
   onBackgroundClick?: () => void;
+  // Desenho completo da rota: enquadra o mapa e marca a partida.
   route?: LatLng[] | null;
+  // Trecho pelas vias (linha cheia) e trechos que não são via mapeada (tracejados). Sem eles, `route` vai todo em linha cheia.
+  routeSolid?: LatLng[] | null;
+  routeDashed?: LatLng[][] | null;
   pin?: LatLng | null;
   onPinMove?: (point: LatLng) => void;
   initialCenter?: LatLng;
   focus?: MapFocus | null;
 }) {
   const { t } = useLanguage();
-  const routeLine = route && route.length > 1 ? route.map((p): [number, number] => [p.lat, p.lng]) : null;
+  const toLine = (points: LatLng[] | null | undefined) => (points && points.length > 1 ? points.map((p): [number, number] => [p.lat, p.lng]) : null);
+  const routeLine = toLine(route);
+  const solidLine = routeSolid === undefined ? routeLine : toLine(routeSolid);
+  const dashedLines = (routeDashed ?? []).map(toLine).filter((line): line is [number, number][] => line !== null);
 
   // A visão inicial só vale na montagem: rota enquadra o trajeto, local selecionado centraliza nele
   // e, sem nenhum dos dois, mostra o campus inteiro.
@@ -176,8 +185,15 @@ export default function CampusMap({
 
       {routeLine && (
         <>
-          <Polyline positions={routeLine} pathOptions={{ color: "#ffffff", weight: 10, lineCap: "round", lineJoin: "round" }} />
-          <Polyline positions={routeLine} pathOptions={{ color: "#2563eb", weight: 5, lineCap: "round", lineJoin: "round" }} />
+          {solidLine && (
+            <>
+              <Polyline positions={solidLine} pathOptions={{ color: "#ffffff", weight: 10, lineCap: "round", lineJoin: "round" }} />
+              <Polyline positions={solidLine} pathOptions={{ color: "#2563eb", weight: 5, lineCap: "round", lineJoin: "round" }} />
+            </>
+          )}
+          {dashedLines.map((line, index) => (
+            <Polyline key={index} positions={line} pathOptions={{ color: "#2563eb", weight: 4, dashArray: "2 10", lineCap: "round" }} />
+          ))}
           <CircleMarker
             center={routeLine[0]}
             radius={8}

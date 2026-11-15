@@ -118,6 +118,9 @@ export type Dictionary = {
     gates: string;
     buildings: string;
     confirm: string;
+    estimate: string;
+    steps: string;
+    attribution: string;
   };
   guide: {
     breadcrumbLabel: string;
@@ -404,6 +407,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Portarias",
       buildings: "Prédios",
       confirm: "Traçar rota",
+      estimate: "Estimativa em linha reta: o caminho pelas vias não está disponível.",
+      steps: "Inclui escada",
+      attribution: "Caminhos: © colaboradores do OpenStreetMap",
     },
     guide: {
       breadcrumbLabel: "Trilha de navegação",
@@ -705,6 +711,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Gates",
       buildings: "Buildings",
       confirm: "Show route",
+      estimate: "Straight-line estimate: the walking path is not available.",
+      steps: "Includes stairs",
+      attribution: "Paths: © OpenStreetMap contributors",
     },
     guide: {
       breadcrumbLabel: "Breadcrumb",
@@ -1006,6 +1015,9 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Porterías",
       buildings: "Edificios",
       confirm: "Trazar ruta",
+      estimate: "Estimación en línea recta: el camino por las vías no está disponible.",
+      steps: "Incluye escaleras",
+      attribution: "Caminos: © colaboradores de OpenStreetMap",
     },
     guide: {
       breadcrumbLabel: "Ruta de navegación",
