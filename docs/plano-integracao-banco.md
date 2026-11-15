@@ -92,7 +92,7 @@ Pré-requisito para todas as outras.
 - [x] Conferir as migrations aplicadas (feito em 10/11/2026 pelo MCP do Supabase): só faltava `cardapio_vegetariano_obrigatorio`; foi testada em rollback, aplicada (versão registrada `20261110143039`) e o arquivo foi renomeado para essa versão.
 - [x] Subir o backend com `ddl-auto=validate` contra o banco real: subiu sem erro de schema.
 - [x] Trocar `ddl-auto` para `validate` em `application.properties`; `./mvnw test` continua passando (os testes usam H2 com `create-drop` próprio).
-- [ ] Abrir o PR da Fase 0 (rename da migration + `validate` + `CLAUDE.md`).
+- [x] Abrir o PR da Fase 0 (rename da migration + `validate` + `CLAUDE.md`): mergeado.
 - Achados que alimentam a Fase 1: existe a tabela órfã `place_service` (0 linhas, sem migration e sem código); `places` já tem as colunas `photo_url` e `accessibility` (sem uso pelo backend); `places` só tem 12 campos mapeados na entidade. Atenção: o `rows` do `list_tables` do MCP é **estimativa** e mostrou 0 onde havia dados; use `select count(*)`.
 - Pronto quando: `migration list` sem pendência, backend sobe com `validate`.
 
@@ -130,16 +130,16 @@ Maior divergência hoje: o que o admin edita não chega ao mapa. D1 e D2 estão 
 Regras que o banco já impõe (devolver 400 amigável, não estourar o `check`): RN-UC14.01 publicar exige latitude e longitude; as coordenadas andam juntas; só `publicado` aparece no mapa e na busca (RN-UC14.02); categoria e status em lista fechada.
 
 **Backend**
-- [ ] Migration, entidades e repositórios novos, `PlaceRequestDTO` com validação, escrita em `PlaceService` com `AuditService.record(Entity.LOCAL, slug, nome, ...)`. O id de auditoria do local é o **slug**.
-- [ ] O snapshot de auditoria do local inclui serviços, ids de cursos e contatos (sem a foto).
-- [ ] Testes: serviço (publicar sem coordenada, slug repetido, excluir com departamento vinculado, listas aninhadas) e integração de segurança (401/403/ok).
+- [x] Migration, entidades e repositórios novos, `PlaceRequestDTO` com validação, escrita em `PlaceService` com `AuditService.record(Entity.LOCAL, slug, nome, ...)`. O id de auditoria do local é o **slug**.
+- [x] O snapshot de auditoria do local inclui serviços, ids de cursos e contatos (sem a foto).
+- [x] Testes: serviço (publicar sem coordenada, slug repetido, excluir com departamento vinculado, listas aninhadas) e integração de segurança (401/403/ok).
 
 **Frontend**
-- [ ] Reescrever as funções de admin de `placesService.ts` (`listAllPlaces`, `getPlaceForAdmin`, `savePlace`, `setPlaceStatus`, `deletePlace`) para a API; remover o estado em memória, `recordChange`/`snapshot` locais e `restorePlace`; invalidar `publicCache` ao escrever.
-- [ ] **Encolher o tipo `Place` e o `PlaceForm`** aos campos de D1. Os campos removidos aparecem hoje em outros componentes (cartão, página do local, histórico): procurar e retirar `accessibility`, `center`, `sigaCode`, `foundedYear`, `mecGrade`, `researchGroups`, `transport`, `officeHours`, `operation`, `phone`, `head`.
-- [ ] O seletor de cursos do `PlaceForm` hoje lê `MOCK_COURSES`: passar para `coursesService` (API).
-- [ ] Foto: trocar `photoDataUrl` por upload ao endpoint e exibição pela URL.
-- [ ] Dashboard (`admin/(painel)/page.tsx`) e `data/mockPlaces.ts`: contar pela API; manter do mock só o que ainda for usado (`DEFAULT_ORIGIN_ID`) e mover os tipos para `services/`.
+- [x] Reescrever as funções de admin de `placesService.ts` (`listAllPlaces`, `getPlaceForAdmin`, `savePlace`, `setPlaceStatus`, `deletePlace`) para a API; remover o estado em memória, `recordChange`/`snapshot` locais e `restorePlace`; invalidar `publicCache` ao escrever.
+- [x] **Encolher o tipo `Place` e o `PlaceForm`** aos campos de D1. Os campos removidos aparecem hoje em outros componentes (cartão, página do local, histórico): procurar e retirar `accessibility`, `center`, `sigaCode`, `foundedYear`, `mecGrade`, `researchGroups`, `transport`, `officeHours`, `operation`, `phone`, `head`.
+- [x] O seletor de cursos do `PlaceForm` hoje lê `MOCK_COURSES`: passar para `coursesService` (API).
+- [x] Foto: trocar `photoDataUrl` por upload ao endpoint e exibição pela URL.
+- [x] Dashboard (`admin/(painel)/page.tsx`) e `data/mockPlaces.ts`: contar pela API; manter do mock só o que ainda for usado (`DEFAULT_ORIGIN_ID`) e mover os tipos para `services/`.
 - Pronto quando: criar, editar, publicar, despublicar e excluir um local (com serviços, cursos, responsável e foto) reflete no mapa, na busca e na página do local após recarregar, e cada ação aparece no histórico.
 
 ### Fase 2: Administradores (B, UC13) — M
