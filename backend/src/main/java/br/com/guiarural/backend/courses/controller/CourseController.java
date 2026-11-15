@@ -4,6 +4,7 @@ import br.com.guiarural.backend.courses.dto.CourseDetailResponseDTO;
 import br.com.guiarural.backend.courses.dto.CourseRequestDTO;
 import br.com.guiarural.backend.courses.dto.CourseSummaryDTO;
 import br.com.guiarural.backend.courses.service.CourseService;
+import br.com.guiarural.backend.info.model.Language;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,14 +22,16 @@ public class CourseController {
         this.service = service;
     }
 
+    // ?lang=pt|en|es (padrão pt); sem tradução, o texto vem em português.
     @GetMapping
-    public ResponseEntity<List<CourseSummaryDTO>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<List<CourseSummaryDTO>> findAll(@RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findAll(Language.from(lang)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CourseDetailResponseDTO> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findById(id));
+    public ResponseEntity<CourseDetailResponseDTO> findById(@PathVariable Long id,
+                                                            @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findById(id, Language.from(lang)));
     }
 
     @PostMapping

@@ -252,6 +252,8 @@ export type Dictionary = {
     totalWorkload: string;
     period: string;
     electives: string;
+    machineTranslated: string;
+    notTranslated: string;
     subjectCode: string;
     subject: string;
     workload: string;
@@ -538,6 +540,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       totalWorkload: "de carga horária total",
       period: "Período",
       electives: "Optativas / Eletivas",
+      machineTranslated: "Tradução automática, aguardando revisão.",
+      notTranslated: "Este curso ainda não tem tradução.",
       subjectCode: "Código",
       subject: "Disciplina",
       workload: "Carga horária",
@@ -829,6 +833,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       totalWorkload: "total workload",
       period: "Term",
       electives: "Electives",
+      machineTranslated: "Automatic translation, pending human review.",
+      notTranslated: "This course is not translated yet; its content is shown in Portuguese.",
       subjectCode: "Code",
       subject: "Subject",
       workload: "Workload",
@@ -1120,6 +1126,8 @@ export const dictionaries: Record<Language, Dictionary> = {
       totalWorkload: "de carga horaria total",
       period: "Período",
       electives: "Optativas / Electivas",
+      machineTranslated: "Traducción automática, pendiente de revisión humana.",
+      notTranslated: "Este curso aún no está traducido; su contenido se muestra en portugués.",
       subjectCode: "Código",
       subject: "Asignatura",
       workload: "Carga horaria",

@@ -30,6 +30,13 @@ import { primaryButton, secondaryButton } from "./PageHeader";
 
 const noArg = null;
 
+const LANGUAGE_NAMES: Record<string, string> = { en: "inglês", es: "espanhol" };
+
+// Texto em português que tem tradução: nome, descrição e nome e ementa das disciplinas.
+function portugueseText(input: CourseInput): string {
+  return JSON.stringify([input.name, input.description, input.subjects.map((s) => [s.code, s.name, s.syllabus])]);
+}
+
 export const LEVEL_LABELS: Record<CourseLevel, string> = { GRADUACAO: "Graduação", POS: "Pós-graduação" };
 export const TYPE_LABELS: Record<CourseType, string> = {
   BACHARELADO: "Bacharelado",
@@ -54,6 +61,10 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const editing = course !== undefined;
+  // O painel edita só o português; EN e ES são gravados fora do sistema (D9). Se o curso já tem tradução e o texto
+  // em português muda, a tradução pode ficar defasada: a tela avisa, não impede.
+  const translatedLangs = course?.translatedLangs ?? [];
+  const portugueseChanged = course !== undefined && portugueseText(input) !== portugueseText(inputOf(course));
 
   // Ao mexer num campo, o erro dele some.
   function clearErrors(...keys: CourseField[]) {
@@ -188,6 +199,20 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {summary}
         </p>
+      )}
+      {translatedLangs.length > 0 && (
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p>
+            Este curso tem tradução em {translatedLangs.map((lang) => LANGUAGE_NAMES[lang] ?? lang).join(" e ")}. O painel edita só o
+            português.
+          </p>
+          {portugueseChanged && (
+            <p className="mt-1 font-semibold">
+              Você alterou texto em português (nome, descrição ou disciplinas): a tradução pode ficar desatualizada. Avise quem cuida
+              das traduções depois de salvar.
+            </p>
+          )}
+        </div>
       )}
 
       <fieldset disabled={!canManage || saving} className="min-w-0 space-y-6">

@@ -8,15 +8,15 @@ import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import ApiFailure from "../../components/courses/ApiFailure";
 import { useLanguage } from "../../context/LanguageContext";
 import { useApi } from "../../hooks/useApi";
-import { getCourse, type CourseDetail } from "../../services/coursesService";
+import { getCourse, type CourseDetail, type CourseKey } from "../../services/coursesService";
 
 // Aba da matriz: número do período ou "optativas" (disciplinas sem período).
 type Tab = number | "electives";
 
 export default function CoursePage({ params }: PageProps<"/cursos/[id]">) {
   const { id } = use(params);
-  const { t } = useLanguage();
-  const state = useApi(getCourse, id);
+  const { t, language } = useLanguage();
+  const state = useApi(getCourse, `${id}:${language}` satisfies CourseKey);
 
   return (
     <AppShell>
@@ -42,7 +42,7 @@ export default function CoursePage({ params }: PageProps<"/cursos/[id]">) {
 }
 
 function CourseDetails({ course }: { course: CourseDetail }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const c = course.coordination;
   const subtitle = [course.academicCenter, course.code && `${t.courses.courseCode}: ${course.code}`, course.modality, course.shift]
     .filter(Boolean)
@@ -61,7 +61,19 @@ function CourseDetails({ course }: { course: CourseDetail }) {
             {course.durationSemesters ? ` • ${t.courses.duration}: ${course.durationSemesters} ${t.courses.semesters}` : ""}
           </span>
         </div>
-        <h1 className="mt-2 text-2xl font-bold text-navy-900">{course.name}</h1>
+        <h1 lang={course.lang !== language ? course.lang : undefined} className="mt-2 text-2xl font-bold text-navy-900">
+          {course.name}
+        </h1>
+        {course.machineTranslated && (
+          <p role="note" className="mt-2 inline-block rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+            {t.courses.machineTranslated}
+          </p>
+        )}
+        {language !== "pt" && course.lang === "pt" && (
+          <p role="note" className="mt-2 text-xs text-slate-600">
+            {t.courses.notTranslated}
+          </p>
+        )}
         {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
         <Link
           href={`/departamentos/${course.departmentId}`}

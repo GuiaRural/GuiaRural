@@ -8,7 +8,7 @@ import ApiFailure from "../../components/courses/ApiFailure";
 import CourseCard from "../../components/courses/CourseCard";
 import { useLanguage } from "../../context/LanguageContext";
 import { useApi } from "../../hooks/useApi";
-import { getDepartment, getDepartmentCourses, type Department } from "../../services/coursesService";
+import { getDepartment, getDepartmentCourses, type Department, type CourseKey } from "../../services/coursesService";
 
 // UC37: o visitante consulta o departamento e os cursos vinculados a ele.
 export default function DepartmentPage({ params }: PageProps<"/departamentos/[id]">) {
@@ -87,8 +87,8 @@ function DepartmentDetails({ department, id }: { department: Department; id: str
 }
 
 function LinkedCourses({ id }: { id: string }) {
-  const { t } = useLanguage();
-  const state = useApi(getDepartmentCourses, id);
+  const { t, language } = useLanguage();
+  const state = useApi(getDepartmentCourses, `${id}:${language}` satisfies CourseKey);
 
   if (state.status === "loading") return <p className="text-sm text-slate-600">{t.common.loading}</p>;
   if (state.status === "error") return <ApiFailure error={state.error} onRetry={state.retry} />;

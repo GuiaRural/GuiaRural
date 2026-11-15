@@ -62,7 +62,7 @@ Mantenha os arquivos nessas pastas. Não crie estruturas paralelas (ex.: um segu
 - Idiomas hoje: **PT, EN, ES**. Francês aparece na Visão e na Arquitetura, mas não no Plano de Projeto: decisão pendente com o PO, não implementar sem confirmação.
 - Todo texto de interface vem de `t.<seção>.<chave>` (`useLanguage()`), com entrada nos três idiomas em `i18n/dictionaries.ts`. EN e ES precisam de revisão humana.
 - **Guia de acolhimento e Guia de Recife** têm tradução no banco (colunas `_pt/_en/_es`, jsonb por idioma nos blocos) e `/api/guide` resolve o idioma no servidor (`?lang=`, fallback para PT). `machine_translated_langs` marca o que foi traduzido automaticamente e espera revisão humana (Guia de Recife); `fully_translated_langs` diz em quais idiomas um tópico está 100% traduzido.
-- Conteúdo de locais, departamentos e cursos: as colunas `_en/_es` já existem no banco, mas a API ainda devolve só português. Não inventar tradução; perguntar.
+- **Cursos** (e a matriz) têm tradução: `?lang=pt|en|es` em `/api/courses`, `/api/courses/{id}` e `/api/departments/{id}/courses`, com fallback para PT, `machine_translated_langs` em `courses` (migration `20261115130328`, aplicada no banco em 15/11/2026) e aviso na página do curso. EN/ES entram fora do sistema (SQL/script); o painel edita só PT e avisa que a tradução pode defasar (D18). Departamentos e locais: as colunas `_en/_es` existem (em `places` só `description_*`), mas a API ainda devolve só português. Não inventar tradução; perguntar.
 
 ## 8. Requisitos não funcionais que afetam o código
 - **Desempenho (RNF01):** usuários em 3G/4G e aparelhos modestos. Imagens leves (JPG/PNG até 5 MB), requisições de mapa limitadas, nada de dependências pesadas sem necessidade.

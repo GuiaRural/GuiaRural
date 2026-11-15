@@ -1,6 +1,7 @@
 package br.com.guiarural.backend.courses.controller;
 
 import br.com.guiarural.backend.courses.dto.DepartmentCoursesResponseDTO;
+import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.courses.dto.DepartmentResponseDTO;
 import br.com.guiarural.backend.courses.service.DepartmentService;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,8 @@ public class DepartmentController {
     }
 
     @GetMapping("/{id}/courses")
-    public ResponseEntity<DepartmentCoursesResponseDTO> findCourses(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findCourses(id));
+    public ResponseEntity<DepartmentCoursesResponseDTO> findCourses(@PathVariable Long id,
+                                                                    @RequestParam(required = false) String lang) {
+        return ResponseEntity.ok(service.findCourses(id, Language.from(lang)));
     }
 }
