@@ -190,16 +190,16 @@ Dividida em três entregas: **5a** API de escrita (sem matriz e sem telas), **5b
 - [x] Texto vazio vira nulo. `active` nulo: no cadastro nasce ativo; na edição mantém. Trocar de departamento exige um ativo; manter o atual (mesmo inativo) não.
 - [x] `GET /api/admin/courses` e `/api/admin/courses/{id}`: incluem inativos, exigem só login (ficam fora de `/api/courses/**`, que é leitura pública). As respostas de curso ganharam o campo `active`.
 - [x] Excluir apaga a matriz **explicitamente** antes do curso (igual no Postgres e no H2 dos testes); os vínculos `place_courses` saem pelo `on delete cascade` do banco (não testável no H2).
-- [x] Auditoria: `Entity.CURSO` na mesma transação; o snapshot é o curso **sem** a matriz (`subjects` nulo) até a 5c. Sem restorer (D15). Migration `20261111043117_auditoria_curso` acrescenta `'curso'` ao check de `audit_logs.entity`: **aplicada no banco** (conferido em 14/11/2026).
+- [x] Auditoria: `Entity.CURSO` na mesma transação; o snapshot era o curso **sem** a matriz até a 5c; agora leva a matriz. Sem restorer (D15). Migration `20261111043117_auditoria_curso` acrescenta `'curso'` ao check de `audit_logs.entity`: **aplicada no banco** (conferido em 14/11/2026).
 - [x] Frontend mínimo: histórico mostra "Curso" (rótulo das entidades vem do dicionário `audit.entities`, PT/EN/ES) e não oferece desfazer para curso.
 
 **5b — Telas do painel**
 - [x] Telas do painel para cursos (casos de uso `[UC35]` e `[UC36]` em `docs/`), implementadas em 15/11/2026 no branch `feat/cursos-telas-painel`: `/admin/cursos` (lista com busca, filtro de situação e selo de inativo), `/admin/cursos/novo` e `/admin/cursos/[id]` (formulário com dados gerais e coordenação; excluir só depois do modal de confirmação com aviso de exclusão definitiva, RN-UC36-02). Leitura por `/api/admin/courses` e escrita por `/api/courses`. Conta `leitura` vê, mas não altera. Textos do painel em português fixo, como nas outras telas do painel. Fica para a 5c a edição da matriz.
 
 **5c — Matriz curricular**
-- [ ] **Matriz curricular no formulário de curso (D10):** edição da lista de disciplinas (`curriculum_subjects`: período, código etc.; `null` = bloco "Optativas / Eletivas") junto com o curso, na mesma transação. Excluir o curso remove a matriz (UC36; já feito na 5a).
-- [ ] O snapshot do histórico passa a incluir a matriz.
-- [ ] Verificar se `data/mockCourses.ts` ainda é importado em algum lugar; se não, é código morto e pode sair.
+- [x] **Matriz curricular no formulário de curso (D10):** implementada em 15/11/2026 no branch `feat/cursos-matriz`. `CourseRequestDTO.subjects` (`SubjectRequestDTO`): nulo mantém a matriz; lista, mesmo vazia, **substitui a matriz inteira** na transação do curso (apaga e regrava; o id das disciplinas muda a cada salvamento). O serviço recusa (400) código repetido na matriz (sem diferenciar caixa) e vírgula em pré-requisito; o resto vem do Bean Validation, com erro por campo no formato `subjects[i].campo`. No painel, `CurriculumEditor` tem uma aba por período (1º ao 8º, mais períodos se já existirem) e uma de Optativas / Eletivas; a ementa e os créditos que já existem voltam como vieram, para não se perderem (a ementa ainda não tem campo na tela).
+- [x] O snapshot do histórico passa a incluir a matriz (antes e depois da edição, e no que é excluído).
+- [x] `data/mockCourses.ts` não existe mais e nada o importa (conferido em 15/11/2026).
 - Pronto quando: um curso é criado, editado e excluído no painel e aparece em `/cursos`, na busca e na lista de cursos vinculados do formulário de local.
 
 ### Fase 6: Conteúdo multilíngue de locais, departamentos e cursos (F, RF04) — M

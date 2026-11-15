@@ -23,7 +23,6 @@ public record CourseDetailResponseDTO (
     String departmentShortName,
     String academicCenter,
     CourseCoordinationDTO coordination,
-    // Nulo no snapshot do histórico, que ainda não guarda a matriz (Fase 5c).
     List<SubjectResponseDTO> subjects,
     // Sempre true na rota pública; o painel também vê os inativos.
     boolean active

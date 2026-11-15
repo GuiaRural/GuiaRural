@@ -10,6 +10,7 @@ import br.com.guiarural.backend.courses.dto.CourseDetailResponseDTO;
 import br.com.guiarural.backend.courses.dto.CourseGroupDTO;
 import br.com.guiarural.backend.courses.dto.CourseSummaryDTO;
 import br.com.guiarural.backend.courses.dto.DepartmentCoursesResponseDTO;
+import br.com.guiarural.backend.courses.dto.SubjectRequestDTO;
 import br.com.guiarural.backend.courses.dto.SubjectResponseDTO;
 import br.com.guiarural.backend.courses.model.CourseEntity;
 import br.com.guiarural.backend.courses.model.CourseLevel;
@@ -25,8 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -86,17 +89,23 @@ public class CourseService {
         CourseEntity course = new CourseEntity();
         apply(course, dto);
         course.setActive(dto.active() == null || dto.active());
+        checkSubjects(dto.subjects());
         CourseEntity saved = repository.saveAndFlush(course);
+        if (dto.subjects() != null) {
+            replaceSubjects(saved.getId(), dto.subjects());
+        }
+        CourseDetailResponseDTO created = snapshot(saved, department);
         auditService.record(AuditService.Entity.CURSO, String.valueOf(saved.getId()), saved.getName(),
-                AuditService.Action.CRIADO, null, snapshot(saved, department));
-        return mapToDetailDTO(saved, department, List.of());
+                AuditService.Action.CRIADO, null, created);
+        return created;
     }
 
-    // UC35. PUT substitui os campos do curso (a matriz não é tocada aqui).
+    // UC35. PUT substitui os campos do curso; a matriz só é substituída se `subjects` vier na requisição.
     @Transactional
     public CourseDetailResponseDTO update(Long id, CourseRequestDTO dto) {
         CourseEntity course = findAnyOrThrow(id);
         checkLevelAndType(dto.level(), dto.type());
+        checkSubjects(dto.subjects());
         DepartmentEntity current = departmentOf(course);
         // Trocar para outro departamento exige que ele esteja ativo; manter o atual não, para um curso de um
         // departamento desativado continuar editável.
@@ -109,9 +118,13 @@ public class CourseService {
             course.setActive(dto.active());
         }
         CourseEntity saved = repository.saveAndFlush(course);
+        if (dto.subjects() != null) {
+            replaceSubjects(id, dto.subjects());
+        }
+        CourseDetailResponseDTO after = snapshot(saved, department);
         auditService.record(AuditService.Entity.CURSO, String.valueOf(id), saved.getName(),
-                AuditService.Action.EDITADO, before, snapshot(saved, department));
-        return mapToDetailDTO(saved, department, subjectsOf(id));
+                AuditService.Action.EDITADO, before, after);
+        return after;
     }
 
     // UC36: exclusão definitiva, sem desfazer (RN-UC36-01). A matriz sai antes do curso; os vínculos com locais
@@ -183,9 +196,51 @@ public class CourseService {
         course.setSecondaryEmail(clean(dto.secondaryEmail()));
     }
 
-    // Estado gravado no histórico: o curso sem a matriz (subjects nulo), que entra na Fase 5c.
+    // Estado gravado no histórico: o curso com a matriz curricular.
     private CourseDetailResponseDTO snapshot(CourseEntity course, DepartmentEntity department) {
-        return mapToDetailDTO(course, department, null);
+        return mapToDetailDTO(course, department, subjectsOf(course.getId()));
+    }
+
+    // Duas regras que o banco só barraria com erro 500: código repetido na matriz (unique) e vírgula num
+    // pré-requisito (a coluna guarda os códigos separados por vírgula).
+    private static void checkSubjects(List<SubjectRequestDTO> subjects) {
+        if (subjects == null) {
+            return;
+        }
+        Set<String> codes = new HashSet<>();
+        for (SubjectRequestDTO subject : subjects) {
+            String code = subject.code().trim();
+            if (!codes.add(code.toLowerCase(Locale.ROOT))) {
+                throw new BadRequestException("Código de disciplina repetido na matriz: " + code);
+            }
+            if (subject.prerequisites() != null && subject.prerequisites().stream().anyMatch(p -> p.contains(","))) {
+                throw new BadRequestException("Pré-requisitos não podem ter vírgula (disciplina " + code + ").");
+            }
+        }
+    }
+
+    // A matriz enviada substitui a anterior inteira: apaga e regrava, na transação do curso.
+    private void replaceSubjects(Long courseId, List<SubjectRequestDTO> subjects) {
+        subjectRepository.deleteByCourseId(courseId);
+        subjectRepository.saveAll(subjects.stream().map(subject -> toEntity(courseId, subject)).toList());
+        subjectRepository.flush();
+    }
+
+    private static SubjectEntity toEntity(Long courseId, SubjectRequestDTO dto) {
+        SubjectEntity entity = new SubjectEntity();
+        entity.setCourseId(courseId);
+        entity.setPeriod(dto.period());
+        entity.setCode(dto.code().trim());
+        entity.setName(dto.name().trim());
+        entity.setSyllabus(clean(dto.syllabus()));
+        entity.setWorkloadHours(dto.workloadHours());
+        entity.setCredits(dto.credits());
+        entity.setNature(dto.nature());
+        List<String> prerequisites = dto.prerequisites() == null
+                ? List.of()
+                : dto.prerequisites().stream().map(String::trim).filter(code -> !code.isEmpty()).toList();
+        entity.setPrerequisites(prerequisites.isEmpty() ? null : String.join(",", prerequisites));
+        return entity;
     }
 
     private List<SubjectResponseDTO> subjectsOf(Long courseId) {

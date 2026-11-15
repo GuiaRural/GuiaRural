@@ -20,9 +20,12 @@ import {
   type CourseInput,
   type CourseLevel,
   type CourseType,
+  type SubjectErrors,
+  type SubjectInput,
 } from "../../services/coursesService";
 import { ConfirmModal } from "../ui/Modal";
 import { useAdmin } from "./AdminShell";
+import CurriculumEditor from "./CurriculumEditor";
 import { primaryButton, secondaryButton } from "./PageHeader";
 
 const noArg = null;
@@ -35,7 +38,7 @@ export const TYPE_LABELS: Record<CourseType, string> = {
 };
 
 // UC35 (editar) e o cadastro, que segue as mesmas regras. Sem `course`, é um curso novo.
-// A matriz curricular entra na 5c; aqui ficam os dados gerais e a coordenação.
+// Dados gerais, coordenação e matriz curricular (FA-35.01) vão juntos na mesma requisição.
 export default function CourseForm({ course }: { course?: CourseDetail }) {
   const router = useRouter();
   const { session, setDirty } = useAdmin();
@@ -44,6 +47,7 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
   const departments = useApi(getDepartments, noArg);
   const [input, setInput] = useState<CourseInput>(() => (course ? inputOf(course) : emptyCourseInput()));
   const [errors, setErrors] = useState<CourseErrors>({});
+  const [subjectErrors, setSubjectErrors] = useState<SubjectErrors>({});
   const [summary, setSummary] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -58,6 +62,13 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
       for (const key of keys) delete next[key];
       return next;
     });
+  }
+
+  function changeSubjects(subjects: SubjectInput[]) {
+    setInput((current) => ({ ...current, subjects }));
+    setDirty(true);
+    // As posições mudam ao adicionar ou remover linhas: os erros antigos deixam de valer.
+    setSubjectErrors({});
   }
 
   function set<K extends keyof CourseInput>(key: K, value: CourseInput[K]) {
@@ -83,6 +94,7 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
   async function save() {
     setSaving(true);
     setSummary(null);
+    setSubjectErrors({});
     try {
       const saved = course ? await updateCourse(course.id, input) : await createCourse(input);
       setDirty(false);
@@ -95,6 +107,7 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
     } catch (error) {
       if (error instanceof CourseValidationError) {
         setErrors(error.errors);
+        setSubjectErrors(error.subjectErrors);
         setSummary(error.summary ?? "Confira os campos destacados.");
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
@@ -151,7 +164,7 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-navy-900 sm:text-3xl">{editing ? "Editar curso" : "Novo curso"}</h1>
           <p className="mt-1 text-sm text-slate-600">
-            {editing ? course.name : "Dados gerais e coordenação. A matriz curricular será editada em uma próxima etapa."}
+            {editing ? course.name : "Dados gerais, coordenação e matriz curricular."}
           </p>
         </div>
         {canManage && (
@@ -290,6 +303,10 @@ export default function CourseForm({ course }: { course?: CourseDetail }) {
             {field("officeHours", "Horário de atendimento")}
             <div className="sm:col-span-2">{field("attendanceMode", "Forma de atendimento", { placeholder: "Ex: Presencial e por e-mail" })}</div>
           </div>
+        </Section>
+
+        <Section n={3} title="Matriz curricular" subtitle="Disciplinas por período. Ao salvar, a matriz enviada substitui a anterior.">
+          <CurriculumEditor subjects={input.subjects} errors={subjectErrors} disabled={!canManage || saving} onChange={changeSubjects} />
         </Section>
       </fieldset>
 

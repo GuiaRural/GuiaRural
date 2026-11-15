@@ -7,6 +7,7 @@ import br.com.guiarural.backend.courses.dto.CourseDetailResponseDTO;
 import br.com.guiarural.backend.courses.dto.CourseRequestDTO;
 import br.com.guiarural.backend.courses.dto.CourseSummaryDTO;
 import br.com.guiarural.backend.courses.dto.DepartmentCoursesResponseDTO;
+import br.com.guiarural.backend.courses.dto.SubjectRequestDTO;
 import br.com.guiarural.backend.courses.model.CourseEntity;
 import br.com.guiarural.backend.courses.model.CourseLevel;
 import br.com.guiarural.backend.courses.model.CourseType;
@@ -176,7 +177,21 @@ class CourseServiceTest {
     private CourseRequestDTO request(Long departmentId, String name, CourseLevel level, CourseType type) {
         return new CourseRequestDTO(departmentId, name, level, type, "  ", " Presencial ", "", (short) 8, 3200,
                 (short) 4, null, "  ", null, " Profa. Coordenadora ", "", null, null, null, null, null,
-                "coord@ufrpe.br", "");
+                "coord@ufrpe.br", "", null);
+    }
+
+    private CourseRequestDTO withSubjects(List<SubjectRequestDTO> subjects) {
+        CourseRequestDTO base = valid();
+        return new CourseRequestDTO(base.departmentId(), base.name(), base.level(), base.type(), base.code(),
+                base.modality(), base.shift(), base.durationSemesters(), base.totalWorkloadHours(), base.mecGrade(),
+                base.capesGrade(), base.description(), base.active(), base.coordinatorName(),
+                base.viceCoordinatorName(), base.officeLocation(), base.officeHours(), base.attendanceMode(),
+                base.phone(), base.extension(), base.email(), base.secondaryEmail(), subjects);
+    }
+
+    private static SubjectRequestDTO subjectRequest(Short period, String code, List<String> prerequisites) {
+        return new SubjectRequestDTO(period, code, " Disciplina " + code.trim() + " ", "  ", (short) 60, (short) 4,
+                SubjectNature.OBRIGATORIA, prerequisites);
     }
 
     private CourseRequestDTO valid() {
@@ -215,7 +230,7 @@ class CourseServiceTest {
 
         CourseRequestDTO wrong = new CourseRequestDTO(10L, "Curso", CourseLevel.POS, CourseType.STRICTO_SENSU, null, null,
                 null, (short) 0, 0, (short) 6, (short) 8, null, null, null, null, null, null, null, null, null,
-                "nao-e-email", "x".repeat(255));
+                "nao-e-email", "x".repeat(255), null);
         assertEquals(Set.of("durationSemesters", "totalWorkloadHours", "mecGrade", "capesGrade", "email", "secondaryEmail"),
                 invalidFields(wrong));
     }
@@ -267,8 +282,8 @@ class CourseServiceTest {
         ArgumentCaptor<Object> after = ArgumentCaptor.forClass(Object.class);
         verify(auditService).record(eq(AuditService.Entity.CURSO), eq("1"), eq("Ciência da Computação"),
                 eq(AuditService.Action.CRIADO), isNull(), after.capture());
-        // O snapshot ainda não leva a matriz (Fase 5c).
-        assertNull(((CourseDetailResponseDTO) after.getValue()).subjects());
+        // O snapshot leva a matriz (aqui, vazia).
+        assertEquals(List.of(), ((CourseDetailResponseDTO) after.getValue()).subjects());
     }
 
     @Test
@@ -318,6 +333,112 @@ class CourseServiceTest {
         order.verify(repository).delete(existing);
         order.verify(auditService).record(eq(AuditService.Entity.CURSO), eq("1"), eq("Agronomia"),
                 eq(AuditService.Action.DELETADO), notNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("Fase 5c: edição com `subjects` apaga a matriz antiga e grava a nova, com texto limpo")
+    void shouldReplaceCurriculumWhenSubjectsAreSent() {
+        CourseEntity existing = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        saveGivesId();
+
+        service.update(1L, withSubjects(List.of(
+                subjectRequest((short) 1, " AGR101 ", List.of()),
+                subjectRequest(null, "AGR900", List.of(" AGR101 ", "AGR102")))));
+
+        InOrder order = inOrder(subjectRepository);
+        order.verify(subjectRepository).deleteByCourseId(1L);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<SubjectEntity>> saved = ArgumentCaptor.forClass(List.class);
+        order.verify(subjectRepository).saveAll(saved.capture());
+        List<SubjectEntity> rows = saved.getValue();
+        assertEquals(2, rows.size());
+        assertEquals(1L, rows.get(0).getCourseId());
+        assertEquals("AGR101", rows.get(0).getCode());
+        assertEquals("Disciplina AGR101", rows.get(0).getName());
+        assertNull(rows.get(0).getSyllabus());
+        assertNull(rows.get(0).getPrerequisites());
+        assertNull(rows.get(1).getPeriod());
+        assertEquals("AGR101,AGR102", rows.get(1).getPrerequisites());
+    }
+
+    @Test
+    @DisplayName("Fase 5c: edição sem `subjects` não toca na matriz")
+    void shouldKeepCurriculumWhenSubjectsAreNull() {
+        CourseEntity existing = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        saveGivesId();
+
+        service.update(1L, valid());
+
+        verify(subjectRepository, never()).deleteByCourseId(any());
+        verify(subjectRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("Fase 5c: lista vazia limpa a matriz")
+    void shouldClearCurriculumWhenSubjectsAreEmpty() {
+        CourseEntity existing = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        saveGivesId();
+
+        service.update(1L, withSubjects(List.of()));
+
+        verify(subjectRepository).deleteByCourseId(1L);
+    }
+
+    @Test
+    @DisplayName("Fase 5c: código repetido na matriz (sem diferenciar caixa) ou vírgula em pré-requisito dão 400 e nada é gravado")
+    void shouldRejectInvalidCurriculum() {
+        when(departmentRepository.findByIdAndActiveTrue(10L)).thenReturn(Optional.of(department(10L, true)));
+
+        BadRequestException duplicate = assertThrows(BadRequestException.class, () -> service.create(withSubjects(List.of(
+                subjectRequest((short) 1, "AGR101", List.of()), subjectRequest((short) 2, " agr101 ", List.of())))));
+        assertTrue(duplicate.getMessage().contains("repetido"));
+
+        BadRequestException comma = assertThrows(BadRequestException.class, () -> service.create(withSubjects(List.of(
+                subjectRequest((short) 1, "AGR101", List.of("A,B"))))));
+        assertTrue(comma.getMessage().contains("vírgula"));
+
+        verify(repository, never()).saveAndFlush(any());
+        verify(subjectRepository, never()).saveAll(any());
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    @DisplayName("Fase 5c: validação das disciplinas aponta o campo dentro da lista")
+    void shouldValidateSubjects() {
+        SubjectRequestDTO bad = new SubjectRequestDTO((short) 13, " ", " ", null, (short) 0, (short) -1, null,
+                List.of(" "));
+        Set<String> invalid = invalidFields(withSubjects(List.of(bad)));
+        assertTrue(invalid.containsAll(Set.of("subjects[0].period", "subjects[0].code", "subjects[0].name",
+                "subjects[0].workloadHours", "subjects[0].credits", "subjects[0].nature")), invalid.toString());
+        assertTrue(invalid.stream().anyMatch(path -> path.startsWith("subjects[0].prerequisites")), invalid.toString());
+        assertTrue(invalidFields(withSubjects(List.of(subjectRequest((short) 1, "AGR101", List.of("AGR100"))))).isEmpty());
+    }
+
+    @Test
+    @DisplayName("Fase 5c: o histórico guarda a matriz antes e depois da edição")
+    void shouldAuditCurriculumBeforeAndAfter() {
+        CourseEntity existing = course(1L, "Agronomia", CourseLevel.GRADUACAO, CourseType.BACHARELADO, null);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department(10L, true)));
+        saveGivesId();
+        when(subjectRepository.findByCourseId(1L))
+                .thenReturn(List.of(subject(7L, (short) 1, "OLD101", null)))
+                .thenReturn(List.of(subject(8L, (short) 1, "NEW101", null)));
+
+        service.update(1L, withSubjects(List.of(subjectRequest((short) 1, "NEW101", List.of()))));
+
+        ArgumentCaptor<Object> before = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<Object> after = ArgumentCaptor.forClass(Object.class);
+        verify(auditService).record(eq(AuditService.Entity.CURSO), eq("1"), any(), eq(AuditService.Action.EDITADO),
+                before.capture(), after.capture());
+        assertEquals("OLD101", ((CourseDetailResponseDTO) before.getValue()).subjects().get(0).code());
+        assertEquals("NEW101", ((CourseDetailResponseDTO) after.getValue()).subjects().get(0).code());
     }
 
     @Test
