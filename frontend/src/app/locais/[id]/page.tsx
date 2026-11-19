@@ -22,7 +22,7 @@ export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
 
   return (
     <AppShell>
-      <div className="h-full overflow-y-auto bg-background">
+      <div className="min-h-full bg-background">
         <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             {/* FA02 do UC10: desistir e voltar ao mapa */}

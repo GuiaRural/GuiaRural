@@ -19,7 +19,7 @@ export default function DepartmentPage({ params }: PageProps<"/departamentos/[id
 
   return (
     <AppShell>
-      <div className="h-full overflow-y-auto bg-background">
+      <div className="min-h-full bg-background">
         <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <Link href="/cursos" className="flex items-center gap-1 text-sm font-semibold text-navy-900 hover:underline">

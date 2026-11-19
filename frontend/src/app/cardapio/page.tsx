@@ -28,7 +28,7 @@ export default function WeeklyMenuPage() {
 
   return (
     <AppShell>
-      <div className="h-full overflow-y-auto">
+      <div className="min-h-full">
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
