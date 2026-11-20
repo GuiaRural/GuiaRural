@@ -3,7 +3,9 @@ package br.com.guiarural.backend.map.service;
 import br.com.guiarural.backend.contacts.model.ContactEntity;
 import br.com.guiarural.backend.contacts.repository.ContactRepository;
 import br.com.guiarural.backend.courses.model.CourseEntity;
+import br.com.guiarural.backend.courses.model.DepartmentEntity;
 import br.com.guiarural.backend.courses.repository.CourseRepository;
+import br.com.guiarural.backend.courses.repository.DepartmentRepository;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.map.dto.PlaceContactDTO;
 import br.com.guiarural.backend.map.dto.PlaceLinkDTO;
@@ -27,7 +29,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-// Monta o PlaceResponseDTO com tudo o que vem de outras tabelas (responsáveis, serviços, cursos e foto).
+// Monta o PlaceResponseDTO com tudo o que vem de outras tabelas (responsáveis, serviços, cursos, departamentos e foto).
 // Faz uma consulta por tipo para a lista inteira, em vez de uma por local.
 @Component
 public class PlaceAssembler {
@@ -35,15 +37,18 @@ public class PlaceAssembler {
     private final ServiceRepository serviceRepository;
     private final CourseRepository courseRepository;
     private final PlacePhotoRepository photoRepository;
+    private final DepartmentRepository departmentRepository;
 
     public PlaceAssembler(ContactRepository contactRepository,
                           ServiceRepository serviceRepository,
                           CourseRepository courseRepository,
-                          PlacePhotoRepository photoRepository) {
+                          PlacePhotoRepository photoRepository,
+                          DepartmentRepository departmentRepository) {
         this.contactRepository = contactRepository;
         this.serviceRepository = serviceRepository;
         this.courseRepository = courseRepository;
         this.photoRepository = photoRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     // publicView: na leitura pública, serviços e cursos despublicados não aparecem; no painel aparecem todos.
@@ -72,6 +77,11 @@ public class PlaceAssembler {
         }
         Map<Long, ServiceEntity> services = byId(serviceRepository.findAllById(serviceIds), ServiceEntity::getId);
         Map<Long, CourseEntity> courses = byId(courseRepository.findAllById(courseIds), CourseEntity::getId);
+
+        Map<Long, List<PlaceLinkDTO>> departments = departmentRepository.findByPlaceIdInAndActiveTrueOrderByNameAsc(ids).stream()
+                .collect(Collectors.groupingBy(DepartmentEntity::getPlaceId, Collectors.mapping(
+                        d -> new PlaceLinkDTO(d.getId(), language.pick(d.getName(), d.getNameEn(), d.getNameEs())),
+                        Collectors.toList())));
 
         Map<Long, Long> photoVersions = new HashMap<>();
         photoRepository.findVersionsByPlaceIds(ids)
@@ -103,6 +113,7 @@ public class PlaceAssembler {
                     contacts.getOrDefault(place.getId(), List.of()),
                     serviceLinks,
                     courseLinks,
+                    departments.getOrDefault(place.getId(), List.of()),
                     photoUrl,
                     effective.code(),
                     effective != Language.PT && contains(place.getMachineTranslatedLangs(), effective.code()),
