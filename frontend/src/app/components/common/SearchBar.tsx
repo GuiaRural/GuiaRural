@@ -50,6 +50,8 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
     setActive(-1);
     latestQuery.current = value;
     clearTimeout(debounce.current);
+    // Abaixo de 3 caracteres as sugestões anteriores não valem mais: só a sigla exata, se houver, volta a aparecer.
+    if (value.trim().length < MIN_SEARCH_CHARS) setPlaces([]);
 
     searchPlaces(value, language).then(
       (found) => {
@@ -117,7 +119,8 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
   // FE-01.02: campo vazio não dispara busca nem abre a lista.
   const trimmed = query.trim();
   const showList = open && trimmed.length > 0;
-  const tooShort = trimmed.length < MIN_SEARCH_CHARS;
+  // Abaixo de 3 caracteres só vale a sigla exata de um local (searchPlaces); sem ela, pede mais letras.
+  const tooShort = trimmed.length < MIN_SEARCH_CHARS && places.length === 0;
 
   return (
     <div className="w-full max-w-2xl">
