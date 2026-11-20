@@ -34,7 +34,7 @@ export type Dictionary = {
   search: {
     placeholder: string;
     label: string;
-    myLocation: string;
+    planRoute: string;
     filters: string;
     recent: string;
     noResults: string;
@@ -118,6 +118,11 @@ export type Dictionary = {
     gates: string;
     buildings: string;
     confirm: string;
+    planTitle: string;
+    planDescription: string;
+    destination: string;
+    originGps: string;
+    originManual: string;
     estimate: string;
     steps: string;
     attribution: string;
@@ -311,7 +316,7 @@ export const dictionaries: Record<Language, Dictionary> = {
     search: {
       placeholder: "Pesquisar prédios, departamentos, salas, RU, paradas...",
       label: "Pesquisar no campus",
-      myLocation: "Usar minha localização",
+      planRoute: "Traçar rota",
       filters: "Filtros",
       recent: "Últimos acessos:",
       noResults: "Nenhum resultado encontrado.",
@@ -407,6 +412,11 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Portarias",
       buildings: "Prédios",
       confirm: "Traçar rota",
+      planTitle: "Traçar rota",
+      planDescription: "Escolha o destino e de onde você vai sair.",
+      destination: "Destino",
+      originGps: "Minha localização (GPS)",
+      originManual: "Escolher um prédio ou portaria",
       estimate: "Estimativa em linha reta: o caminho pelas vias não está disponível.",
       steps: "Inclui escada",
       attribution: "Caminhos: © colaboradores do OpenStreetMap",
@@ -615,7 +625,7 @@ export const dictionaries: Record<Language, Dictionary> = {
     search: {
       placeholder: "Search buildings, departments, rooms, canteen, stops...",
       label: "Search the campus",
-      myLocation: "Use my location",
+      planRoute: "Plan a route",
       filters: "Filters",
       recent: "Recently visited:",
       noResults: "No results found.",
@@ -711,6 +721,11 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Gates",
       buildings: "Buildings",
       confirm: "Show route",
+      planTitle: "Plan a route",
+      planDescription: "Choose your destination and where you are starting from.",
+      destination: "Destination",
+      originGps: "My location (GPS)",
+      originManual: "Choose a building or gate",
       estimate: "Straight-line estimate: the walking path is not available.",
       steps: "Includes stairs",
       attribution: "Paths: © OpenStreetMap contributors",
@@ -919,7 +934,7 @@ export const dictionaries: Record<Language, Dictionary> = {
     search: {
       placeholder: "Buscar edificios, departamentos, salas, comedor, paradas...",
       label: "Buscar en el campus",
-      myLocation: "Usar mi ubicación",
+      planRoute: "Trazar ruta",
       filters: "Filtros",
       recent: "Últimos accesos:",
       noResults: "No se encontraron resultados.",
@@ -1015,6 +1030,11 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Porterías",
       buildings: "Edificios",
       confirm: "Trazar ruta",
+      planTitle: "Trazar ruta",
+      planDescription: "Elige el destino y desde dónde vas a salir.",
+      destination: "Destino",
+      originGps: "Mi ubicación (GPS)",
+      originManual: "Elegir un edificio o portería",
       estimate: "Estimación en línea recta: el camino por las vías no está disponible.",
       steps: "Incluye escaleras",
       attribution: "Caminos: © colaboradores de OpenStreetMap",

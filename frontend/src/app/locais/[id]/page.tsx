@@ -1,19 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useState } from "react";
 import AppShell from "../../components/common/AppShell";
 import ApiFailure from "../../components/courses/ApiFailure";
 import { useApi } from "../../hooks/useApi";
 import LanguageSwitcher from "../../components/common/LanguageSwitcher";
 import PlacePhoto from "../../components/places/PlacePhoto";
-import Modal from "../../components/ui/Modal";
+import { OriginPicker, useTraceRoute } from "../../components/map/RoutePlanner";
 import { useLanguage } from "../../context/LanguageContext";
 import { isOpenNow } from "../../lib/hours";
-import { getDefaultOrigin, getPlace, getPublicPlaces, isPlaceSaved, toggleSavedPlace, type Place, type PlaceKey } from "../../services/placesService";
+import { getDefaultOrigin, getPlace, isPlaceSaved, toggleSavedPlace, type Place, type PlaceKey } from "../../services/placesService";
 import TranslationNotice from "../../components/common/TranslationNotice";
-import { NO_ROUTE, getCurrentCampusPosition, getRoute, routeKey } from "../../services/routeService";
+import { NO_ROUTE, getRoute, routeKey } from "../../services/routeService";
 
 export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
   const { id } = use(params);
@@ -48,11 +47,9 @@ export default function PlacePage({ params }: PageProps<"/locais/[id]">) {
 
 function PlaceDetails({ place }: { place: Place }) {
   const { t, language } = useLanguage();
-  const router = useRouter();
   const [saved, setSaved] = useState(() => isPlaceSaved(place.id));
   const [copied, setCopied] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [originIssue, setOriginIssue] = useState<"denied" | "outside" | null>(null);
+  const route = useTraceRoute();
 
   const origin = getDefaultOrigin(language);
   const routeState = useApi(getRoute, place.position && origin?.position && origin.id !== place.id ? routeKey(origin.position, place.position) : NO_ROUTE);
@@ -60,19 +57,6 @@ function PlaceDetails({ place }: { place: Place }) {
   const hasHours = place.hours !== "";
   const open = hasHours && isOpenNow(place.hours);
   const coords = place.position;
-
-  // Passo 3 do UC10: tenta o GPS; sem ele (FE01) ou fora do campus, pede a origem manual.
-  async function traceRoute() {
-    setLocating(true);
-    const gps = await getCurrentCampusPosition();
-    setLocating(false);
-    if (gps.ok) {
-      const { lat, lng } = gps.point;
-      router.push(`/?rota=${place.id}&origem=gps:${lat.toFixed(6)},${lng.toFixed(6)}`);
-    } else {
-      setOriginIssue(gps.reason === "outside" ? "outside" : "denied");
-    }
-  }
 
   async function share() {
     const url = window.location.href;
@@ -143,11 +127,11 @@ function PlaceDetails({ place }: { place: Place }) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={traceRoute}
-            disabled={locating}
+            onClick={() => route.trace(place.id)}
+            disabled={route.locating}
             className="rounded-lg bg-brand-yellow px-4 py-2.5 text-sm font-bold text-navy-900 hover:brightness-95 disabled:opacity-70"
           >
-            {locating ? t.route.locating : t.placePage.traceRoute}
+            {route.locating ? t.route.locating : t.placePage.traceRoute}
           </button>
           <Link href={`/?local=${place.id}`} className="rounded-lg border border-navy-900 bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 hover:bg-navy-900/5">
             {t.placePage.viewOnMap}
@@ -237,86 +221,11 @@ function PlaceDetails({ place }: { place: Place }) {
       </div>
 
       <OriginPicker
-        issue={originIssue}
+        issue={route.issue}
         destinationId={place.id}
-        onCancel={() => setOriginIssue(null)}
-        onConfirm={(originId) => router.push(`/?rota=${place.id}&origem=${originId}`)}
+        onCancel={route.clearIssue}
+        onConfirm={(originId) => route.goFrom(place.id, originId)}
       />
     </article>
-  );
-}
-
-// FE01 do UC10: escolha manual de um prédio ou portaria de partida.
-function OriginPicker({
-  issue,
-  destinationId,
-  onCancel,
-  onConfirm,
-}: {
-  issue: "denied" | "outside" | null;
-  destinationId: string;
-  onCancel: () => void;
-  onConfirm: (originId: string) => void;
-}) {
-  const { t, language } = useLanguage();
-  const [options, setOptions] = useState<Place[]>([]);
-  const [choice, setChoice] = useState("");
-
-  useEffect(() => {
-    if (issue) getPublicPlaces(language).then((all) => setOptions(all.filter((p) => p.id !== destinationId)));
-  }, [issue, destinationId, language]);
-
-  const gates = options.filter((p) => p.category === "portaria");
-  const buildings = options.filter((p) => p.category !== "portaria");
-
-  return (
-    <Modal open={issue !== null} onClose={onCancel} title={t.route.chooseOrigin}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (choice) onConfirm(choice);
-        }}
-      >
-        <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          {issue === "outside" ? t.route.outside : t.route.gpsDenied}
-        </p>
-        <label htmlFor="origin" className="mt-4 block text-sm font-semibold text-slate-800">
-          {t.route.from}
-        </label>
-        <select
-          id="origin"
-          required
-          value={choice}
-          onChange={(e) => setChoice(e.target.value)}
-          className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-        >
-          <option value="" disabled>
-            —
-          </option>
-          <optgroup label={t.route.gates}>
-            {gates.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={t.route.buildings}>
-            {buildings.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800">
-            {t.common.cancel}
-          </button>
-          <button type="submit" disabled={!choice} className="rounded-lg bg-brand-yellow px-4 py-2 text-sm font-bold text-navy-900 disabled:opacity-60">
-            {t.route.confirm}
-          </button>
-        </div>
-      </form>
-    </Modal>
   );
 }
