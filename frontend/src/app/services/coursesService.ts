@@ -103,8 +103,8 @@ export type CourseDetail = Omit<CourseSummary, "departmentId" | "officeLocation"
   subjects: Subject[];
 };
 
-// Lista plana dos cursos ativos (ex.: seletor de "cursos vinculados" do formulário de local).
-export const getCourses = () => apiGet<CourseSummary[]>("/courses");
+// Lista plana dos cursos ativos (ex.: seletor de "cursos vinculados" do formulário de local e filtro de /cursos).
+export const getCourses = (language: Language = "pt") => apiGet<CourseSummary[]>(`/courses?lang=${language}`);
 
 export const getDepartments = (language: Language = "pt") => apiGet<Department[]>(`/departments?lang=${language}`);
 

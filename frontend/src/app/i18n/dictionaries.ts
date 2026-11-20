@@ -231,7 +231,10 @@ export type Dictionary = {
     notFoundTitle: string;
     notFoundText: string;
     backToList: string;
-    backToDepartment: string;
+    breadcrumbLabel: string;
+    filterLabel: string;
+    filterPlaceholder: string;
+    filterEmpty: string;
     viewDepartment: string;
     about: string;
     foundedIn: string;
@@ -530,7 +533,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "Não encontramos esta página",
       notFoundText: "O departamento ou curso não existe ou não está mais disponível.",
       backToList: "Cursos e departamentos",
-      backToDepartment: "Voltar ao departamento",
+      breadcrumbLabel: "Trilha de navegação",
+      filterLabel: "Filtrar cursos e departamentos",
+      filterPlaceholder: "Filtrar por curso, departamento ou sigla",
+      filterEmpty: "Nenhum curso encontrado.",
       viewDepartment: "Ver departamento",
       about: "Sobre o departamento",
       foundedIn: "Fundado em",
@@ -834,7 +840,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "We could not find this page",
       notFoundText: "The department or course does not exist or is no longer available.",
       backToList: "Courses and departments",
-      backToDepartment: "Back to the department",
+      breadcrumbLabel: "Breadcrumb",
+      filterLabel: "Filter courses and departments",
+      filterPlaceholder: "Filter by course, department or acronym",
+      filterEmpty: "No courses found.",
       viewDepartment: "View department",
       about: "About the department",
       foundedIn: "Founded in",
@@ -1138,7 +1147,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "No encontramos esta página",
       notFoundText: "El departamento o curso no existe o ya no está disponible.",
       backToList: "Cursos y departamentos",
-      backToDepartment: "Volver al departamento",
+      breadcrumbLabel: "Ruta de navegación",
+      filterLabel: "Filtrar cursos y departamentos",
+      filterPlaceholder: "Filtrar por curso, departamento o sigla",
+      filterEmpty: "No se encontraron cursos.",
       viewDepartment: "Ver departamento",
       about: "Sobre el departamento",
       foundedIn: "Fundado en",
