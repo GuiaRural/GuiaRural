@@ -110,7 +110,24 @@ public class PlaceAdminService implements AuditRestorer {
         auditService.record(AuditService.Entity.LOCAL, saved.getSlug(), saved.getName(), action, before, after);
         return after;
     }
+    // UC28: edita apenas a descrição sem alterar vínculos ou contatos, gravando o snapshot completo para o UC23 (desfazer).
+    @Transactional
+    public PlaceResponseDTO updateDescription(String slug, String rawDescription) {
+        String description = blankToNull(rawDescription);
+        if (description == null) {
+            throw new BadRequestException("A descrição é obrigatória.");
+        }
 
+        PlaceEntity entity = find(slug);
+        PlaceResponseDTO before = assembler.assemble(entity, false);
+
+        entity.setDescription(description);
+        PlaceEntity saved = repository.save(entity);
+
+        PlaceResponseDTO after = assembler.assemble(saved, false);
+        auditService.record(AuditService.Entity.LOCAL, saved.getSlug(), saved.getName(), AuditService.Action.EDITADO, before, after);
+        return after;
+    }
     @Transactional
     public void delete(String slug) {
         delete(find(slug), AuditService.Action.DELETADO);
