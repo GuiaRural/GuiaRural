@@ -49,6 +49,8 @@ export type Place = {
   contacts: PlaceContact[];
   services: PlaceLink[];
   courses: PlaceLink[];
+  // Departamentos que funcionam no local (link para /departamentos/<id>, CT-037.01).
+  departments: PlaceLink[];
   // Endereço da foto no backend (com a versão na URL); sem foto, a tela mostra a sigla do local.
   photoUrl?: string;
   // Idioma em que `name` e `description` de fato vieram (pt quando faltou a tradução), para o atributo lang.
@@ -65,7 +67,7 @@ export type PlaceKey = `${string}:${Language}`;
 // O que o formulário do painel envia. Sem `id`, é um local novo (o servidor gera o slug a partir do nome).
 export type PlaceInput = Omit<
   Place,
-  "id" | "services" | "courses" | "photoUrl" | "coordinatesSource" | "lang" | "machineTranslated" | "translatedLangs"
+  "id" | "services" | "courses" | "departments" | "photoUrl" | "coordinatesSource" | "lang" | "machineTranslated" | "translatedLangs"
 > & {
   id?: string;
   coordinatesSource?: string;
@@ -96,6 +98,8 @@ type PlaceDto = {
   contacts: { name: string; email: string | null }[];
   services: PlaceLink[];
   courses: PlaceLink[];
+  // Ausente nos retratos antigos e nas respostas de servidores anteriores ao campo.
+  departments?: PlaceLink[];
   photoUrl: string | null;
   lang: string;
   machineTranslated: boolean;
@@ -117,6 +121,7 @@ function toPlace(dto: PlaceDto): Place {
     contacts: dto.contacts.map((c) => ({ name: c.name, email: c.email ?? undefined })),
     services: dto.services,
     courses: dto.courses,
+    departments: dto.departments ?? [],
     photoUrl: dto.photoUrl ?? undefined,
     lang: dto.lang as Language,
     machineTranslated: dto.machineTranslated,

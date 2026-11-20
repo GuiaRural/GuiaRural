@@ -184,6 +184,22 @@ function PlaceDetails({ place }: { place: Place }) {
             )}
           </section>
 
+          {/* CT-037.01: do local para a página do departamento (UC37) */}
+          {place.departments.length > 0 && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="font-bold text-navy-900">{t.placePage.departments}</h2>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {place.departments.map((d) => (
+                  <li key={d.id}>
+                    <Link href={`/departamentos/${d.id}`} className="block rounded-xl border border-slate-200 p-3 font-semibold text-navy-900 hover:bg-slate-50">
+                      {d.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {place.courses.length > 0 && (
             <section className="rounded-2xl bg-white p-5 shadow-sm">
               <h2 className="font-bold text-navy-900">{t.placePage.courses}</h2>

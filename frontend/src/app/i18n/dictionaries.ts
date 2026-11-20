@@ -84,6 +84,7 @@ export type Dictionary = {
     save: string;
     saved: string;
     hoursTo: string;
+    coursesAndDepartments: string;
   };
   placePage: {
     backToMap: string;
@@ -99,6 +100,7 @@ export type Dictionary = {
     services: string;
     noServices: string;
     courses: string;
+    departments: string;
     share: string;
     linkCopied: string;
     address: string;
@@ -376,6 +378,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Salvar local",
       saved: "Local salvo",
       hoursTo: "às",
+      coursesAndDepartments: "Cursos e departamentos",
     },
     placePage: {
       backToMap: "Voltar ao mapa interativo",
@@ -391,6 +394,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Serviços no local",
       noServices: "Nenhum serviço cadastrado neste local.",
       courses: "Cursos neste local",
+      departments: "Departamentos neste local",
       share: "Compartilhar",
       linkCopied: "Link copiado",
       address: "Endereço",
@@ -683,6 +687,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Save place",
       saved: "Place saved",
       hoursTo: "to",
+      coursesAndDepartments: "Courses and departments",
     },
     placePage: {
       backToMap: "Back to interactive map",
@@ -698,6 +703,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Services here",
       noServices: "No services registered at this place.",
       courses: "Courses held here",
+      departments: "Departments in this building",
       share: "Share",
       linkCopied: "Link copied",
       address: "Address",
@@ -990,6 +996,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Guardar lugar",
       saved: "Lugar guardado",
       hoursTo: "a",
+      coursesAndDepartments: "Cursos y departamentos",
     },
     placePage: {
       backToMap: "Volver al mapa interactivo",
@@ -1005,6 +1012,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Servicios en el lugar",
       noServices: "No hay servicios registrados en este lugar.",
       courses: "Cursos en este lugar",
+      departments: "Departamentos en este lugar",
       share: "Compartir",
       linkCopied: "Enlace copiado",
       address: "Dirección",
