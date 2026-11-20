@@ -142,6 +142,10 @@ export type Dictionary = {
     retry: string;
     saveSpot: string;
     unsaveSpot: string;
+    filterLabel: string;
+    filterAll: string;
+    filterOther: string;
+    noSpotsInCategory: string;
   };
   guides: {
     sections: Record<GuideSection, { title: string; intro: string }>;
@@ -432,6 +436,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Tentar novamente",
       saveSpot: "Salvar local",
       unsaveSpot: "Remover local salvo",
+      filterLabel: "Filtrar por categoria",
+      filterAll: "Todas",
+      filterOther: "Outros",
+      noSpotsInCategory: "Nenhum local encontrado nesta categoria",
     },
     guides: {
       sections: {
@@ -736,6 +744,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       saveSpot: "Save place",
       unsaveSpot: "Remove saved place",
+      filterLabel: "Filter by category",
+      filterAll: "All",
+      filterOther: "Other",
+      noSpotsInCategory: "No places found in this category",
     },
     guides: {
       sections: {
@@ -1040,6 +1052,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Intentar de nuevo",
       saveSpot: "Guardar lugar",
       unsaveSpot: "Quitar lugar guardado",
+      filterLabel: "Filtrar por categoría",
+      filterAll: "Todas",
+      filterOther: "Otros",
+      noSpotsInCategory: "No se encontraron lugares en esta categoría",
     },
     guides: {
       sections: {
