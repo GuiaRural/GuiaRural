@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import PageHeader, { ctaButton } from "../../../components/admin/PageHeader";
+import PlaceDescriptionModal from "../../../components/admin/PlaceDescriptionModal";
 import { ConfirmModal } from "../../../components/ui/Modal";
 import { dictionaries } from "../../../i18n/dictionaries";
 import { takeFlash } from "../../../lib/flash";
@@ -31,6 +32,7 @@ export default function PlacesAdminPage() {
   const [filter, setFilter] = useState<Filter>("todos");
   const [page, setPage] = useState(1);
   const [toDelete, setToDelete] = useState<Place | null>(null);
+  const [describing, setDescribing] = useState<Place | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   function reload() {
@@ -159,6 +161,10 @@ export default function PlacesAdminPage() {
                       <Link href={`/admin/locais/${p.id}`} className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50">
                         {p.status === "rascunho" ? "Continuar" : "Editar"}
                       </Link>
+                      {/* UC28: ação própria para editar só a descrição */}
+                      <button type="button" onClick={() => setDescribing(p)} className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                        Editar descrição
+                      </button>
                       {p.status !== "rascunho" && (
                         <button type="button" onClick={() => toggleStatus(p)} className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50">
                           {p.status === "publicado" ? "Desativar" : "Ativar"}
@@ -199,6 +205,19 @@ export default function PlacesAdminPage() {
           </nav>
         </div>
       </div>
+
+      {describing && (
+        <PlaceDescriptionModal
+          key={describing.id}
+          place={describing}
+          onClose={() => setDescribing(null)}
+          onSaved={(saved) => {
+            setDescribing(null);
+            setMessage({ kind: "ok", text: `A descrição de "${saved.name}" foi atualizada. A alteração está no histórico de mudanças.` });
+            reload();
+          }}
+        />
+      )}
 
       <ConfirmModal
         open={toDelete !== null}

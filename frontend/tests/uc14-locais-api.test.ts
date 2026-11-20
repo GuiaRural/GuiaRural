@@ -14,6 +14,7 @@ import {
   savePlace,
   setPlaceStatus,
   toInput,
+  updatePlaceDescription,
   uploadPlacePhoto,
   type PlaceInput,
 } from "../src/app/services/placesService";
@@ -231,4 +232,34 @@ test("remover a foto envia DELETE em /photo", async () => {
 
   assert.equal(calls[0].url, "/api/places/ru/photo");
   assert.equal(calls[0].init.method, "DELETE");
+});
+
+// UC28 — Editar a descrição do local (CT-028.01 a 028.04 reescritos): relê o local e reenvia tudo igual, só com a
+// descrição nova; descrição vazia não sai do navegador; 401/403 chegam à tela como ApiError.
+test("UC28: editar a descrição relê o local e envia o PUT só com a descrição trocada", async () => {
+  respond([200, dto()], [200, dto({ description: "Atendimento das 8h às 14h em janeiro." })]);
+  const saved = await updatePlaceDescription("ru", "  Atendimento das 8h às 14h em janeiro.  ");
+  assert.equal(saved.description, "Atendimento das 8h às 14h em janeiro.");
+  assert.equal(calls[0].url, "/api/admin/places/ru");
+  assert.equal(calls[1].url, "/api/places/ru");
+  assert.equal(calls[1].init.method, "PUT");
+  const body = JSON.parse(String(calls[1].init.body));
+  assert.equal(body.description, "Atendimento das 8h às 14h em janeiro.");
+  assert.equal(body.name, "Restaurante Universitário");
+  assert.equal(body.hours, "11:00-14:00");
+  assert.deepEqual(body.serviceIds, [7]);
+  assert.deepEqual(body.courseIds, [3]);
+});
+
+test("UC28: descrição vazia é recusada sem chamar o servidor", async () => {
+  respond([200, dto()]);
+  await assert.rejects(updatePlaceDescription("ru", "   "), (e: unknown) => e instanceof PlaceValidationError && e.message === "A descrição é obrigatória.");
+  assert.equal(calls.length, 0);
+});
+
+test("UC28: sessão expirada (401) e perfil sem permissão (403) chegam como ApiError", async () => {
+  respond([200, dto()], [401, { detail: "Não autenticado" }]);
+  await assert.rejects(updatePlaceDescription("ru", "Nova"), (e: unknown) => e instanceof ApiError && e.status === 401);
+  respond([200, dto()], [403, { detail: "Proibido" }]);
+  await assert.rejects(updatePlaceDescription("ru", "Nova"), (e: unknown) => e instanceof ApiError && e.status === 403);
 });
