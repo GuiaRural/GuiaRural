@@ -23,13 +23,37 @@ export default function CoursePage({ params }: PageProps<"/cursos/[id]">) {
       <div className="min-h-full bg-background">
         <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <Link
-              href={state.status === "ready" ? `/departamentos/${state.data.departmentId}` : "/cursos"}
-              className="flex items-center gap-1 text-sm font-semibold text-navy-900 hover:underline"
-            >
-              <span aria-hidden>←</span>{" "}
-              {state.status === "ready" ? t.courses.backToDepartment : t.courses.backToList}
-            </Link>
+            {/* CT-008.04: trilha Cursos e departamentos › Departamento › Curso */}
+            <nav aria-label={t.courses.breadcrumbLabel} className="min-w-0 text-sm">
+              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <li>
+                  <Link href="/cursos" className="font-semibold text-navy-900 hover:underline focus-visible:outline-2 focus-visible:outline-navy-700">
+                    {t.courses.backToList}
+                  </Link>
+                </li>
+                {state.status === "ready" && (
+                  <>
+                    <li aria-hidden className="text-slate-400">
+                      ›
+                    </li>
+                    <li>
+                      <Link
+                        href={`/departamentos/${state.data.departmentId}`}
+                        className="font-semibold text-navy-900 hover:underline focus-visible:outline-2 focus-visible:outline-navy-700"
+                      >
+                        {state.data.departmentShortName ?? state.data.departmentName}
+                      </Link>
+                    </li>
+                    <li aria-hidden className="text-slate-400">
+                      ›
+                    </li>
+                    <li aria-current="page" className="text-slate-600">
+                      {state.data.name}
+                    </li>
+                  </>
+                )}
+              </ol>
+            </nav>
             <LanguageSwitcher />
           </div>
           {state.status === "loading" && <p className="text-sm text-slate-600">{t.common.loading}</p>}

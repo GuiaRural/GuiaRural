@@ -98,6 +98,10 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
     }
   }
 
+  // CT-025.03: com um cardápio base, a tela diz que é uma duplicação e de qual cardápio veio a cópia.
+  const source = baseId ? existing.find((m) => String(m.id) === baseId) : undefined;
+  const sourceLabel = source ? `${formatMenuDate(source.date)} · ${SHIFT_LABELS[source.shift].toLowerCase()}` : null;
+
   const inputCls = (key: keyof Fields) =>
     `h-11 w-full rounded-lg border bg-stone-50 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-navy-700 focus:bg-white focus:ring-2 focus:ring-brand-yellow ${
       errors[key] ? "border-red-500 bg-red-50/50" : "border-stone-200"
@@ -115,10 +119,12 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
             <Link href="/admin/cardapio" className="hover:underline">
               Cardápio do RU
             </Link>{" "}
-            › <span className="font-semibold text-slate-800">Criar cardápio</span>
+            › <span className="font-semibold text-slate-800">{sourceLabel ? "Duplicar cardápio" : "Criar cardápio"}</span>
           </nav>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold text-navy-900 sm:text-2xl">Criar cardápio do RU</h1>
+            <h1 className="text-xl font-bold text-navy-900 sm:text-2xl">
+              {sourceLabel ? `Duplicar cardápio de ${sourceLabel}` : "Criar cardápio do RU"}
+            </h1>
             <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
               <span aria-hidden className="size-1.5 rounded-full bg-amber-500" />
               {baseId ? "Duplicando cardápio" : "Modo de criação"}
@@ -140,7 +146,7 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
             className={`${primaryButton} h-10 gap-2`}
           >
             {saving && <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
-            {saving ? "Salvando..." : "Salvar e publicar"}
+            {saving ? "Salvando..." : sourceLabel ? "Salvar cópia e publicar" : "Salvar e publicar"}
           </button>
         </div>
       </div>
@@ -149,6 +155,12 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {summary}
         </div>
+      )}
+
+      {sourceLabel && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Os pratos e o turno foram copiados do cardápio de {sourceLabel}. Escolha a nova data (e altere o que mudou) antes de salvar.
+        </p>
       )}
 
       {/* FA02 */}

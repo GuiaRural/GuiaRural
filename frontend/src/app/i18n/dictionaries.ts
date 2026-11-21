@@ -34,7 +34,7 @@ export type Dictionary = {
   search: {
     placeholder: string;
     label: string;
-    myLocation: string;
+    planRoute: string;
     filters: string;
     recent: string;
     noResults: string;
@@ -84,6 +84,7 @@ export type Dictionary = {
     save: string;
     saved: string;
     hoursTo: string;
+    coursesAndDepartments: string;
   };
   placePage: {
     backToMap: string;
@@ -99,6 +100,7 @@ export type Dictionary = {
     services: string;
     noServices: string;
     courses: string;
+    departments: string;
     share: string;
     linkCopied: string;
     address: string;
@@ -118,6 +120,11 @@ export type Dictionary = {
     gates: string;
     buildings: string;
     confirm: string;
+    planTitle: string;
+    planDescription: string;
+    destination: string;
+    originGps: string;
+    originManual: string;
     estimate: string;
     steps: string;
     attribution: string;
@@ -142,6 +149,10 @@ export type Dictionary = {
     retry: string;
     saveSpot: string;
     unsaveSpot: string;
+    filterLabel: string;
+    filterAll: string;
+    filterOther: string;
+    noSpotsInCategory: string;
   };
   guides: {
     sections: Record<GuideSection, { title: string; intro: string }>;
@@ -231,7 +242,10 @@ export type Dictionary = {
     notFoundTitle: string;
     notFoundText: string;
     backToList: string;
-    backToDepartment: string;
+    breadcrumbLabel: string;
+    filterLabel: string;
+    filterPlaceholder: string;
+    filterEmpty: string;
     viewDepartment: string;
     about: string;
     foundedIn: string;
@@ -311,7 +325,7 @@ export const dictionaries: Record<Language, Dictionary> = {
     search: {
       placeholder: "Pesquisar prédios, departamentos, salas, RU, paradas...",
       label: "Pesquisar no campus",
-      myLocation: "Usar minha localização",
+      planRoute: "Traçar rota",
       filters: "Filtros",
       recent: "Últimos acessos:",
       noResults: "Nenhum resultado encontrado.",
@@ -373,6 +387,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Salvar local",
       saved: "Local salvo",
       hoursTo: "às",
+      coursesAndDepartments: "Cursos e departamentos",
     },
     placePage: {
       backToMap: "Voltar ao mapa interativo",
@@ -388,6 +403,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Serviços no local",
       noServices: "Nenhum serviço cadastrado neste local.",
       courses: "Cursos neste local",
+      departments: "Departamentos neste local",
       share: "Compartilhar",
       linkCopied: "Link copiado",
       address: "Endereço",
@@ -407,6 +423,11 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Portarias",
       buildings: "Prédios",
       confirm: "Traçar rota",
+      planTitle: "Traçar rota",
+      planDescription: "Escolha o destino e de onde você vai sair.",
+      destination: "Destino",
+      originGps: "Minha localização (GPS)",
+      originManual: "Escolher um prédio ou portaria",
       estimate: "Estimativa em linha reta: o caminho pelas vias não está disponível.",
       steps: "Inclui escada",
       attribution: "Caminhos: © colaboradores do OpenStreetMap",
@@ -432,6 +453,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Tentar novamente",
       saveSpot: "Salvar local",
       unsaveSpot: "Remover local salvo",
+      filterLabel: "Filtrar por categoria",
+      filterAll: "Todas",
+      filterOther: "Outros",
+      noSpotsInCategory: "Nenhum local encontrado nesta categoria",
     },
     guides: {
       sections: {
@@ -530,7 +555,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "Não encontramos esta página",
       notFoundText: "O departamento ou curso não existe ou não está mais disponível.",
       backToList: "Cursos e departamentos",
-      backToDepartment: "Voltar ao departamento",
+      breadcrumbLabel: "Trilha de navegação",
+      filterLabel: "Filtrar cursos e departamentos",
+      filterPlaceholder: "Filtrar por curso, departamento ou sigla",
+      filterEmpty: "Nenhum curso encontrado.",
       viewDepartment: "Ver departamento",
       about: "Sobre o departamento",
       foundedIn: "Fundado em",
@@ -615,7 +643,7 @@ export const dictionaries: Record<Language, Dictionary> = {
     search: {
       placeholder: "Search buildings, departments, rooms, canteen, stops...",
       label: "Search the campus",
-      myLocation: "Use my location",
+      planRoute: "Plan a route",
       filters: "Filters",
       recent: "Recently visited:",
       noResults: "No results found.",
@@ -677,6 +705,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Save place",
       saved: "Place saved",
       hoursTo: "to",
+      coursesAndDepartments: "Courses and departments",
     },
     placePage: {
       backToMap: "Back to interactive map",
@@ -692,6 +721,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Services here",
       noServices: "No services registered at this place.",
       courses: "Courses held here",
+      departments: "Departments in this building",
       share: "Share",
       linkCopied: "Link copied",
       address: "Address",
@@ -711,6 +741,11 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Gates",
       buildings: "Buildings",
       confirm: "Show route",
+      planTitle: "Plan a route",
+      planDescription: "Choose your destination and where you are starting from.",
+      destination: "Destination",
+      originGps: "My location (GPS)",
+      originManual: "Choose a building or gate",
       estimate: "Straight-line estimate: the walking path is not available.",
       steps: "Includes stairs",
       attribution: "Paths: © OpenStreetMap contributors",
@@ -736,6 +771,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       saveSpot: "Save place",
       unsaveSpot: "Remove saved place",
+      filterLabel: "Filter by category",
+      filterAll: "All",
+      filterOther: "Other",
+      noSpotsInCategory: "No places found in this category",
     },
     guides: {
       sections: {
@@ -834,7 +873,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "We could not find this page",
       notFoundText: "The department or course does not exist or is no longer available.",
       backToList: "Courses and departments",
-      backToDepartment: "Back to the department",
+      breadcrumbLabel: "Breadcrumb",
+      filterLabel: "Filter courses and departments",
+      filterPlaceholder: "Filter by course, department or acronym",
+      filterEmpty: "No courses found.",
       viewDepartment: "View department",
       about: "About the department",
       foundedIn: "Founded in",
@@ -919,7 +961,7 @@ export const dictionaries: Record<Language, Dictionary> = {
     search: {
       placeholder: "Buscar edificios, departamentos, salas, comedor, paradas...",
       label: "Buscar en el campus",
-      myLocation: "Usar mi ubicación",
+      planRoute: "Trazar ruta",
       filters: "Filtros",
       recent: "Últimos accesos:",
       noResults: "No se encontraron resultados.",
@@ -981,6 +1023,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Guardar lugar",
       saved: "Lugar guardado",
       hoursTo: "a",
+      coursesAndDepartments: "Cursos y departamentos",
     },
     placePage: {
       backToMap: "Volver al mapa interactivo",
@@ -996,6 +1039,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Servicios en el lugar",
       noServices: "No hay servicios registrados en este lugar.",
       courses: "Cursos en este lugar",
+      departments: "Departamentos en este lugar",
       share: "Compartir",
       linkCopied: "Enlace copiado",
       address: "Dirección",
@@ -1015,6 +1059,11 @@ export const dictionaries: Record<Language, Dictionary> = {
       gates: "Porterías",
       buildings: "Edificios",
       confirm: "Trazar ruta",
+      planTitle: "Trazar ruta",
+      planDescription: "Elige el destino y desde dónde vas a salir.",
+      destination: "Destino",
+      originGps: "Mi ubicación (GPS)",
+      originManual: "Elegir un edificio o portería",
       estimate: "Estimación en línea recta: el camino por las vías no está disponible.",
       steps: "Incluye escaleras",
       attribution: "Caminos: © colaboradores de OpenStreetMap",
@@ -1040,6 +1089,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Intentar de nuevo",
       saveSpot: "Guardar lugar",
       unsaveSpot: "Quitar lugar guardado",
+      filterLabel: "Filtrar por categoría",
+      filterAll: "Todas",
+      filterOther: "Otros",
+      noSpotsInCategory: "No se encontraron lugares en esta categoría",
     },
     guides: {
       sections: {
@@ -1138,7 +1191,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "No encontramos esta página",
       notFoundText: "El departamento o curso no existe o ya no está disponible.",
       backToList: "Cursos y departamentos",
-      backToDepartment: "Volver al departamento",
+      breadcrumbLabel: "Ruta de navegación",
+      filterLabel: "Filtrar cursos y departamentos",
+      filterPlaceholder: "Filtrar por curso, departamento o sigla",
+      filterEmpty: "No se encontraron cursos.",
       viewDepartment: "Ver departamento",
       about: "Sobre el departamento",
       foundedIn: "Fundado en",

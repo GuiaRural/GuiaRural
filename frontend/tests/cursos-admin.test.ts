@@ -225,3 +225,13 @@ test("UC36: exclui com DELETE; 404 conta como sucesso; outra falha propaga", asy
   respond(500);
   await assert.rejects(deleteCourse(4), (error: unknown) => error instanceof ApiError && error.status === 500);
 });
+
+// CT-036.03 (FE-36.01): sem conexão, o pedido nem chega ao servidor. A falha precisa chegar ao CourseForm (que
+// mostra "Não foi possível concluir a exclusão. O curso foi mantido sem alterações.") e nunca virar sucesso, como o 404.
+// O lado do banco (transação desfeita) está em CourseDeleteFailureIntegrationTest.java.
+test("CT-036.03: queda de conexão na exclusão propaga o erro em vez de contar como excluído", async () => {
+  globalThis.fetch = (async () => {
+    throw new TypeError("Failed to fetch");
+  }) as typeof fetch;
+  await assert.rejects(deleteCourse(4));
+});

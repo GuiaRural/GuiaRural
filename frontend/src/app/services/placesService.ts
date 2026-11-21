@@ -49,6 +49,8 @@ export type Place = {
   contacts: PlaceContact[];
   services: PlaceLink[];
   courses: PlaceLink[];
+  // Departamentos que funcionam no local (link para /departamentos/<id>, CT-037.01).
+  departments: PlaceLink[];
   // Endereço da foto no backend (com a versão na URL); sem foto, a tela mostra a sigla do local.
   photoUrl?: string;
   // Idioma em que `name` e `description` de fato vieram (pt quando faltou a tradução), para o atributo lang.
@@ -65,7 +67,7 @@ export type PlaceKey = `${string}:${Language}`;
 // O que o formulário do painel envia. Sem `id`, é um local novo (o servidor gera o slug a partir do nome).
 export type PlaceInput = Omit<
   Place,
-  "id" | "services" | "courses" | "photoUrl" | "coordinatesSource" | "lang" | "machineTranslated" | "translatedLangs"
+  "id" | "services" | "courses" | "departments" | "photoUrl" | "coordinatesSource" | "lang" | "machineTranslated" | "translatedLangs"
 > & {
   id?: string;
   coordinatesSource?: string;
@@ -96,6 +98,8 @@ type PlaceDto = {
   contacts: { name: string; email: string | null }[];
   services: PlaceLink[];
   courses: PlaceLink[];
+  // Ausente nos retratos antigos e nas respostas de servidores anteriores ao campo.
+  departments?: PlaceLink[];
   photoUrl: string | null;
   lang: string;
   machineTranslated: boolean;
@@ -117,6 +121,7 @@ function toPlace(dto: PlaceDto): Place {
     contacts: dto.contacts.map((c) => ({ name: c.name, email: c.email ?? undefined })),
     services: dto.services,
     courses: dto.courses,
+    departments: dto.departments ?? [],
     photoUrl: dto.photoUrl ?? undefined,
     lang: dto.lang as Language,
     machineTranslated: dto.machineTranslated,
@@ -139,8 +144,10 @@ const RECENT_KEY = "guiarural.recentPlaces";
 const SAVED_KEY = "guiarural.savedPlaces";
 const MAX_RECENT = 4;
 
-// RN-01.03: sugestões só a partir de 3 caracteres.
+// RN-01.03: sugestões a partir de 3 caracteres, ou de 2 quando o termo é exatamente a sigla de um local
+// publicado (CT-007.05: "DC"). "Bi" não é sigla e continua pedindo 3 (CT-001.02).
 export const MIN_SEARCH_CHARS = 3;
+export const MIN_ACRONYM_CHARS = 2;
 
 function normalize(text: string) {
   return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -158,7 +165,11 @@ const matches = (place: Place | undefined, q: string) =>
 // de qualquer jeito (a lista em português é buscada uma vez por sessão).
 export async function searchPlaces(query: string, language: Language = "pt"): Promise<Place[]> {
   const q = normalize(query.trim());
-  if (q.length < MIN_SEARCH_CHARS) return [];
+  if (q.length < MIN_ACRONYM_CHARS) return [];
+  if (q.length < MIN_SEARCH_CHARS) {
+    // A sigla não muda com o idioma: basta a lista da tela.
+    return (await getPublicPlaces(language)).filter((p) => normalize(p.shortName) === q).slice(0, 5);
+  }
   const [shown, portuguese] = await Promise.all([
     getPublicPlaces(language),
     language === "pt" ? Promise.resolve<Place[]>([]) : getPublicPlaces("pt"),
@@ -291,6 +302,20 @@ export async function setPlaceStatus(id: string, status: PlaceStatus): Promise<v
   const place = await getPlaceForAdmin(id);
   if (!place) return;
   await savePlace({ ...toInput(place), status });
+}
+
+// Limite do PlaceRequestDTO (backend).
+export const MAX_DESCRIPTION_CHARS = 5000;
+
+// UC28 — Editar a descrição do local: relê o local no servidor e reenvia tudo igual, trocando só a descrição.
+// O servidor valida, exige perfil geral ou editor e grava o histórico (com desfazer). Descrição vazia não sai do navegador.
+export async function updatePlaceDescription(id: string, description: string): Promise<Place> {
+  const text = description.trim();
+  if (!text) throw new PlaceValidationError("A descrição é obrigatória.");
+  if (text.length > MAX_DESCRIPTION_CHARS) throw new PlaceValidationError(`A descrição não pode ter mais que ${MAX_DESCRIPTION_CHARS} caracteres.`);
+  const place = await getPlaceForAdmin(id);
+  if (!place) throw new PlaceValidationError("Este local não existe mais. Atualize a lista.");
+  return savePlace({ ...toInput(place), description: text });
 }
 
 // Já excluído em outra aba (404) é tratado como sucesso: o resultado desejado já existe.

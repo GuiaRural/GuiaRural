@@ -97,6 +97,29 @@ export default function PlaceCard({ place, onClose }: { place: Place; onClose: (
           </p>
         )}
 
+        {/* CT-037.01: departamentos e cursos do local, com link para as páginas do UC37 */}
+        {(place.departments.length > 0 || place.courses.length > 0) && (
+          <nav aria-label={t.placeCard.coursesAndDepartments} className="text-xs">
+            <p className="font-semibold text-slate-500">{t.placeCard.coursesAndDepartments}</p>
+            <ul className="mt-1 flex flex-wrap gap-1.5">
+              {place.departments.map((d) => (
+                <li key={`d-${d.id}`}>
+                  <Link href={`/departamentos/${d.id}`} className="block rounded-md bg-slate-100 px-2 py-1 font-semibold text-navy-900 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-navy-900">
+                    {d.name}
+                  </Link>
+                </li>
+              ))}
+              {place.courses.map((c) => (
+                <li key={`c-${c.id}`}>
+                  <Link href={`/cursos/${c.id}`} className="block rounded-md border border-slate-200 px-2 py-1 text-navy-900 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-navy-900">
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+
         <Link
           href={`/locais/${place.id}`}
           className="flex items-center justify-center gap-2 rounded-lg bg-navy-900 px-3 py-2.5 text-sm font-bold text-white hover:bg-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-yellow"
