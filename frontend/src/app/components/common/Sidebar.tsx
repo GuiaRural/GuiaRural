@@ -27,6 +27,7 @@ const WELCOME: Item[] = [
 ];
 
 const SUPPORT: Item[] = [
+  { key: "contactTeam", href: "/fale-com-a-equipe" },
   { key: "admin", href: "/admin" },
 ];
 
