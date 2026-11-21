@@ -22,6 +22,9 @@ public record PlaceResponseDTO(
         List<PlaceContactDTO> contacts,
         List<PlaceLinkDTO> services,
         List<PlaceLinkDTO> courses,
+        // Departamentos ativos que funcionam no local (link para /departamentos/{id}). Vem do vínculo do departamento,
+        // não do local: o formulário não edita e o desfazer ignora (retratos antigos do histórico não têm o campo).
+        List<PlaceLinkDTO> departments,
         String photoUrl,
         // Idioma em que name veio (pt quando faltou a tradução), para o atributo lang da página.
         String lang,

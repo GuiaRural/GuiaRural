@@ -80,3 +80,15 @@ test("departamentos e sugestões da busca levam o idioma", async () => {
   await searchDepartmentsAndCourses("comput", "en");
   assert.deepEqual(calls, ["/api/departments?lang=es", "/api/departments?lang=pt", "/api/departments/3?lang=en", "/api/search?q=comput&lang=en"]);
 });
+
+// CT-007.05 e CT-001.02 (RN-01.03): 2 caracteres só bastam quando o termo é exatamente a sigla de um local.
+test("a busca aceita a sigla de 2 letras, mas não um começo de nome com 2 letras", async () => {
+  serve(() => [
+    { ...place("dc", "CEAGRI II / DC (Departamento de Computação)", "pt"), shortName: "DC", category: "departamento" },
+    place("biblioteca", "Biblioteca Central", "pt"),
+  ]);
+  assert.deepEqual((await searchPlaces("DC", "pt")).map((p) => p.id), ["dc"]);
+  assert.deepEqual((await searchPlaces(" dc ", "pt")).map((p) => p.id), ["dc"]);
+  assert.deepEqual(await searchPlaces("Bi", "pt"), []);
+  assert.deepEqual(await searchPlaces("D", "pt"), []);
+});

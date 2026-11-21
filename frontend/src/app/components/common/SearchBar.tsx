@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Place } from "../../services/placesService";
 import { MIN_SEARCH_CHARS, getRecentPlaces, searchPlaces } from "../../services/placesService";
+import { RoutePlannerModal } from "../map/RoutePlanner";
 import { MAX_SUGGESTIONS, searchDepartmentsAndCourses, suggestionHref, type Suggestion } from "../../services/searchService";
 
 type Item = { kind: "place"; key: string; place: Place } | { kind: "link"; key: string; suggestion: Suggestion };
@@ -20,6 +21,7 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
   const [recent, setRecent] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [planning, setPlanning] = useState(false);
   const latestQuery = useRef("");
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const input = useRef<HTMLInputElement>(null);
@@ -50,6 +52,8 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
     setActive(-1);
     latestQuery.current = value;
     clearTimeout(debounce.current);
+    // Abaixo de 3 caracteres as sugestões anteriores não valem mais: só a sigla exata, se houver, volta a aparecer.
+    if (value.trim().length < MIN_SEARCH_CHARS) setPlaces([]);
 
     searchPlaces(value, language).then(
       (found) => {
@@ -117,7 +121,8 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
   // FE-01.02: campo vazio não dispara busca nem abre a lista.
   const trimmed = query.trim();
   const showList = open && trimmed.length > 0;
-  const tooShort = trimmed.length < MIN_SEARCH_CHARS;
+  // Abaixo de 3 caracteres só vale a sigla exata de um local (searchPlaces); sem ela, pede mais letras.
+  const tooShort = trimmed.length < MIN_SEARCH_CHARS && places.length === 0;
 
   return (
     <div className="w-full max-w-2xl">
@@ -185,8 +190,10 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
           </div>
           <button
             type="button"
-            aria-label={t.search.myLocation}
-            title={t.search.myLocation}
+            aria-label={t.search.planRoute}
+            title={t.search.planRoute}
+            aria-haspopup="dialog"
+            onClick={() => setPlanning(true)}
             className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-yellow text-navy-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-navy-900"
           >
             <svg aria-hidden className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -224,6 +231,8 @@ export default function SearchBar({ onSelect, recentVersion = 0 }: { onSelect: (
           ))}
         </div>
       )}
+      {/* CT-038.04: o botão amarelo abre o traçado de rota (UC10) */}
+      <RoutePlannerModal open={planning} onClose={() => setPlanning(false)} />
     </div>
   );
 }
