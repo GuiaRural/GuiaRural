@@ -1,3 +1,12 @@
+# [1.4.0](https://github.com/GuiaRural/GuiaRural/compare/v1.3.0...v1.4.0) (2026-11-21)
+
+
+### Features
+
+* **db:** mensagens para a equipe (UC39) reaproveitam a tabela messages ([d688156](https://github.com/GuiaRural/GuiaRural/commit/d68815664d2e53ef7cbc56f57785984b0a757f90))
+* **mensagens:** API de mensagens para a equipe com retenção de 15 dias (UC39) ([b23cdf4](https://github.com/GuiaRural/GuiaRural/commit/b23cdf43a6c4e99d940e27f12633c582331e2591))
+* **mensagens:** tela pública Falar com a equipe e caixa de entrada do admin (UC39) ([4ca9480](https://github.com/GuiaRural/GuiaRural/commit/4ca9480bc4aac30eec0ebbf2da83814976e8684a))
+
 # [1.3.0](https://github.com/GuiaRural/GuiaRural/compare/v1.2.0...v1.3.0) (2026-11-21)
 
 
