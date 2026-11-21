@@ -16,6 +16,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 // Tudo que não está liberado aqui exige login (nega por padrão). Leitura do conteúdo do campus é pública;
 // escrever exige administrador com permissão "geral" ou "editor" ("leitura" só consulta).
@@ -58,7 +59,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers("/api/auth/login"))
+                        .ignoringRequestMatchers("/api/auth/login")
+                        .ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/messages")))
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .addFilterAfter(new AdminSessionRefreshFilter(adminRepository, securityContextRepository), SecurityContextHolderFilter.class)
                 .exceptionHandling(errors -> errors
@@ -68,6 +70,9 @@ public class SecurityConfig {
                     auth.requestMatchers("/actuator/health/**", "/error").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated();
+                    // UC39: o visitante manda mensagem para a equipe sem login. Só o POST é público; ler e marcar como lida
+                    // (GET/PATCH em /api/messages) caem nas regras abaixo.
+                    auth.requestMatchers(HttpMethod.POST, "/api/messages").permitAll();
                     auth.requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll();
                     // UC13: cadastrar, aprovar, mudar perfil e revogar administradores é só do perfil "geral". Vem antes
                     // do laço abaixo porque a primeira regra que casa é a que vale.
