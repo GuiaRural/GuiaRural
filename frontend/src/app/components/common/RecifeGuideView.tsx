@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useApi } from "../../hooks/useApi";
-import { getRecifeGuide, type GuideSpot } from "../../services/guideService";
+import { isSameFilter, matchesFilter, type RecifeFilter } from "../../lib/recifeFilter";
+import { getRecifeGuide, type GuideCategory, type GuideSpot } from "../../services/guideService";
 import Breadcrumb from "./Breadcrumb";
 import GuideCard from "./GuideCard";
 import GuideLoadError from "./GuideLoadError";
@@ -14,40 +15,31 @@ import PageFooter from "./PageFooter";
 
 const TIPS_ID = "dicas-rapidas";
 
-// Categoria = rótulo da etiqueta (tag) do lugar; lugares sem etiqueta ficam em "Outros".
-type CategoryFilter = { kind: "all" } | { kind: "tag"; label: string } | { kind: "other" };
-
-function matches(spot: GuideSpot, filter: CategoryFilter): boolean {
-  if (filter.kind === "all") return true;
-  if (filter.kind === "other") return spot.tag === null;
-  return spot.tag?.label === filter.label;
-}
-
-function FilteredSpots({ spots }: { spots: GuideSpot[] }) {
+function FilteredSpots({ categories, spots }: { categories: GuideCategory[]; spots: GuideSpot[] }) {
   const { t } = useLanguage();
-  const [filter, setFilter] = useState<CategoryFilter>({ kind: "all" });
+  const [filter, setFilter] = useState<RecifeFilter>({ kind: "all" });
 
-  const labels = [...new Set(spots.flatMap((spot) => (spot.tag ? [spot.tag.label] : [])))];
-  const hasUntagged = spots.some((spot) => spot.tag === null);
-  const visible = spots.filter((spot) => matches(spot, filter));
+  const hasUncategorized = spots.some((spot) => spot.category === null);
+  const visible = spots.filter((spot) => matchesFilter(spot, filter));
 
-  const options: { filter: CategoryFilter; label: string }[] = [
-    { filter: { kind: "all" }, label: t.guide.filterAll },
-    ...labels.map((label) => ({ filter: { kind: "tag", label } as const, label })),
-    ...(hasUntagged ? [{ filter: { kind: "other" } as const, label: t.guide.filterOther }] : []),
+  const options: { filter: RecifeFilter; key: string; label: string }[] = [
+    { filter: { kind: "all" }, key: "all", label: t.guide.filterAll },
+    ...categories.map((category) => ({
+      filter: { kind: "category", slug: category.slug } as const,
+      key: `category:${category.slug}`,
+      label: category.label,
+    })),
+    ...(hasUncategorized ? [{ filter: { kind: "other" } as const, key: "other", label: t.guide.filterOther }] : []),
   ];
-
-  const isActive = (option: CategoryFilter) =>
-    option.kind === filter.kind && (option.kind !== "tag" || (filter.kind === "tag" && option.label === filter.label));
 
   return (
     <>
       <div role="group" aria-label={t.guide.filterLabel} className="mt-6 flex flex-wrap gap-2">
         {options.map((option) => {
-          const active = isActive(option.filter);
+          const active = isSameFilter(option.filter, filter);
           return (
             <button
-              key={`${option.filter.kind}:${option.label}`}
+              key={option.key}
               type="button"
               aria-pressed={active}
               onClick={() => setFilter(option.filter)}
@@ -107,8 +99,8 @@ export default function RecifeGuideView() {
         {state.status === "loading" && <p role="status" className="mt-6 text-sm text-slate-600">{t.common.loading}</p>}
         {state.status === "ready" && (
           <>
-            {/* A key troca o filtro ao mudar o idioma: os rótulos das categorias mudam junto. */}
-            <FilteredSpots key={language} spots={state.data.spots} />
+            {/* A key volta o filtro para "Todas" ao mudar o idioma, que refaz a busca das categorias. */}
+            <FilteredSpots key={language} categories={state.data.categories} spots={state.data.spots} />
             <GuideTipsSection
               id={TIPS_ID}
               title={t.guide.tipsTitle}

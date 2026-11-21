@@ -18,6 +18,8 @@ export type GuideSpot = {
   title: string;
   address: string | null;
   description: string;
+  // Slug de uma das categorias do guia (RecifeGuide.categories); nulo = sem categoria.
+  category: string | null;
   tag: { label: string; tone: "red" | "navy" | "olive" } | null;
   badge: { label: string; tone: "free" | "highlight" } | null;
   distance: { label: string; icon: IconName } | null;
@@ -42,7 +44,11 @@ export type GuideSupport = {
   cta: { label: string; href: string } | null;
 };
 
+export type GuideCategory = { slug: string; label: string };
+
 export type RecifeGuide = {
+  // Lista fixa, na ordem do servidor; uma categoria pode não ter nenhum lugar.
+  categories: GuideCategory[];
   spots: GuideSpot[];
   tips: GuideTip[];
   support: GuideSupport | null;
