@@ -67,7 +67,7 @@ class GuideControllerTest {
     @Test
     @DisplayName("Deve usar o português quando lang não é informado ou não é suportado")
     void shouldDefaultToPortuguese() throws Exception {
-        when(resourceService.findRecifeGuide(Language.PT)).thenReturn(new RecifeGuideDTO(List.of(), List.of(), null));
+        when(resourceService.findRecifeGuide(Language.PT)).thenReturn(new RecifeGuideDTO(List.of(), List.of(), List.of(), null));
 
         mockMvc.perform(get("/api/guide/recife")).andExpect(status().isOk());
         mockMvc.perform(get("/api/guide/recife").param("lang", "fr")).andExpect(status().isOk());

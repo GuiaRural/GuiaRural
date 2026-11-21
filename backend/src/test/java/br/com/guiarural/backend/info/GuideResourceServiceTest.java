@@ -5,12 +5,14 @@ import br.com.guiarural.backend.info.dto.GuideSpotDTO;
 import br.com.guiarural.backend.info.dto.RecifeGuideDTO;
 import br.com.guiarural.backend.info.model.GuideContactEntity;
 import br.com.guiarural.backend.info.model.GuideDownloadEntity;
+import br.com.guiarural.backend.info.model.GuideSpotCategoryEntity;
 import br.com.guiarural.backend.info.model.GuideSpotEntity;
 import br.com.guiarural.backend.info.model.GuideSupportBannerEntity;
 import br.com.guiarural.backend.info.model.GuideTipEntity;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.info.repository.GuideContactRepository;
 import br.com.guiarural.backend.info.repository.GuideDownloadRepository;
+import br.com.guiarural.backend.info.repository.GuideSpotCategoryRepository;
 import br.com.guiarural.backend.info.repository.GuideSpotRepository;
 import br.com.guiarural.backend.info.repository.GuideSupportBannerRepository;
 import br.com.guiarural.backend.info.repository.GuideTipRepository;
@@ -28,12 +30,15 @@ import java.util.Optional;
 import static br.com.guiarural.backend.info.GuideTestData.entity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GuideResourceServiceTest {
     @Mock
     private GuideSpotRepository spotRepository;
+    @Mock
+    private GuideSpotCategoryRepository categoryRepository;
     @Mock
     private GuideTipRepository tipRepository;
     @Mock
@@ -44,7 +49,7 @@ class GuideResourceServiceTest {
     private GuideDownloadRepository downloadRepository;
 
     private GuideResourceService service() {
-        return new GuideResourceService(spotRepository, tipRepository, bannerRepository, contactRepository,
+        return new GuideResourceService(spotRepository, categoryRepository, tipRepository, bannerRepository, contactRepository,
                 downloadRepository, JsonMapper.builder().build());
     }
 
@@ -80,6 +85,35 @@ class GuideResourceServiceTest {
         // Sem tradução da descrição, usa o português; endereço não se traduz.
         assertEquals("Descrição em português", dto.description());
         assertEquals("Alto da Sé", dto.address());
+    }
+
+    private GuideSpotCategoryEntity category(long id, String slug, String labelPt, String labelEn) {
+        return entity(GuideSpotCategoryEntity.class, "id", id, "slug", slug, "labelPt", labelPt, "labelEn", labelEn);
+    }
+
+    @Test
+    @DisplayName("Deve devolver todas as categorias, até as sem lugar, e ligar cada lugar à sua categoria (CT-040.04)")
+    void shouldReturnFixedCategoriesIncludingEmptyOnes() {
+        GuideSpotEntity inCategory = entity(GuideSpotEntity.class, "slug", "olinda", "titlePt", "Olinda",
+                "descriptionPt", "d", "categoryId", 1L);
+        GuideSpotEntity withoutCategory = entity(GuideSpotEntity.class, "slug", "outro", "titlePt", "Outro",
+                "descriptionPt", "d");
+        when(categoryRepository.findAllByOrderByPositionAsc()).thenReturn(List.of(
+                category(1L, "historia-cultura", "História & Cultura", "History & Culture"),
+                category(5L, "gastronomia", "Gastronomia", null)));
+        when(spotRepository.findAllByOrderByPositionAsc()).thenReturn(List.of(inCategory, withoutCategory));
+        when(tipRepository.findAllByOrderByPositionAsc()).thenReturn(List.of());
+        when(bannerRepository.findBySlug("recife")).thenReturn(Optional.empty());
+
+        RecifeGuideDTO en = service().findRecifeGuide(Language.EN);
+
+        assertEquals(2, en.categories().size());
+        assertEquals("History & Culture", en.categories().get(0).label());
+        // Sem tradução, cai para o português.
+        assertEquals("Gastronomia", en.categories().get(1).label());
+        assertEquals("historia-cultura", en.spots().get(0).category());
+        assertNull(en.spots().get(1).category());
+        assertTrue(en.spots().stream().noneMatch(spot -> "gastronomia".equals(spot.category())));
     }
 
     @Test

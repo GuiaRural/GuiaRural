@@ -47,6 +47,8 @@ public class GuideSpotEntity {
     // jsonb lido como texto; o service o converte em JSON de verdade na resposta.
     @JdbcTypeCode(SqlTypes.JSON)
     private String detailsEs;
+    // Categoria do filtro do Guia de Recife; nulo = sem categoria ("Outros" na tela).
+    private Long categoryId;
     private int position;
 
     protected GuideSpotEntity() {
@@ -166,6 +168,10 @@ public class GuideSpotEntity {
 
     public String getDetailsEs() {
         return detailsEs;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
     }
 
     public int getPosition() {

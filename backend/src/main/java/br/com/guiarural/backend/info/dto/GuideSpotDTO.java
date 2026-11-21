@@ -7,6 +7,8 @@ public record GuideSpotDTO(
         String title,
         String address,
         String description,
+        // Slug da categoria do filtro; nulo = sem categoria.
+        String category,
         ToneLabelDTO tag,
         ToneLabelDTO badge,
         DistanceDTO distance,
