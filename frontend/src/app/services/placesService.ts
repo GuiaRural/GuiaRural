@@ -144,8 +144,10 @@ const RECENT_KEY = "guiarural.recentPlaces";
 const SAVED_KEY = "guiarural.savedPlaces";
 const MAX_RECENT = 4;
 
-// RN-01.03: sugestões só a partir de 3 caracteres.
+// RN-01.03: sugestões a partir de 3 caracteres, ou de 2 quando o termo é exatamente a sigla de um local
+// publicado (CT-007.05: "DC"). "Bi" não é sigla e continua pedindo 3 (CT-001.02).
 export const MIN_SEARCH_CHARS = 3;
+export const MIN_ACRONYM_CHARS = 2;
 
 function normalize(text: string) {
   return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -163,7 +165,11 @@ const matches = (place: Place | undefined, q: string) =>
 // de qualquer jeito (a lista em português é buscada uma vez por sessão).
 export async function searchPlaces(query: string, language: Language = "pt"): Promise<Place[]> {
   const q = normalize(query.trim());
-  if (q.length < MIN_SEARCH_CHARS) return [];
+  if (q.length < MIN_ACRONYM_CHARS) return [];
+  if (q.length < MIN_SEARCH_CHARS) {
+    // A sigla não muda com o idioma: basta a lista da tela.
+    return (await getPublicPlaces(language)).filter((p) => normalize(p.shortName) === q).slice(0, 5);
+  }
   const [shown, portuguese] = await Promise.all([
     getPublicPlaces(language),
     language === "pt" ? Promise.resolve<Place[]>([]) : getPublicPlaces("pt"),
