@@ -58,7 +58,7 @@ class PlaceServiceTest {
 
     private PlaceService placeService() {
         return new PlaceService(placeRepository, photoRepository,
-                new PlaceAssembler(contactRepository, serviceRepository, courseRepository, photoRepository));
+                new PlaceAssembler(contactRepository, serviceRepository, courseRepository, photoRepository, departmentRepository));
     }
 
     private PlaceEntity place(Long id, String slug, String status) {
@@ -83,6 +83,27 @@ class PlaceServiceTest {
         assertEquals(1, result.size());
         assertEquals("reitoria", result.get(0).slug());
         assertEquals(-8.0142355, result.get(0).latitude());
+    }
+
+    @Test
+    @DisplayName("CT-037.01: o local traz os departamentos ativos que funcionam nele, no idioma pedido")
+    void shouldLinkPlaceToItsDepartments() {
+        PlaceEntity dc = place(7L, "dc", "publicado");
+        DepartmentEntity computing = new DepartmentEntity();
+        computing.setId(3L);
+        computing.setName("Departamento de Computação");
+        computing.setNameEn("Department of Computing");
+        computing.setPlaceId(7L);
+        when(placeRepository.findByStatusOrderByNameAsc("publicado")).thenReturn(List.of(dc, place(8L, "ru", "publicado")));
+        when(departmentRepository.findByPlaceIdInAndActiveTrueOrderByNameAsc(List.of(7L, 8L))).thenReturn(List.of(computing));
+
+        List<PlaceResponseDTO> pt = placeService().findPublished(Language.PT);
+        assertEquals(1, pt.get(0).departments().size());
+        assertEquals(3L, pt.get(0).departments().get(0).id());
+        assertEquals("Departamento de Computação", pt.get(0).departments().get(0).name());
+        assertTrue(pt.get(1).departments().isEmpty());
+
+        assertEquals("Department of Computing", placeService().findPublished(Language.EN).get(0).departments().get(0).name());
     }
 
     @Test

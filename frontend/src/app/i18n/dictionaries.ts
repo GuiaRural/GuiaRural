@@ -84,6 +84,7 @@ export type Dictionary = {
     save: string;
     saved: string;
     hoursTo: string;
+    coursesAndDepartments: string;
   };
   placePage: {
     backToMap: string;
@@ -99,6 +100,7 @@ export type Dictionary = {
     services: string;
     noServices: string;
     courses: string;
+    departments: string;
     share: string;
     linkCopied: string;
     address: string;
@@ -231,7 +233,10 @@ export type Dictionary = {
     notFoundTitle: string;
     notFoundText: string;
     backToList: string;
-    backToDepartment: string;
+    breadcrumbLabel: string;
+    filterLabel: string;
+    filterPlaceholder: string;
+    filterEmpty: string;
     viewDepartment: string;
     about: string;
     foundedIn: string;
@@ -373,6 +378,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Salvar local",
       saved: "Local salvo",
       hoursTo: "às",
+      coursesAndDepartments: "Cursos e departamentos",
     },
     placePage: {
       backToMap: "Voltar ao mapa interativo",
@@ -388,6 +394,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Serviços no local",
       noServices: "Nenhum serviço cadastrado neste local.",
       courses: "Cursos neste local",
+      departments: "Departamentos neste local",
       share: "Compartilhar",
       linkCopied: "Link copiado",
       address: "Endereço",
@@ -530,7 +537,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "Não encontramos esta página",
       notFoundText: "O departamento ou curso não existe ou não está mais disponível.",
       backToList: "Cursos e departamentos",
-      backToDepartment: "Voltar ao departamento",
+      breadcrumbLabel: "Trilha de navegação",
+      filterLabel: "Filtrar cursos e departamentos",
+      filterPlaceholder: "Filtrar por curso, departamento ou sigla",
+      filterEmpty: "Nenhum curso encontrado.",
       viewDepartment: "Ver departamento",
       about: "Sobre o departamento",
       foundedIn: "Fundado em",
@@ -677,6 +687,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Save place",
       saved: "Place saved",
       hoursTo: "to",
+      coursesAndDepartments: "Courses and departments",
     },
     placePage: {
       backToMap: "Back to interactive map",
@@ -692,6 +703,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Services here",
       noServices: "No services registered at this place.",
       courses: "Courses held here",
+      departments: "Departments in this building",
       share: "Share",
       linkCopied: "Link copied",
       address: "Address",
@@ -834,7 +846,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "We could not find this page",
       notFoundText: "The department or course does not exist or is no longer available.",
       backToList: "Courses and departments",
-      backToDepartment: "Back to the department",
+      breadcrumbLabel: "Breadcrumb",
+      filterLabel: "Filter courses and departments",
+      filterPlaceholder: "Filter by course, department or acronym",
+      filterEmpty: "No courses found.",
       viewDepartment: "View department",
       about: "About the department",
       foundedIn: "Founded in",
@@ -981,6 +996,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       save: "Guardar lugar",
       saved: "Lugar guardado",
       hoursTo: "a",
+      coursesAndDepartments: "Cursos y departamentos",
     },
     placePage: {
       backToMap: "Volver al mapa interactivo",
@@ -996,6 +1012,7 @@ export const dictionaries: Record<Language, Dictionary> = {
       services: "Servicios en el lugar",
       noServices: "No hay servicios registrados en este lugar.",
       courses: "Cursos en este lugar",
+      departments: "Departamentos en este lugar",
       share: "Compartir",
       linkCopied: "Enlace copiado",
       address: "Dirección",
@@ -1138,7 +1155,10 @@ export const dictionaries: Record<Language, Dictionary> = {
       notFoundTitle: "No encontramos esta página",
       notFoundText: "El departamento o curso no existe o ya no está disponible.",
       backToList: "Cursos y departamentos",
-      backToDepartment: "Volver al departamento",
+      breadcrumbLabel: "Ruta de navegación",
+      filterLabel: "Filtrar cursos y departamentos",
+      filterPlaceholder: "Filtrar por curso, departamento o sigla",
+      filterEmpty: "No se encontraron cursos.",
       viewDepartment: "Ver departamento",
       about: "Sobre el departamento",
       foundedIn: "Fundado en",
