@@ -1,3 +1,24 @@
+# [1.3.0](https://github.com/GuiaRural/GuiaRural/compare/v1.2.0...v1.3.0) (2026-11-21)
+
+
+### Bug Fixes
+
+* **frontend:** busca aceita a sigla exata de 2 letras de um local publicado (CT-007.05) ([09e11dd](https://github.com/GuiaRural/GuiaRural/commit/09e11dd3a1879c0175388a751f4276bfd864184b))
+* **frontend:** tela de duplicar cardápio diz de qual cardápio veio a cópia e pede a nova data (CT-025.03) ([37231cb](https://github.com/GuiaRural/GuiaRural/commit/37231cbbb00cf5e8cf23de5ef943d8f569ac7857))
+
+
+### Features
+
+* **backend:** departamentos que funcionam no local no PlaceResponseDTO (CT-037.01) ([343bad6](https://github.com/GuiaRural/GuiaRural/commit/343bad6fa9f09a870b2ae3d2636ec947c34b9743))
+* **db:** categorias fixas do Guia de Recife (CT-040.04) ([a55b6ca](https://github.com/GuiaRural/GuiaRural/commit/a55b6ca66dedeabc906c5d9dcd22f40a1c2ee9dc))
+* **frontend:** ação Editar descrição na lista de locais do painel (UC28) ([c67d98b](https://github.com/GuiaRural/GuiaRural/commit/c67d98b5119a5067646a2764dbd8125abedacfa2))
+* **frontend:** botão amarelo da busca abre o traçado de rota com destino e origem (CT-038.04) ([87e6fce](https://github.com/GuiaRural/GuiaRural/commit/87e6fce8f46172d4fd56e0ceb60cbc2a86079025))
+* **frontend:** filtro de cursos e departamentos em /cursos e trilha na página do curso (CT-008.02, CT-008.04) ([2ba567e](https://github.com/GuiaRural/GuiaRural/commit/2ba567e04764aa0327fad3375618985ffb4fa58e))
+* **frontend:** link do local para o departamento e os cursos no cartão e na página (CT-037.01) ([70eeb81](https://github.com/GuiaRural/GuiaRural/commit/70eeb817bcf88902742284d94eebdc59ca2c4b9f))
+* **guia:** /api/guide/recife devolve as categorias e a categoria de cada local ([941e0b8](https://github.com/GuiaRural/GuiaRural/commit/941e0b8d25a274d2decda755c59dcd66df5b1c5c))
+* **guia:** filtro do Guia de Recife usa as categorias fixas do servidor ([907a750](https://github.com/GuiaRural/GuiaRural/commit/907a750fffd4f8b859337660fb5af29033deaab9))
+* **guia:** filtro por categoria no Guia de Recife (CT-040.02) ([6fa2a55](https://github.com/GuiaRural/GuiaRural/commit/6fa2a55ed2c5a528de40054c776403129dfe83ae))
+
 # [1.2.0](https://github.com/GuiaRural/GuiaRural/compare/v1.1.0...v1.2.0) (2026-11-15)
 
 
