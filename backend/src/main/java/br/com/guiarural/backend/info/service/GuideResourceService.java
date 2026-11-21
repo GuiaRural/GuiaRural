@@ -1,6 +1,7 @@
 package br.com.guiarural.backend.info.service;
 
 import br.com.guiarural.backend.info.dto.ContactDTO;
+import br.com.guiarural.backend.info.dto.GuideCategoryDTO;
 import br.com.guiarural.backend.info.dto.DistanceDTO;
 import br.com.guiarural.backend.info.dto.DownloadDTO;
 import br.com.guiarural.backend.info.dto.GuideResourcesDTO;
@@ -13,12 +14,14 @@ import br.com.guiarural.backend.info.dto.SupportBannerDTO;
 import br.com.guiarural.backend.info.dto.ToneLabelDTO;
 import br.com.guiarural.backend.info.model.GuideContactEntity;
 import br.com.guiarural.backend.info.model.GuideDownloadEntity;
+import br.com.guiarural.backend.info.model.GuideSpotCategoryEntity;
 import br.com.guiarural.backend.info.model.GuideSpotEntity;
 import br.com.guiarural.backend.info.model.GuideSupportBannerEntity;
 import br.com.guiarural.backend.info.model.GuideTipEntity;
 import br.com.guiarural.backend.info.model.Language;
 import br.com.guiarural.backend.info.repository.GuideContactRepository;
 import br.com.guiarural.backend.info.repository.GuideDownloadRepository;
+import br.com.guiarural.backend.info.repository.GuideSpotCategoryRepository;
 import br.com.guiarural.backend.info.repository.GuideSpotRepository;
 import br.com.guiarural.backend.info.repository.GuideSupportBannerRepository;
 import br.com.guiarural.backend.info.repository.GuideTipRepository;
@@ -28,6 +31,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class GuideResourceService {
@@ -37,6 +42,7 @@ public class GuideResourceService {
     private static final String RECIFE_BANNER = "recife";
 
     private final GuideSpotRepository spotRepository;
+    private final GuideSpotCategoryRepository categoryRepository;
     private final GuideTipRepository tipRepository;
     private final GuideSupportBannerRepository bannerRepository;
     private final GuideContactRepository contactRepository;
@@ -44,12 +50,14 @@ public class GuideResourceService {
     private final JsonMapper jsonMapper;
 
     public GuideResourceService(GuideSpotRepository spotRepository,
+                                GuideSpotCategoryRepository categoryRepository,
                                 GuideTipRepository tipRepository,
                                 GuideSupportBannerRepository bannerRepository,
                                 GuideContactRepository contactRepository,
                                 GuideDownloadRepository downloadRepository,
                                 JsonMapper jsonMapper) {
         this.spotRepository = spotRepository;
+        this.categoryRepository = categoryRepository;
         this.tipRepository = tipRepository;
         this.bannerRepository = bannerRepository;
         this.contactRepository = contactRepository;
@@ -59,8 +67,15 @@ public class GuideResourceService {
 
     @Transactional(readOnly = true)
     public RecifeGuideDTO findRecifeGuide(Language language) {
+        List<GuideSpotCategoryEntity> categoryEntities = categoryRepository.findAllByOrderByPositionAsc();
+        Map<Long, String> categorySlugs = categoryEntities.stream()
+                .collect(Collectors.toMap(GuideSpotCategoryEntity::getId, GuideSpotCategoryEntity::getSlug));
+        List<GuideCategoryDTO> categories = categoryEntities.stream()
+                .map(category -> new GuideCategoryDTO(category.getSlug(),
+                        language.pick(category.getLabelPt(), category.getLabelEn(), category.getLabelEs())))
+                .toList();
         List<GuideSpotDTO> spots = spotRepository.findAllByOrderByPositionAsc().stream()
-                .map(spot -> toSpot(spot, language))
+                .map(spot -> toSpot(spot, categorySlugs.get(spot.getCategoryId()), language))
                 .toList();
         List<GuideTipDTO> tips = tipRepository.findAllByOrderByPositionAsc().stream()
                 .map(tip -> toTip(tip, language))
@@ -68,7 +83,7 @@ public class GuideResourceService {
         SupportBannerDTO support = bannerRepository.findBySlug(RECIFE_BANNER)
                 .map(banner -> toBanner(banner, language))
                 .orElse(null);
-        return new RecifeGuideDTO(spots, tips, support);
+        return new RecifeGuideDTO(categories, spots, tips, support);
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +119,7 @@ public class GuideResourceService {
         );
     }
 
-    private GuideSpotDTO toSpot(GuideSpotEntity spot, Language language) {
+    private GuideSpotDTO toSpot(GuideSpotEntity spot, String category, Language language) {
         ToneLabelDTO tag = spot.getTagLabelPt() == null ? null : new ToneLabelDTO(
                 language.pick(spot.getTagLabelPt(), spot.getTagLabelEn(), spot.getTagLabelEs()), spot.getTagTone());
         ToneLabelDTO badge = spot.getBadgeLabelPt() == null ? null : new ToneLabelDTO(
@@ -119,6 +134,7 @@ public class GuideResourceService {
                 language.pick(spot.getTitlePt(), spot.getTitleEn(), spot.getTitleEs()),
                 spot.getAddress(),
                 language.pick(spot.getDescriptionPt(), spot.getDescriptionEn(), spot.getDescriptionEs()),
+                category,
                 tag,
                 badge,
                 distance,
