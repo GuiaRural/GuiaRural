@@ -34,6 +34,7 @@ const NAV: { title?: string; items: NavItem[] }[] = [
   {
     title: "Gestão",
     items: [
+      { href: "/admin/mensagens", label: "Mensagens recebidas" },
       { href: "/admin/administradores", label: "Administradores" },
       { href: "/admin/historico", label: "Histórico de mudanças" },
     ],

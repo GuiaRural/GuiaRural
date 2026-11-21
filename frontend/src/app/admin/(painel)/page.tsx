@@ -14,6 +14,7 @@ const SHORTCUTS = [
   { href: "/admin/avisos", title: "Avisos do campus", text: "Publicar, editar e remover avisos." },
   { href: "/admin/servicos", title: "Serviços", text: "Cadastrar serviços estudantis, passo a passo e editais." },
   { href: "/admin/acolhimento/cultura", title: "Acolhimento", text: "Editar cartilhas e traduções PT / EN / ES." },
+  { href: "/admin/mensagens", title: "Mensagens recebidas", text: "Ler o que os estudantes enviaram para a equipe." },
   { href: "/admin/administradores", title: "Administradores", text: "Quem tem acesso ao painel." },
   { href: "/admin/historico", title: "Logs de mudanças / Histórico", text: "Auditar e desfazer alterações." },
 ];

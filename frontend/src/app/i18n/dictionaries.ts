@@ -192,6 +192,28 @@ export type Dictionary = {
     retry: string;
     portugueseOnly: string;
   };
+  contact: {
+    title: string;
+    subtitle: string;
+    privacy: string;
+    nameLabel: string;
+    contactLabel: string;
+    contactHint: string;
+    messageLabel: string;
+    messageHint: string;
+    submit: string;
+    sending: string;
+    successTitle: string;
+    successText: string;
+    sendAnother: string;
+    errors: {
+      messageRequired: string;
+      contactInvalid: string;
+      tooLong: string;
+      rateLimited: string;
+      generic: string;
+    };
+  };
   services: {
     title: string;
     subtitle: string;
@@ -500,6 +522,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       error: "Não foi possível carregar os avisos.",
       retry: "Tentar novamente",
       portugueseOnly: "",
+    },
+    contact: {
+      title: "Falar com a equipe",
+      subtitle: "Tem uma dúvida, uma sugestão ou encontrou um problema? Escreva para a equipe do GuiaRural.",
+      privacy: "Nome e contato são opcionais: informe o contato só se quiser receber uma resposta. Não pedimos login e não guardamos nada além do que você escrever aqui. As mensagens são apagadas automaticamente após 15 dias.",
+      nameLabel: "Nome (opcional)",
+      contactLabel: "Telefone ou e-mail (opcional)",
+      contactHint: "Com DDD, se for telefone. Serve apenas para a equipe poder responder.",
+      messageLabel: "Mensagem",
+      messageHint: "caracteres",
+      submit: "Enviar mensagem",
+      sending: "Enviando...",
+      successTitle: "Mensagem enviada",
+      successText: "Obrigado! A equipe vai ler a sua mensagem.",
+      sendAnother: "Enviar outra mensagem",
+      errors: {
+        messageRequired: "Escreva a mensagem antes de enviar.",
+        contactInvalid: "Preencha o campo de telefone ou e-mail corretamente, ou deixe-o em branco.",
+        tooLong: "Texto longo demais. Reduza o tamanho e tente de novo.",
+        rateLimited: "Muitas mensagens em pouco tempo. Tente novamente em alguns minutos.",
+        generic: "Não foi possível enviar a mensagem. Tente novamente.",
+      },
     },
     services: {
       title: "Serviços",
@@ -819,6 +863,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       retry: "Try again",
       portugueseOnly: "Notices are published in Portuguese.",
     },
+    contact: {
+      title: "Contact the team",
+      subtitle: "Have a question, a suggestion or found a problem? Write to the GuiaRural team.",
+      privacy: "Name and contact are optional: only give a contact if you want a reply. We do not ask you to log in and we keep nothing beyond what you write here. Messages are automatically deleted after 15 days.",
+      nameLabel: "Name (optional)",
+      contactLabel: "Phone or e-mail (optional)",
+      contactHint: "Include the area code for a phone number. It is only used so the team can reply.",
+      messageLabel: "Message",
+      messageHint: "characters",
+      submit: "Send message",
+      sending: "Sending...",
+      successTitle: "Message sent",
+      successText: "Thank you! The team will read your message.",
+      sendAnother: "Send another message",
+      errors: {
+        messageRequired: "Write your message before sending.",
+        contactInvalid: "Enter a valid phone number or e-mail, or leave the field empty.",
+        tooLong: "Text is too long. Shorten it and try again.",
+        rateLimited: "Too many messages in a short time. Please try again in a few minutes.",
+        generic: "The message could not be sent. Please try again.",
+      },
+    },
     services: {
       title: "Services",
       subtitle: "UFRPE student services: how to apply, requirements, deadlines and official links.",
@@ -1136,6 +1202,28 @@ export const dictionaries: Record<Language, Dictionary> = {
       error: "No fue posible cargar los avisos.",
       retry: "Intentar de nuevo",
       portugueseOnly: "Los avisos se publican en portugués.",
+    },
+    contact: {
+      title: "Hablar con el equipo",
+      subtitle: "¿Tienes una duda, una sugerencia o encontraste un problema? Escribe al equipo de GuiaRural.",
+      privacy: "El nombre y el contacto son opcionales: indica un contacto solo si quieres recibir respuesta. No pedimos inicio de sesión y no guardamos nada más que lo que escribas aquí. Los mensajes se eliminan automáticamente después de 15 días.",
+      nameLabel: "Nombre (opcional)",
+      contactLabel: "Teléfono o correo electrónico (opcional)",
+      contactHint: "Con código de área si es un teléfono. Solo sirve para que el equipo pueda responder.",
+      messageLabel: "Mensaje",
+      messageHint: "caracteres",
+      submit: "Enviar mensaje",
+      sending: "Enviando...",
+      successTitle: "Mensaje enviado",
+      successText: "¡Gracias! El equipo leerá tu mensaje.",
+      sendAnother: "Enviar otro mensaje",
+      errors: {
+        messageRequired: "Escribe el mensaje antes de enviar.",
+        contactInvalid: "Introduce un teléfono o correo electrónico válido, o deja el campo vacío.",
+        tooLong: "Texto demasiado largo. Acórtalo e inténtalo de nuevo.",
+        rateLimited: "Demasiados mensajes en poco tiempo. Inténtalo de nuevo en unos minutos.",
+        generic: "No se pudo enviar el mensaje. Inténtalo de nuevo.",
+      },
     },
     services: {
       title: "Servicios",
