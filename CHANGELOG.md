@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/GuiaRural/GuiaRural/compare/v1.4.0...v1.4.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **frontend:** remove o badge fixo "3" do menu Avisos do campus (CT-003.02, CT-018.04) ([acdb21a](https://github.com/GuiaRural/GuiaRural/commit/acdb21abe91c392e3a42c2da90dc6906307b5817))
+
 # [1.4.0](https://github.com/GuiaRural/GuiaRural/compare/v1.3.0...v1.4.0) (2026-11-21)
 
 
