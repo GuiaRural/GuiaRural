@@ -61,7 +61,7 @@ public class AdminService {
         if (dto.password().getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
             throw new BadRequestException("A senha é longa demais.");
         }
-        String status = IT_SECTOR.equals(author.sector()) ? ACTIVE : PENDING;
+        String status = normalizeSector(author.sector()).equals(normalizeSector(IT_SECTOR)) ? ACTIVE : PENDING;
         AdminEntity admin = new AdminEntity(dto.name().trim(), email, dto.sector().trim(), dto.permission(), status,
                 encoder.encode(dto.password()));
         try {
@@ -117,5 +117,11 @@ public class AdminService {
 
     private static boolean isActiveGeneral(String status, String permission) {
         return ACTIVE.equals(status) && GERAL.equals(permission);
+    }
+
+    private static String normalizeSector(String sector) {
+        return sector == null ? "" : sector.trim()
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
     }
 }

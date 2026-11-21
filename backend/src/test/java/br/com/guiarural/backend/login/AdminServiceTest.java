@@ -94,6 +94,15 @@ class AdminServiceTest {
     }
 
     @Test
+    void create_PelaCoordenacaoDeTi_ComEspacosOuMaiusculas_NasceAtivo() {
+        giveIdOnSave();
+        AdminPrincipal author = new AdminPrincipal(1L, "Coordenação", "coord.ti@ufrpe.br",
+                "  COORDENAÇÃO   DE TI  ", "geral");
+
+        assertEquals("ativo", service.create(request("maria@ufrpe.br"), author).status());
+    }
+
+    @Test
     void create_EmailForaDoDominio_Recusa() {
         BadRequestException error = assertThrows(BadRequestException.class, () -> service.create(request("maria@gmail.com"), TI));
         assertEquals("O e-mail deve pertencer ao domínio institucional @ufrpe.br.", error.getMessage());

@@ -37,6 +37,10 @@ function normalize(text: string) {
   return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 }
 
+function normalizeSector(text: string) {
+  return normalize(text).trim().replace(/\s+/g, " ");
+}
+
 // UC13 — Cadastrar Administrador (lista + modal)
 export default function AdminsPage() {
   const { session } = useAdmin();
@@ -388,7 +392,7 @@ function NewAdminForm({
           {summary}
         </p>
       )}
-      {authorSector !== IT_SECTOR && (
+      {normalizeSector(authorSector) !== normalizeSector(IT_SECTOR) && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
           Cadastros feitos por setores diferentes da Coordenação de TI ficam com status &quot;Aguardando aprovação&quot;.
         </p>

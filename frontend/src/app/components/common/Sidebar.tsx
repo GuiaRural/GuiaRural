@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Dictionary } from "../../i18n/dictionaries";
+import { useApi } from "../../hooks/useApi";
+import { listAvisos } from "../../services/avisosService";
 
 type NavKey = keyof Dictionary["sidebar"];
 type Item = { key: NavKey; href: string; badge?: string; sub?: boolean };
@@ -13,7 +15,7 @@ const NAV: Item[] = [
   { key: "stops", href: "/portarias-e-paradas", sub: true },
   { key: "eat", href: "/onde-comer", sub: true },
   { key: "study", href: "/espacos-de-estudo", sub: true },
-  { key: "notices", href: "/avisos", badge: "3" },
+  { key: "notices", href: "/avisos" },
   { key: "courses", href: "/cursos" },
   { key: "services", href: "/servicos" },
   { key: "weeklyMenu", href: "/cardapio", sub: true },
@@ -30,7 +32,17 @@ const SUPPORT: Item[] = [
   { key: "admin", href: "/admin" },
 ];
 
-function NavGroup({ items, current, onNavigate }: { items: Item[]; current: string; onNavigate: () => void }) {
+function NavGroup({
+  items,
+  current,
+  onNavigate,
+  noticeCount,
+}: {
+  items: Item[];
+  current: string;
+  onNavigate: () => void;
+  noticeCount?: number;
+}) {
   const { t } = useLanguage();
   return (
     <ul className="space-y-0.5">
@@ -47,13 +59,13 @@ function NavGroup({ items, current, onNavigate }: { items: Item[]; current: stri
               } ${active ? "border-l-4 border-slate-300 bg-navy-700 font-semibold" : "hover:bg-white/10"}`}
             >
               <span>{t.sidebar[item.key]}</span>
-              {item.badge && (
+              {(item.badge || (item.key === "notices" && noticeCount)) && (
                 <span
                   className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                     item.badge === "GPS" ? "bg-brand-yellow text-navy-900" : "bg-red-600 text-white"
                   }`}
                 >
-                  {item.badge}
+                  {item.badge ?? noticeCount}
                 </span>
               )}
             </Link>
@@ -75,6 +87,8 @@ function SectionTitle({ children }: { children: string }) {
 export default function Sidebar({ id, open, onClose }: { id: string; open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
   const pathname = usePathname();
+  const notices = useApi(listAvisos, null);
+  const noticeCount = notices.status === "ready" ? notices.data.length : undefined;
 
   return (
     <>
@@ -102,7 +116,7 @@ export default function Sidebar({ id, open, onClose }: { id: string; open: boole
           <p className="border-t border-white/10 px-3 pt-3 text-xs text-slate-400">v2 · Dois Irmãos</p>
           <p className="mt-5 px-3 text-xs text-slate-400">{t.sidebar.cityLabel}</p>
           <div className="mt-2">
-            <NavGroup items={NAV} current={pathname} onNavigate={onClose} />
+            <NavGroup items={NAV} current={pathname} onNavigate={onClose} noticeCount={noticeCount} />
           </div>
           <SectionTitle>{t.sidebar.welcomeSection}</SectionTitle>
           <NavGroup items={WELCOME} current={pathname} onNavigate={onClose} />

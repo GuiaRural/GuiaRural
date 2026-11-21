@@ -84,7 +84,11 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
       // O servidor registra quem criou (sessão) e grava o histórico.
       const menu = await createMenu(fields);
       setDirty(false);
-      setFlash(`Cardápio do RU criado com sucesso: ${SHIFT_LABELS[menu.shift].toLowerCase()} de ${formatMenuDate(menu.date)} já está no Cardápio da semana.`);
+      setFlash(
+        baseId
+          ? `Cardápio do RU duplicado com sucesso: ${SHIFT_LABELS[menu.shift].toLowerCase()} de ${formatMenuDate(menu.date)} já está no Cardápio da semana.`
+          : `Cardápio do RU criado com sucesso: ${SHIFT_LABELS[menu.shift].toLowerCase()} de ${formatMenuDate(menu.date)} já está no Cardápio da semana.`,
+      );
       router.push("/admin/cardapio");
     } catch (err) {
       // FE01: campos obrigatórios em branco ou dia/turno já cadastrado.
@@ -115,10 +119,12 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
             <Link href="/admin/cardapio" className="hover:underline">
               Cardápio do RU
             </Link>{" "}
-            › <span className="font-semibold text-slate-800">Criar cardápio</span>
+            › <span className="font-semibold text-slate-800">{baseId ? "Duplicar cardápio" : "Criar cardápio"}</span>
           </nav>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold text-navy-900 sm:text-2xl">Criar cardápio do RU</h1>
+            <h1 className="text-xl font-bold text-navy-900 sm:text-2xl">
+              {baseId ? "Duplicar cardápio do RU" : "Criar cardápio do RU"}
+            </h1>
             <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
               <span aria-hidden className="size-1.5 rounded-full bg-amber-500" />
               {baseId ? "Duplicando cardápio" : "Modo de criação"}
@@ -156,7 +162,17 @@ export default function NewMenuPage({ searchParams }: PageProps<"/admin/cardapio
         <select
           aria-label="Cardápio base"
           value={baseId}
-          onChange={(e) => (e.target.value ? cloneFrom(e.target.value, existing) : setBaseId(""))}
+          onChange={(e) => {
+            if (e.target.value) {
+              cloneFrom(e.target.value, existing);
+            } else {
+              setBaseId("");
+              setFields(EMPTY);
+              setErrors({});
+              setSummary(null);
+              setDirty(true);
+            }
+          }}
           className="h-11 w-full rounded-lg border border-stone-200 bg-stone-50 px-3 text-sm text-slate-900 outline-none focus:border-navy-700 focus:ring-2 focus:ring-brand-yellow"
         >
           <option value="">Começar do zero</option>
