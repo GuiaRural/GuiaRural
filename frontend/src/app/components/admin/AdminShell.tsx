@@ -82,6 +82,17 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  // O painel tem rolagem própria (sidebar e main): o documento não deve rolar.
+  // O cleanup restaura o valor anterior, então site público e login continuam rolando normalmente.
+  useEffect(() => {
+    const html = document.documentElement;
+    const prev = html.style.overflow;
+    html.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prev;
+    };
+  }, []);
+
   if (!session) return null;
 
   function openLogout() {
@@ -104,7 +115,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <AdminContext.Provider value={{ session, setDirty: (d) => setDirtyPath(d ? pathname : null) }}>
-      <div className="flex h-dvh flex-col">
+      {/* fixed inset-0: o shell fica preso à viewport e só sidebar e main rolam. */}
+      <div className="fixed inset-0 flex flex-col overflow-hidden">
         <header className="relative z-50 flex h-14 shrink-0 items-center gap-3 bg-navy-900 px-4 text-white">
           <button
             type="button"
@@ -143,7 +155,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           )}
           <aside
             id="admin-nav"
-            className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col overflow-y-auto bg-navy-900 px-3 pb-4 pt-16 text-white transition-transform md:static md:z-auto md:translate-x-0 md:pt-4 ${
+            className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col overflow-y-auto bg-navy-900 px-3 pb-4 pt-16 text-white transition-transform [scrollbar-color:rgb(255_255_255/0.25)_transparent] [scrollbar-width:thin] md:static md:z-auto md:translate-x-0 md:pt-4 ${
               menuOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >

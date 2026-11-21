@@ -90,7 +90,7 @@ function GuideSectionView({ section }: { section: GuideSection }) {
   const searchPending = query.trim() !== debouncedQuery.trim() || searchState.status === "loading";
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="min-h-full">
       <header className="bg-navy-900 text-white">
         <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
           <div className="flex flex-wrap items-start justify-between gap-4">

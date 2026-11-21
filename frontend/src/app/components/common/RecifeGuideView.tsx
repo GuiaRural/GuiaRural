@@ -76,7 +76,7 @@ export default function RecifeGuideView() {
   const state = useApi(getRecifeGuide, language);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="min-h-full">
       <div className="mx-auto max-w-6xl px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Breadcrumb
