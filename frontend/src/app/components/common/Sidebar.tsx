@@ -13,7 +13,7 @@ const NAV: Item[] = [
   { key: "stops", href: "/portarias-e-paradas", sub: true },
   { key: "eat", href: "/onde-comer", sub: true },
   { key: "study", href: "/espacos-de-estudo", sub: true },
-  { key: "notices", href: "/avisos", badge: "3" },
+  { key: "notices", href: "/avisos" },
   { key: "courses", href: "/cursos" },
   { key: "services", href: "/servicos" },
   { key: "weeklyMenu", href: "/cardapio", sub: true },
@@ -49,13 +49,7 @@ function NavGroup({ items, current, onNavigate }: { items: Item[]; current: stri
             >
               <span>{t.sidebar[item.key]}</span>
               {item.badge && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                    item.badge === "GPS" ? "bg-brand-yellow text-navy-900" : "bg-red-600 text-white"
-                  }`}
-                >
-                  {item.badge}
-                </span>
+                <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[11px] font-bold text-navy-900">{item.badge}</span>
               )}
             </Link>
           </li>
