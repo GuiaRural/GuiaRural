@@ -304,6 +304,20 @@ export async function setPlaceStatus(id: string, status: PlaceStatus): Promise<v
   await savePlace({ ...toInput(place), status });
 }
 
+// Limite do PlaceRequestDTO (backend).
+export const MAX_DESCRIPTION_CHARS = 5000;
+
+// UC28 — Editar a descrição do local: relê o local no servidor e reenvia tudo igual, trocando só a descrição.
+// O servidor valida, exige perfil geral ou editor e grava o histórico (com desfazer). Descrição vazia não sai do navegador.
+export async function updatePlaceDescription(id: string, description: string): Promise<Place> {
+  const text = description.trim();
+  if (!text) throw new PlaceValidationError("A descrição é obrigatória.");
+  if (text.length > MAX_DESCRIPTION_CHARS) throw new PlaceValidationError(`A descrição não pode ter mais que ${MAX_DESCRIPTION_CHARS} caracteres.`);
+  const place = await getPlaceForAdmin(id);
+  if (!place) throw new PlaceValidationError("Este local não existe mais. Atualize a lista.");
+  return savePlace({ ...toInput(place), description: text });
+}
+
 // Já excluído em outra aba (404) é tratado como sucesso: o resultado desejado já existe.
 export async function deletePlace(id: string): Promise<void> {
   try {
