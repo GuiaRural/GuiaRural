@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "graph": "node --experimental-transform-types --no-warnings --import ./tests/register.mjs scripts/build-campus-graph.ts",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report e2e-report",
     "test": "node --experimental-transform-types --no-warnings --import ./tests/register.mjs --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
@@ -18,6 +22,7 @@
     "react-leaflet": "5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "1.9.22",
     "@types/node": "^20",
