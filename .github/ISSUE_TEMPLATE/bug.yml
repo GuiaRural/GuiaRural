@@ -1,0 +1,172 @@
+name: Bug (rodada de testes)
+description: Registrar um defeito encontrado durante uma rodada de testes
+title: "[BUG] "
+labels: ["bug", "status: novo", "rodada-de-teste"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **O identificador único do bug é o número desta issue (`#N`).** Use-o em relatórios, commits (`fix: ... (#N)`) e PRs.
+        Abra **uma issue por defeito** (uma causa). Se vários casos de teste falham pelo mesmo motivo, cite todos no campo "Caso de teste".
+        Não coloque senhas, dados pessoais reais nem chaves em texto ou capturas de tela.
+
+  - type: input
+    id: caso-de-teste
+    attributes:
+      label: Caso de teste (CT)
+      description: Código na planilha de casos de teste. Se o defeito apareceu fora de um caso, escreva "exploratório".
+      placeholder: "CT-001.02, CT-006.03"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: rodada
+    attributes:
+      label: Rodada de testes
+      options:
+        - rc1
+        - rc2
+        - rc3
+        - Regressão / outra
+        - Exploratório (fora de rodada)
+    validations:
+      required: true
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição do erro
+      description: O que está errado, em uma ou duas frases, e onde (tela/rota).
+      placeholder: "A Biblioteca Central não aparece na busca nem no mapa."
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamento esperado
+      description: O que deveria acontecer, de acordo com o caso de teste ou o caso de uso (cite o UC ou a regra de negócio, se houver).
+    validations:
+      required: true
+
+  - type: textarea
+    id: observado
+    attributes:
+      label: Comportamento observado
+      description: O que de fato aconteceu. Copie mensagens de erro exatamente como apareceram.
+    validations:
+      required: true
+
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      description: >-
+        Passo a passo numerado, começando de um estado conhecido (por exemplo, abrir a rota / com o armazenamento
+        do navegador limpo). Informe os dados usados (ver aba "Massa de Dados" da planilha).
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reprodutibilidade
+    attributes:
+      label: Frequência
+      options:
+        - Sempre
+        - Às vezes
+        - Uma vez só (não reproduzi de novo)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severidade
+    attributes:
+      label: Gravidade
+      description: Impacto técnico e funcional do defeito.
+      options:
+        - Crítica — sistema fora do ar, perda de dados ou falha de segurança
+        - Alta — funcionalidade principal inutilizável, sem contorno
+        - Média — funcionalidade prejudicada, existe contorno
+        - Baixa — falha cosmética, texto ou melhoria de usabilidade
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgencia
+    attributes:
+      label: Urgência da correção
+      description: Quão rápido precisa ser corrigido (a triagem pode ajustar).
+      options:
+        - Imediata — bloqueia a entrega ou outros testes
+        - Alta — corrigir na próxima iteração
+        - Normal — corrigir quando entrar no planejamento
+        - Baixa — pode esperar
+    validations:
+      required: true
+
+  - type: input
+    id: versao
+    attributes:
+      label: Versão / build onde ocorreu
+      description: "Tag da release vigente (https://github.com/GuiaRural/GuiaRural/releases, ex.: v1.4.1) ou hash do commit implantado, mais data e hora do teste. Se for a planilha, use também o rótulo da coluna (ex.: 01.02.00-rc2)."
+      placeholder: "v1.4.1 · 21/11/2026 15:10 · 01.02.00-rc2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Hoje só existe produção; as outras opções valem quando os ambientes planejados existirem.
+      options:
+        - Produção
+        - Homologação
+        - Teste
+        - Desenvolvimento (local)
+    validations:
+      required: true
+
+  - type: input
+    id: so
+    attributes:
+      label: Sistema operacional
+      placeholder: "Windows 11 23H2 / Android 14 / iOS 17.5"
+    validations:
+      required: true
+
+  - type: input
+    id: navegador
+    attributes:
+      label: Navegador e versão
+      placeholder: "Google Chrome 130 / Safari iOS 17 / Firefox 132 / Edge 130"
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Dispositivo e rede
+      description: Modelo do aparelho, tamanho de tela e tipo de conexão (Wi-Fi, 4G, 3G).
+      placeholder: "Notebook, tela 1366x768, Wi-Fi do campus"
+    validations:
+      required: false
+
+  - type: textarea
+    id: anexos
+    attributes:
+      label: Capturas de tela, logs e outros anexos
+      description: Arraste os arquivos aqui. Se possível, inclua print da tela inteira (com a URL), mensagens do console do navegador (F12) e a aba Rede da requisição que falhou.
+    validations:
+      required: false
+
+  - type: textarea
+    id: observacoes
+    attributes:
+      label: Observações e hipóteses
+      description: Algo que ajude a triagem (o que já tentou, se funcionava na rodada anterior). Marque como hipótese o que não foi confirmado.
+    validations:
+      required: false

@@ -7,8 +7,8 @@ Fonte: `docs/Casos_de_Teste_Geral_GuiaRural (2).xlsx` (colunas rc1 e rc2), compa
 
 | Etapa | Situação |
 |---|---|
-| 0. Confirmar a causa (bibliotecas) | **Pendente.** Precisa do painel (`/admin/historico`) ou do banco. |
-| 1. Restaurar os dados | **Pendente**, depende da Etapa 0 e de autorização para escrever no banco. |
+| 0. Confirmar a causa (bibliotecas) | **Feita (25/11/2026), hipótese A confirmada.** O histórico de auditoria (`audit_logs`) mostra que em 20/11/2026 (~03h UTC) `biblioteca-setorial` foi deletada e `biblioteca` passou a rascunho, pelo painel (UC15/UC16 em produção). |
+| 1. Restaurar os dados | **Já restaurado por alguém fora do painel** (sem registro `restaurado` na auditoria): em 25/11/2026 as duas bibliotecas estão `publicado`. Falta reexecutar CT-001.02, CT-006.03 e CT-010.03. |
 | 2. Testes sem mexer em dados reais | **Feita na planilha:** nova seção 4 em "Massa de Dados" (locais descartáveis) e regra nos 10 casos de UC15/UC16. Falta criar os locais de teste pelo UC14. |
 | 3. Reescrever casos | **Feita para:** 038.04, 010.03 a 010.05, 037.01, 023.05, 028.01 a 028.04 (título do UC28 também) e 036.03 (agora aponta para os testes automatizados). Esses casos voltaram para `NoRun`, e o resultado e o comentário do rc1 foram mantidos. **Falta:** 001.05 (reproduzir antes), 021.x (confirmar com quem testou) e reexecutar 012.04, 013.02 e 014.02 anotando o passo. |
 | 4. Código | **Feita:** badge removido (`acdb21a`). CT-003.02 e CT-018.04 receberam a nota na planilha. |
