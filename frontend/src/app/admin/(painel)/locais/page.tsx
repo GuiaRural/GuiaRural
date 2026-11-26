@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageHeader, { ctaButton } from "../../../components/admin/PageHeader";
 import PlaceDescriptionModal from "../../../components/admin/PlaceDescriptionModal";
 import { ConfirmModal } from "../../../components/ui/Modal";
@@ -11,6 +11,7 @@ import { formatCoord } from "../../../lib/geo";
 import { PlaceValidationError, deletePlace, listAllPlaces, setPlaceStatus, type Place, type PlaceStatus } from "../../../services/placesService";
 
 const PAGE_SIZE = 6;
+const SEARCH_DELAY_MS = 300;
 const FILTERS = [
   ["todos", "Todos"],
   ["publicado", "Ativos"],
@@ -27,9 +28,18 @@ const STATUS: Record<PlaceStatus, [string, string]> = {
 
 const categories = dictionaries.pt.categories;
 
+// Busca sem diferença de maiúsculas nem acentos.
+function normalize(text: string) {
+  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
+
 export default function PlacesAdminPage() {
   const [places, setPlaces] = useState<Place[] | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
+  // query é o texto do campo; term é o termo já aplicado à lista, depois do debounce.
+  const [query, setQuery] = useState("");
+  const [term, setTerm] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const [toDelete, setToDelete] = useState<Place | null>(null);
   const [describing, setDescribing] = useState<Place | null>(null);
@@ -54,7 +64,24 @@ export default function PlacesAdminPage() {
       });
   }, []);
 
-  const filtered = (places ?? []).filter((p) => filter === "todos" || p.status === filter);
+  useEffect(() => {
+    if (query === term) return;
+    const timer = setTimeout(() => {
+      setTerm(query);
+      setPage(1);
+    }, SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [query, term]);
+
+  function clearSearch() {
+    setQuery("");
+    setTerm("");
+    setPage(1);
+    searchRef.current?.focus();
+  }
+
+  const q = normalize(term);
+  const filtered = (places ?? []).filter((p) => (filter === "todos" || p.status === filter) && normalize(p.name).includes(q));
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pages);
   const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
@@ -100,7 +127,41 @@ export default function PlacesAdminPage() {
             </button>
           ))}
         </div>
-        <p className="text-xs font-semibold text-slate-500">{filtered.length} registros</p>
+        <div className="relative w-full sm:w-auto sm:min-w-64 sm:max-w-md sm:flex-1">
+          <label htmlFor="place-search" className="sr-only">
+            Buscar local por nome
+          </label>
+          <svg aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          {/* O "x" nativo do type="search" fica oculto: o botão ao lado funciona igual em todos os navegadores. */}
+          <input
+            ref={searchRef}
+            id="place-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar local por nome..."
+            className="h-10 w-full rounded-full border border-slate-300 bg-white pl-10 pr-10 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-navy-700 focus:ring-2 focus:ring-brand-yellow [&::-webkit-search-cancel-button]:appearance-none"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label="Limpar busca"
+              title="Limpar busca"
+              className="absolute right-1.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-navy-900"
+            >
+              <svg aria-hidden className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <p aria-live="polite" className="text-xs font-semibold text-slate-500">
+          {filtered.length} registros
+        </p>
       </div>
 
       {message && (
@@ -132,7 +193,20 @@ export default function PlacesAdminPage() {
             {places && visible.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
-                  Nenhum local neste filtro.
+                  {q ? (
+                    <>
+                      Nenhum local encontrado para &apos;{term.trim()}&apos;.{" "}
+                      <button
+                        type="button"
+                        onClick={clearSearch}
+                        className="rounded font-semibold text-navy-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-700"
+                      >
+                        Limpar busca
+                      </button>
+                    </>
+                  ) : (
+                    "Nenhum local neste filtro."
+                  )}
                 </td>
               </tr>
             )}
